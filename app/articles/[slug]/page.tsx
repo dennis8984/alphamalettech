@@ -6,6 +6,7 @@ import { formatDate } from '@/lib/utils';
 import ArticleCard from '@/components/articles/ArticleCard';
 import Newsletter from '@/components/layout/Newsletter';
 
+// Generate static params for all articles and categories
 export function generateStaticParams() {
   // Generate paths for all articles
   const articlePaths = articles.map((article) => ({
