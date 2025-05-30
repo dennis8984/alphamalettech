@@ -8,6 +8,7 @@ import Newsletter from '@/components/layout/Newsletter';
 
 // Generate static params for all articles and categories
 const generateStaticParamsFn = () => {
+  console.log('[generateStaticParams] Generating params...'); // Added for cache busting
   // Generate paths for all articles
   const articlePaths = articles.map((article) => ({
     slug: article.slug,
@@ -19,7 +20,9 @@ const generateStaticParamsFn = () => {
   }));
 
   // Combine both arrays
-  return [...articlePaths, ...categoryPaths];
+  const allPaths = [...articlePaths, ...categoryPaths];
+  console.log(`[generateStaticParams] Generated ${allPaths.length} paths.`); // Added for cache busting
+  return allPaths;
 };
 
 export const generateStaticParams = generateStaticParamsFn;
