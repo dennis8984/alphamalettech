@@ -5,6 +5,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: { unoptimized: true },
+  // Force rebuild: Updated on deployment
 };
 
 module.exports = nextConfig;
