@@ -6,6 +6,21 @@ import { formatDate } from '@/lib/utils';
 import ArticleCard from '@/components/articles/ArticleCard';
 import Newsletter from '@/components/layout/Newsletter';
 
+export function generateStaticParams() {
+  // Generate paths for all articles
+  const articlePaths = articles.map((article) => ({
+    slug: article.slug,
+  }));
+
+  // Generate paths for all categories
+  const categoryPaths = categories.map((category) => ({
+    slug: category.slug,
+  }));
+
+  // Combine both arrays
+  return [...articlePaths, ...categoryPaths];
+}
+
 interface ArticlePageProps {
   params: {
     slug: string;
