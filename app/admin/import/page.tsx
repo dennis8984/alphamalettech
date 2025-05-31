@@ -121,6 +121,7 @@ export default function ImportPage() {
       const result = await response.json()
 
       if (!response.ok) {
+        console.error('Upload error details:', result)
         throw new Error(result.error || 'Upload failed')
       }
 
@@ -170,7 +171,8 @@ export default function ImportPage() {
       setImportStep('preview')
     } catch (error) {
       console.error('Upload error:', error)
-      alert('Failed to process file. Please check the format and try again.')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process file'
+      alert(`${errorMessage}. Please check the format and try again.`)
     } finally {
       setIsUploading(false)
     }

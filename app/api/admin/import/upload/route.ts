@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
     }
 
+    console.log('Processing file:', file.name, 'Size:', file.size, 'Type:', file.type)
+
     const uploadDir = join(process.cwd(), 'uploads')
     await mkdir(uploadDir, { recursive: true })
 
@@ -60,7 +62,9 @@ export async function POST(request: NextRequest) {
         // Check if we need to return headers for mapping
         if (!fieldMappings) {
           // First pass - just get headers
+          console.log('Getting CSV headers...')
           csvHeaders = await getCsvHeaders(buffer)
+          console.log('CSV headers detected:', csvHeaders)
           return NextResponse.json({
             success: true,
             needsMapping: true,
@@ -69,6 +73,7 @@ export async function POST(request: NextRequest) {
           })
         } else {
           // Second pass - process with mappings
+          console.log('Processing CSV with mappings:', fieldMappings)
           const mappings = JSON.parse(fieldMappings)
           parsedArticles = await processCsvFile(buffer, mappings)
         }
@@ -83,6 +88,8 @@ export async function POST(request: NextRequest) {
       // Clean up temp file
       await unlink(tempPath).catch(() => {})
 
+      console.log(`Processed ${parsedArticles.length} articles`)
+
       return NextResponse.json({
         success: true,
         articles: parsedArticles,
@@ -95,13 +102,15 @@ export async function POST(request: NextRequest) {
     } catch (parseError) {
       // Clean up temp file on error
       await unlink(tempPath).catch(() => {})
+      console.error('Parse error:', parseError)
       throw parseError
     }
 
   } catch (error) {
     console.error('Import upload error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to process upload. Please check file format and try again.' },
+      { error: `Failed to process upload: ${errorMessage}` },
       { status: 500 }
     )
   }
@@ -475,21 +484,31 @@ function detectCategory(text: string): string {
 
 async function getCsvHeaders(buffer: Buffer): Promise<string[]> {
   const content = buffer.toString('utf-8')
+  console.log('CSV content preview (first 200 chars):', content.substring(0, 200))
+  
   return new Promise((resolve, reject) => {
     Papa.parse(content, {
+      header: true,
       preview: 1, // Only parse the first row to get headers
+      skipEmptyLines: true,
       complete: function(results: any) {
+        console.log('Papa parse results:', results)
         if (results.meta && results.meta.fields) {
+          console.log('Found headers from meta.fields:', results.meta.fields)
           resolve(results.meta.fields)
         } else if (results.data && results.data[0]) {
           // If no header row, use first row keys
-          resolve(Object.keys(results.data[0]))
+          const headers = Object.keys(results.data[0])
+          console.log('Found headers from first row:', headers)
+          resolve(headers)
         } else {
+          console.log('No headers found')
           resolve([])
         }
       },
       error: function(error: any) {
-        reject(error)
+        console.error('Papa parse error:', error)
+        reject(new Error(`CSV parsing error: ${error.message || 'Unknown error'}`))
       }
     })
   })
