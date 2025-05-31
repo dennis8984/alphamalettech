@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
 interface ImportArticle {
   id: string
   title: string
@@ -22,6 +17,19 @@ interface ImportArticle {
 
 export async function POST(request: NextRequest) {
   try {
+    // Initialize Supabase inside the function to avoid build-time errors
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return NextResponse.json(
+        { error: 'Supabase configuration missing' },
+        { status: 500 }
+      )
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    
     const { articles }: { articles: ImportArticle[] } = await request.json()
 
     if (!articles || !Array.isArray(articles) || articles.length === 0) {
@@ -45,21 +53,23 @@ export async function POST(request: NextRequest) {
       
       try {
         // Transform articles for Supabase
-        const supabaseArticles = batch.map(article => ({
-          title: article.title,
-          slug: ensureUniqueSlug(article.slug),
-          excerpt: article.excerpt,
-          content: article.content,
-          image_url: article.image,
-          category: article.category,
-          author: article.author,
-          published_at: article.date,
-          featured: article.featured,
-          trending: article.trending,
-          status: 'published',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }))
+        const supabaseArticles = await Promise.all(
+          batch.map(async (article) => ({
+            title: article.title,
+            slug: await ensureUniqueSlug(article.slug, supabase),
+            excerpt: article.excerpt,
+            content: article.content,
+            image_url: article.image,
+            category: article.category,
+            author: article.author,
+            published_at: article.date,
+            featured: article.featured,
+            trending: article.trending,
+            status: 'published',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }))
+        )
 
         const { data, error } = await supabase
           .from('articles')
@@ -102,7 +112,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function ensureUniqueSlug(slug: string): Promise<string> {
+async function ensureUniqueSlug(slug: string, supabase: any): Promise<string> {
   let uniqueSlug = slug
   let counter = 1
 
