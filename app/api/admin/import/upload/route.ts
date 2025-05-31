@@ -127,21 +127,25 @@ async function processCsvContent(content: string): Promise<ParsedArticle[]> {
     Papa.parse(content, {
       header: true,
       skipEmptyLines: true,
-      complete: (results: Papa.ParseResult<Record<string, string>>) => {
+      complete: function(results: any) {
         try {
           const articles: ParsedArticle[] = []
           
-          results.data.forEach((row: Record<string, string>, index: number) => {
-            const article = mapCsvRowToArticle(row, index)
-            articles.push(article)
-          })
+          if (results.data && Array.isArray(results.data)) {
+            results.data.forEach((row: any, index: number) => {
+              const article = mapCsvRowToArticle(row, index)
+              articles.push(article)
+            })
+          }
           
           resolve(articles)
         } catch (error) {
           reject(error)
         }
       },
-      error: (error: Papa.ParseError) => reject(error)
+      error: function(error: any) {
+        reject(error)
+      }
     })
   })
 }
@@ -178,20 +182,20 @@ function parseHtmlContent(content: string, filename: string): ParsedArticle {
   const title = titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '').trim() : 
                 filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ')
   
-  // Extract content
-  const bodyMatch = content.match(/<body[^>]*>(.*?)<\/body>/is) ||
-                   content.match(/<article[^>]*>(.*?)<\/article>/is) ||
-                   content.match(/<main[^>]*>(.*?)<\/main>/is)
+  // Extract content - using more compatible regex patterns
+  const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i) ||
+                   content.match(/<article[^>]*>([\s\S]*?)<\/article>/i) ||
+                   content.match(/<main[^>]*>([\s\S]*?)<\/main>/i)
   
   let articleContent = bodyMatch ? bodyMatch[1] : content
   
-  // Clean up content
+  // Clean up content - using more compatible regex patterns
   articleContent = articleContent
-    .replace(/<script[^>]*>.*?<\/script>/gis, '')
-    .replace(/<style[^>]*>.*?<\/style>/gis, '')
-    .replace(/<nav[^>]*>.*?<\/nav>/gis, '')
-    .replace(/<header[^>]*>.*?<\/header>/gis, '')
-    .replace(/<footer[^>]*>.*?<\/footer>/gis, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+    .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
+    .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
     .trim()
   
   // Extract excerpt
@@ -202,7 +206,7 @@ function parseHtmlContent(content: string, filename: string): ParsedArticle {
   // Extract images
   const imgMatches = content.match(/<img[^>]*src=["']([^"']*)["'][^>]*>/gi) || []
   const firstImage = imgMatches.length > 0 ? 
-    imgMatches[0].match(/src=["']([^"']*)/)?.[1] || DEFAULT_IMAGE : DEFAULT_IMAGE
+    (imgMatches[0].match(/src=["']([^"']*)/) || [])[1] || DEFAULT_IMAGE : DEFAULT_IMAGE
   
   // Check for missing alt tags
   const imgsWithoutAlt = content.match(/<img(?![^>]*alt=)[^>]*>/gi) || []
@@ -274,7 +278,7 @@ function parseMarkdownContent(content: string, filename: string): ParsedArticle 
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/`(.*?)`/g, '<code>$1</code>')
     .replace(/^\* (.*$)/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+    .replace(/((<li>.*<\/li>\s*)+)/g, '<ul>$1</ul>')
     .replace(/\n\n/g, '</p><p>')
     .replace(/^(?!<[hul])/gm, '<p>')
     .replace(/$(?![hul>])/gm, '</p>')
@@ -282,7 +286,7 @@ function parseMarkdownContent(content: string, filename: string): ParsedArticle 
   // Extract images
   const imgMatches = content.match(/!\[.*?\]\((.*?)\)/g) || []
   const firstImage = imgMatches.length > 0 ? 
-    imgMatches[0].match(/\((.*?)\)/)?.[1] || DEFAULT_IMAGE : DEFAULT_IMAGE
+    (imgMatches[0].match(/\((.*?)\)/) || [])[1] || DEFAULT_IMAGE : DEFAULT_IMAGE
   
   // Word count
   const textContent = content.replace(/[#*_`\[\]()]/g, ' ').replace(/\s+/g, ' ').trim()
