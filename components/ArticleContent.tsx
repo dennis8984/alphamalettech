@@ -94,9 +94,6 @@ export default function ArticleContent({
         className="prose prose-lg max-w-none
           prose-headings:text-gray-900 
           prose-p:text-gray-700 
-          prose-a:text-red-600 
-          prose-a:no-underline 
-          hover:prose-a:text-red-500
           prose-strong:text-gray-900
           prose-ul:text-gray-700
           prose-ol:text-gray-700
@@ -104,17 +101,20 @@ export default function ArticleContent({
           prose-blockquote:text-gray-600"
         dangerouslySetInnerHTML={{ __html: processedContent }}
       />
-      
-      {/* Affiliate disclosure */}
-      {linkingStats && linkingStats.linksAdded > 0 && (
-        <div className="mt-8 p-4 bg-gray-50 border border-gray-200 rounded-md">
-          <div className="text-sm text-gray-600">
-            <strong>Affiliate Disclosure:</strong> This article contains affiliate links. 
-            We may earn a commission when you purchase through links on our site at no extra cost to you. 
-            This helps support our content creation.
-          </div>
-        </div>
-      )}
+
+      {/* Custom styles for affiliate links */}
+      <style jsx>{`
+        .article-content :global(a[data-mh-affiliate="true"]) {
+          color: #dc2626 !important; /* text-red-600 */
+          font-weight: 700 !important; /* font-bold */
+          text-decoration: underline !important;
+          transition: color 0.2s ease-in-out;
+        }
+        
+        .article-content :global(a[data-mh-affiliate="true"]:hover) {
+          color: #b91c1c !important; /* text-red-700 */
+        }
+      `}</style>
     </div>
   )
 }
