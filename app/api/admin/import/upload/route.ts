@@ -205,8 +205,13 @@ function parseHtmlContent(content: string, filename: string): ParsedArticle {
   
   // Extract images
   const imgMatches = content.match(/<img[^>]*src=["']([^"']*)["'][^>]*>/gi) || []
-  const firstImage = imgMatches.length > 0 ? 
-    (imgMatches[0].match(/src=["']([^"']*)/) || [])[1] || DEFAULT_IMAGE : DEFAULT_IMAGE
+  let firstImage = DEFAULT_IMAGE
+  if (imgMatches.length > 0) {
+    const srcMatch = imgMatches[0].match(/src=["']([^"']*)/)
+    if (srcMatch && srcMatch[1]) {
+      firstImage = srcMatch[1]
+    }
+  }
   
   // Check for missing alt tags
   const imgsWithoutAlt = content.match(/<img(?![^>]*alt=)[^>]*>/gi) || []
@@ -285,8 +290,13 @@ function parseMarkdownContent(content: string, filename: string): ParsedArticle 
   
   // Extract images
   const imgMatches = content.match(/!\[.*?\]\((.*?)\)/g) || []
-  const firstImage = imgMatches.length > 0 ? 
-    (imgMatches[0].match(/\((.*?)\)/) || [])[1] || DEFAULT_IMAGE : DEFAULT_IMAGE
+  let firstImage = DEFAULT_IMAGE
+  if (imgMatches.length > 0) {
+    const urlMatch = imgMatches[0].match(/\((.*?)\)/)
+    if (urlMatch && urlMatch[1]) {
+      firstImage = urlMatch[1]
+    }
+  }
   
   // Word count
   const textContent = content.replace(/[#*_`\[\]()]/g, ' ').replace(/\s+/g, ' ').trim()
