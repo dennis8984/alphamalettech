@@ -1,3 +1,5 @@
+'use client'
+
 import { articles, categories, getArticlesByCategory } from '@/lib/data';
 import { formatDate } from '@/lib/utils';
 import ArticleCard from '@/components/articles/ArticleCard';
@@ -62,8 +64,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
   };
 }
 
-// Client component for page tracking
-function ArticlePageContent({ params }: ArticlePageProps) {
+export default function ArticlePage({ params }: ArticlePageProps) {
   // Track page views for pop-under functionality
   usePageViewTracking();
 
@@ -288,8 +289,4 @@ function ArticlePageContent({ params }: ArticlePageProps) {
       </div>
     </div>
   );
-}
-
-export default function ArticlePage({ params }: ArticlePageProps) {
-  return <ArticlePageContent params={params} />;
 }

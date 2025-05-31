@@ -1,3 +1,5 @@
+'use client'
+
 import HeroArticle from '@/components/articles/HeroArticle';
 import TrendingArticles from '@/components/articles/TrendingArticles';
 import CategorySection from '@/components/articles/CategorySection';
@@ -9,7 +11,7 @@ import {
   getArticlesByCategory
 } from '@/lib/data';
 
-function HomePageContent() {
+export default function Home() {
   // Track page views for pop-under functionality
   usePageViewTracking();
 
@@ -120,8 +122,4 @@ function HomePageContent() {
       <AdSlot placement="footer" className="container mx-auto px-4 mt-8" />
     </div>
   );
-}
-
-export default function Home() {
-  return <HomePageContent />;
 }
