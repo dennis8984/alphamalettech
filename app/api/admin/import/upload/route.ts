@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.formData()
     const file = data.get('file') as File
+    const fieldMappings = data.get('fieldMappings') as string | null
     
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
@@ -50,12 +51,27 @@ export async function POST(request: NextRequest) {
     await writeFile(tempPath, buffer)
 
     let parsedArticles: ParsedArticle[] = []
+    let csvHeaders: string[] | null = null
 
     try {
       if (file.name.endsWith('.zip')) {
         parsedArticles = await processZipFile(buffer)
       } else if (file.name.endsWith('.csv')) {
-        parsedArticles = await processCsvFile(buffer)
+        // Check if we need to return headers for mapping
+        if (!fieldMappings) {
+          // First pass - just get headers
+          csvHeaders = await getCsvHeaders(buffer)
+          return NextResponse.json({
+            success: true,
+            needsMapping: true,
+            headers: csvHeaders,
+            fileName: file.name
+          })
+        } else {
+          // Second pass - process with mappings
+          const mappings = JSON.parse(fieldMappings)
+          parsedArticles = await processCsvFile(buffer, mappings)
+        }
       } else if (file.name.endsWith('.xml')) {
         parsedArticles = await processXmlFile(buffer)
       } else if (file.name.endsWith('.html') || file.name.endsWith('.htm')) {
@@ -109,7 +125,7 @@ async function processZipFile(buffer: Buffer): Promise<ParsedArticle[]> {
       const article = parseMarkdownContent(content, filename)
       articles.push(article)
     } else if (ext === 'csv') {
-      const csvArticles = await processCsvContent(content)
+      const csvArticles = await processCsvContent(content, undefined)
       articles.push(...csvArticles)
     }
   }
@@ -117,12 +133,12 @@ async function processZipFile(buffer: Buffer): Promise<ParsedArticle[]> {
   return articles
 }
 
-async function processCsvFile(buffer: Buffer): Promise<ParsedArticle[]> {
+async function processCsvFile(buffer: Buffer, mappings?: Record<string, string>): Promise<ParsedArticle[]> {
   const content = buffer.toString('utf-8')
-  return await processCsvContent(content)
+  return await processCsvContent(content, mappings)
 }
 
-async function processCsvContent(content: string): Promise<ParsedArticle[]> {
+async function processCsvContent(content: string, mappings?: Record<string, string>): Promise<ParsedArticle[]> {
   return new Promise((resolve, reject) => {
     Papa.parse(content, {
       header: true,
@@ -133,7 +149,7 @@ async function processCsvContent(content: string): Promise<ParsedArticle[]> {
           
           if (results.data && Array.isArray(results.data)) {
             results.data.forEach((row: any, index: number) => {
-              const article = mapCsvRowToArticle(row, index)
+              const article = mapCsvRowToArticle(row, index, mappings)
               articles.push(article)
             })
           }
@@ -324,17 +340,32 @@ function parseMarkdownContent(content: string, filename: string): ParsedArticle 
   }
 }
 
-function mapCsvRowToArticle(row: Record<string, string>, index: number): ParsedArticle {
+function mapCsvRowToArticle(row: Record<string, string>, index: number, mappings?: Record<string, string>): ParsedArticle {
   const warnings: string[] = []
   
-  // Flexible field mapping
-  const title = row.title || row.Title || row.headline || row.Headline || `Imported Article ${index + 1}`
-  const content = row.content || row.Content || row.body || row.Body || row.description || row.Description || ''
-  const excerpt = row.excerpt || row.Excerpt || row.summary || row.Summary || content.substring(0, 200) + '...'
-  const category = row.category || row.Category || row.tag || row.Tag || detectCategory(title + ' ' + content)
-  const author = row.author || row.Author || row.writer || row.Writer || 'Imported Author'
-  const image = row.image || row.Image || row.thumbnail || row.Thumbnail || DEFAULT_IMAGE
-  const date = row.date || row.Date || row.publishDate || row.publish_date || new Date().toISOString().split('T')[0]
+  // Use mappings if provided, otherwise fall back to flexible field mapping
+  const getValue = (field: string, fallbacks?: string[]): string => {
+    if (mappings && mappings[field] && row[mappings[field]]) {
+      return row[mappings[field]]
+    }
+    // If no mapping, try the standard field names
+    if (row[field]) return row[field]
+    // Try fallbacks
+    if (fallbacks) {
+      for (const fallback of fallbacks) {
+        if (row[fallback]) return row[fallback]
+      }
+    }
+    return ''
+  }
+  
+  const title = getValue('title', ['Title', 'headline', 'Headline']) || `Imported Article ${index + 1}`
+  const content = getValue('content', ['Content', 'body', 'Body', 'description', 'Description']) || ''
+  const excerpt = getValue('excerpt', ['Excerpt', 'summary', 'Summary']) || content.substring(0, 200) + '...'
+  const category = getValue('category', ['Category', 'tag', 'Tag']) || detectCategory(title + ' ' + content)
+  const author = getValue('author', ['Author', 'writer', 'Writer']) || 'Imported Author'
+  const image = getValue('image', ['Image', 'thumbnail', 'Thumbnail', 'image_url', 'imageUrl']) || DEFAULT_IMAGE
+  const date = getValue('date', ['Date', 'publishDate', 'publish_date', 'published_at']) || new Date().toISOString().split('T')[0]
   
   // Validate required fields
   if (!title.trim()) warnings.push('Missing title')
@@ -440,4 +471,26 @@ function detectCategory(text: string): string {
   }
   
   return 'health' // Default category
+}
+
+async function getCsvHeaders(buffer: Buffer): Promise<string[]> {
+  const content = buffer.toString('utf-8')
+  return new Promise((resolve, reject) => {
+    Papa.parse(content, {
+      preview: 1, // Only parse the first row to get headers
+      complete: function(results: any) {
+        if (results.meta && results.meta.fields) {
+          resolve(results.meta.fields)
+        } else if (results.data && results.data[0]) {
+          // If no header row, use first row keys
+          resolve(Object.keys(results.data[0]))
+        } else {
+          resolve([])
+        }
+      },
+      error: function(error: any) {
+        reject(error)
+      }
+    })
+  })
 } 

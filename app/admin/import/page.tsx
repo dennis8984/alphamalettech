@@ -38,7 +38,7 @@ interface ImportStats {
 }
 
 export default function ImportPage() {
-  const [importStep, setImportStep] = useState<'upload' | 'preview' | 'processing' | 'complete'>('upload')
+  const [importStep, setImportStep] = useState<'upload' | 'mapping' | 'preview' | 'processing' | 'complete'>('upload')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [importProgress, setImportProgress] = useState(0)
   const [parsedArticles, setParsedArticles] = useState<ParsedArticle[]>([])
@@ -49,8 +49,22 @@ export default function ImportPage() {
   const [previewArticle, setPreviewArticle] = useState<string | null>(null)
   const [importResults, setImportResults] = useState<any>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // New states for field mapping
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([])
+  const [fieldMappings, setFieldMappings] = useState<Record<string, string>>({})
 
   const categories = ['fitness', 'nutrition', 'health', 'style', 'weight-loss', 'entertainment']
+
+  const articleFields = [
+    { key: 'title', label: 'Title', required: true, description: 'Article headline' },
+    { key: 'content', label: 'Content', required: true, description: 'Main article text' },
+    { key: 'excerpt', label: 'Excerpt', required: false, description: 'Short summary (optional)' },
+    { key: 'category', label: 'Category', required: false, description: 'Article category' },
+    { key: 'author', label: 'Author', required: false, description: 'Author name' },
+    { key: 'image', label: 'Image URL', required: false, description: 'Featured image' },
+    { key: 'date', label: 'Date', required: false, description: 'Publish date' }
+  ]
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -93,6 +107,11 @@ export default function ImportPage() {
     try {
       const formData = new FormData()
       formData.append('file', selectedFile)
+      
+      // Add field mappings if we have them (for second pass)
+      if (Object.keys(fieldMappings).length > 0) {
+        formData.append('fieldMappings', JSON.stringify(fieldMappings))
+      }
 
       const response = await fetch('/api/admin/import/upload', {
         method: 'POST',
@@ -103,6 +122,35 @@ export default function ImportPage() {
 
       if (!response.ok) {
         throw new Error(result.error || 'Upload failed')
+      }
+
+      // Check if we need field mapping
+      if (result.needsMapping) {
+        setCsvHeaders(result.headers)
+        // Auto-detect common mappings
+        const autoMappings: Record<string, string> = {}
+        result.headers.forEach((header: string) => {
+          const lowerHeader = header.toLowerCase()
+          if (lowerHeader.includes('title') || lowerHeader.includes('headline')) {
+            autoMappings.title = header
+          } else if (lowerHeader.includes('content') || lowerHeader.includes('body') || lowerHeader.includes('description')) {
+            autoMappings.content = header
+          } else if (lowerHeader.includes('excerpt') || lowerHeader.includes('summary')) {
+            autoMappings.excerpt = header
+          } else if (lowerHeader.includes('category') || lowerHeader.includes('tag')) {
+            autoMappings.category = header
+          } else if (lowerHeader.includes('author') || lowerHeader.includes('writer')) {
+            autoMappings.author = header
+          } else if (lowerHeader.includes('image') || lowerHeader.includes('thumbnail')) {
+            autoMappings.image = header
+          } else if (lowerHeader.includes('date') || lowerHeader.includes('publish')) {
+            autoMappings.date = header
+          }
+        })
+        setFieldMappings(autoMappings)
+        setImportStep('mapping')
+        setIsUploading(false)
+        return
       }
 
       setParsedArticles(result.articles)
@@ -218,6 +266,8 @@ export default function ImportPage() {
     setSelectedArticles(new Set())
     setImportProgress(0)
     setImportResults(null)
+    setCsvHeaders([])
+    setFieldMappings({})
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -247,13 +297,14 @@ export default function ImportPage() {
           <div className="flex items-center justify-between">
             {[
               { step: 'upload', label: 'Upload', number: 1 },
-              { step: 'preview', label: 'Preview', number: 2 },
-              { step: 'processing', label: 'Import', number: 3 },
-              { step: 'complete', label: 'Complete', number: 4 }
+              { step: 'mapping', label: 'Map Fields', number: 2 },
+              { step: 'preview', label: 'Preview', number: 3 },
+              { step: 'processing', label: 'Import', number: 4 },
+              { step: 'complete', label: 'Complete', number: 5 }
             ].map(({ step, label, number }) => {
               const isActive = importStep === step
-              const isCompleted = ['upload', 'preview', 'processing', 'complete'].indexOf(importStep) > 
-                                 ['upload', 'preview', 'processing', 'complete'].indexOf(step)
+              const stepOrder = ['upload', 'mapping', 'preview', 'processing', 'complete']
+              const isCompleted = stepOrder.indexOf(importStep) > stepOrder.indexOf(step)
               
               return (
                 <div key={step} className={`flex items-center gap-2 ${
@@ -266,13 +317,107 @@ export default function ImportPage() {
                   }`}>
                     {number}
                   </div>
-                  <span className="font-medium">{label}</span>
+                  <span className="font-medium hidden sm:inline">{label}</span>
                 </div>
               )
             })}
           </div>
         </CardContent>
       </Card>
+
+      {/* Field Mapping Step */}
+      {importStep === 'mapping' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Map CSV Fields</CardTitle>
+            <CardDescription>
+              Match your CSV columns to the article fields. We've auto-detected some mappings based on column names.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-blue-800">
+                <strong>Tip:</strong> Required fields are marked with *. If a field is not mapped, default values will be used.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {articleFields.map((field) => (
+                <div key={field.key} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                  <div>
+                    <Label className={field.required ? 'font-semibold' : ''}>
+                      {field.label} {field.required && <span className="text-red-500">*</span>}
+                    </Label>
+                    <p className="text-sm text-gray-600">{field.description}</p>
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <Select
+                      value={fieldMappings[field.key] || ''}
+                      onValueChange={(value) => {
+                        if (value === 'none') {
+                          const newMappings = { ...fieldMappings }
+                          delete newMappings[field.key]
+                          setFieldMappings(newMappings)
+                        } else {
+                          setFieldMappings({ ...fieldMappings, [field.key]: value })
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a column..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">-- No mapping --</SelectItem>
+                        {csvHeaders.map((header) => (
+                          <SelectItem key={header} value={header}>
+                            {header}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t pt-6">
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <h4 className="font-semibold mb-2">CSV Preview</h4>
+                <div className="text-sm text-gray-600">
+                  <strong>Detected columns:</strong> {csvHeaders.join(', ')}
+                </div>
+              </div>
+
+              <div className="flex gap-4 justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setImportStep('upload')
+                    setCsvHeaders([])
+                    setFieldMappings({})
+                  }}
+                >
+                  Back to Upload
+                </Button>
+                <Button 
+                  onClick={processUpload}
+                  disabled={!fieldMappings.title || !fieldMappings.content || isUploading}
+                >
+                  {isUploading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Continue to Preview'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Upload Step */}
       {importStep === 'upload' && (
