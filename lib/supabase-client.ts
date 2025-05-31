@@ -5,7 +5,11 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOi
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-export const subscribeToNewsletter = async (name: string, email: string) => {
+type SubscriptionResult = 
+  | { success: true; message: string }
+  | { success: false; error: string }
+
+export const subscribeToNewsletter = async (name: string, email: string): Promise<SubscriptionResult> => {
   try {
     // Send magic link for authentication
     const { error: authError } = await supabase.auth.signInWithOtp({
