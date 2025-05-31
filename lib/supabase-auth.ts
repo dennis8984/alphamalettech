@@ -2,8 +2,25 @@
 
 // Client-side only Supabase configuration with validation
 const getSupabaseConfig = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vopntrgtkefstqbzsmot.supabase.co'
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvcG50cmd0a2Vmc3RxYnpzbW90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ1Njg1NzEsImV4cCI6MjA1MDE0NDU3MX0.gfhEDwJyMZmF6K63gPfhKvtJJ3l_K_hNHWQwJ0KRFcU'
+  // Get environment variables
+  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  console.log('🔍 Environment variables loaded:')
+  console.log('- NEXT_PUBLIC_SUPABASE_URL:', envUrl)
+  console.log('- NEXT_PUBLIC_SUPABASE_ANON_KEY:', envKey ? 'SET (hidden)' : 'NOT SET')
+  
+  // Use fallback values if env vars not set
+  let url = envUrl || 'https://vopntrgtkefstqbzsmot.supabase.co'
+  const key = envKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvcG50cmd0a2Vmc3RxYnpzbW90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ1Njg1NzEsImV4cCI6MjA1MDE0NDU3MX0.gfhEDwJyMZmF6K63gPfhKvtJJ3l_K_hNHWQwJ0KRFcU'
+  
+  // Auto-fix URL if missing protocol
+  if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+    console.log('🔧 Auto-fixing URL by adding https://')
+    url = `https://${url}`
+  }
+  
+  console.log('📝 Final URL to use:', url)
   
   // Validate URL format
   try {
