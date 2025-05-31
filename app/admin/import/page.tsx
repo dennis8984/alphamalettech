@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ArrowLeft, Upload, FileText, AlertCircle, CheckCircle, Download, Edit, Eye, X, RefreshCw } from 'lucide-react'
@@ -506,7 +505,12 @@ export default function ImportPage() {
           <CardContent className="space-y-6">
             <div className="text-center">
               <div className="text-4xl mb-4">📚</div>
-              <Progress value={importProgress} className="w-full mb-4" />
+              <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden mb-4">
+                <div
+                  className="h-full bg-blue-500 transition-all duration-300"
+                  style={{ width: `${importProgress}%` }}
+                />
+              </div>
               <p className="text-lg font-medium">{importProgress}% Complete</p>
               <p className="text-sm text-gray-600">
                 Importing {selectedArticles.size} articles...
