@@ -339,7 +339,7 @@ export default function ImportPage() {
             {/* Supported Formats */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="font-semibold text-blue-900 mb-2">📋 Supported Formats</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-blue-800">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-blue-800 mb-3">
                 <div>
                   <strong>CSV Files:</strong> Headers: title, content, excerpt, category, author, image, date
                 </div>
@@ -352,6 +352,16 @@ export default function ImportPage() {
                 <div>
                   <strong>ZIP Files:</strong> Contains multiple HTML, Markdown, or CSV files
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Download className="w-4 h-4 text-blue-600" />
+                <a 
+                  href="/sample-import.csv" 
+                  download="sample-import.csv"
+                  className="text-blue-600 hover:text-blue-700 font-medium text-sm underline"
+                >
+                  Download Sample CSV Template
+                </a>
               </div>
             </div>
           </CardContent>
