@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/progress'
 import { ArrowLeft, Upload, FileText, AlertCircle, CheckCircle, Download } from 'lucide-react'
 import Link from 'next/link'
 
@@ -287,7 +286,13 @@ export default function ImportPage() {
           <CardContent className="space-y-6">
             <div className="text-center">
               <div className="text-2xl font-bold mb-2">{importProgress}%</div>
-              <Progress value={importProgress} className="w-full" />
+              {/* Temporary Progress Bar Replacement */}
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${importProgress}%` }}
+                ></div>
+              </div>
               <p className="text-sm text-gray-600 mt-2">
                 Processing articles and uploading images...
               </p>

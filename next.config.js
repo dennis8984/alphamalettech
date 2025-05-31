@@ -23,9 +23,6 @@ const nextConfig = {
     }
     return config
   },
-  async generateStaticParams() {
-    return []
-  },
   // Skip static generation for admin routes
   async generateBuildId() {
     return 'build-' + Date.now()
