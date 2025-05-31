@@ -206,7 +206,7 @@ function parseHtmlContent(content: string, filename: string): ParsedArticle {
   // Extract images
   const imgMatches = content.match(/<img[^>]*src=["']([^"']*)["'][^>]*>/gi) || []
   let firstImage = DEFAULT_IMAGE
-  if (imgMatches.length > 0) {
+  if (imgMatches.length > 0 && imgMatches[0]) {
     const srcMatch = imgMatches[0].match(/src=["']([^"']*)/)
     if (srcMatch && srcMatch[1]) {
       firstImage = srcMatch[1]
@@ -291,7 +291,7 @@ function parseMarkdownContent(content: string, filename: string): ParsedArticle 
   // Extract images
   const imgMatches = content.match(/!\[.*?\]\((.*?)\)/g) || []
   let firstImage = DEFAULT_IMAGE
-  if (imgMatches.length > 0) {
+  if (imgMatches.length > 0 && imgMatches[0]) {
     const urlMatch = imgMatches[0].match(/\((.*?)\)/)
     if (urlMatch && urlMatch[1]) {
       firstImage = urlMatch[1]
