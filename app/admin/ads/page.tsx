@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -8,53 +8,38 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload } from 'lucide-react'
 import Link from 'next/link'
-
-// Mock data for ads
-const mockAds = [
-  {
-    id: '1',
-    name: 'Protein Powder Banner',
-    placement: 'header',
-    size: '728x90',
-    status: 'active',
-    clicks: 1543,
-    impressions: 45670,
-    ctr: 3.4,
-    targetUrl: 'https://example.com/protein',
-    weight: 100,
-    createdAt: '2024-01-10'
-  },
-  {
-    id: '2',
-    name: 'Fitness App Sidebar',
-    placement: 'sidebar',
-    size: '300x250',
-    status: 'active',
-    clicks: 892,
-    impressions: 23450,
-    ctr: 3.8,
-    targetUrl: 'https://example.com/fitness-app',
-    weight: 80,
-    createdAt: '2024-01-08'
-  },
-  {
-    id: '3',
-    name: 'Supplement Footer',
-    placement: 'footer',
-    size: '320x50',
-    status: 'paused',
-    clicks: 234,
-    impressions: 12890,
-    ctr: 1.8,
-    targetUrl: 'https://example.com/supplements',
-    weight: 60,
-    createdAt: '2024-01-05'
-  },
-]
+import { useRouter } from 'next/navigation'
+import { getAllAds, deleteAd, type Ad } from '@/lib/ads-db'
 
 export default function AdsPage() {
-  const [ads, setAds] = useState(mockAds)
+  const router = useRouter()
+  const [ads, setAds] = useState<Ad[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Load ads
+  useEffect(() => {
+    const loadAds = async () => {
+      console.log('📊 Loading ads...')
+      
+      const { data, error } = await getAllAds()
+      
+      if (error) {
+        console.error('❌ Failed to load ads:', error)
+        alert(`Failed to load ads: ${error}`)
+        return
+      }
+      
+      if (data) {
+        setAds(data)
+        console.log('✅ Ads loaded:', data.length)
+      }
+      
+      setLoading(false)
+    }
+
+    loadAds()
+  }, [])
 
   const filteredAds = ads.filter(ad =>
     ad.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -78,13 +63,74 @@ export default function AdsPage() {
     const colors = {
       header: 'bg-blue-500',
       sidebar: 'bg-purple-500',
-      inline: 'bg-orange-500',
-      footer: 'bg-gray-500'
+      'mid-article': 'bg-orange-500',
+      footer: 'bg-gray-500',
+      'mobile-leaderboard': 'bg-indigo-500',
+      'bottom-banner': 'bg-pink-500'
     }
     return (
       <Badge variant="outline" className={`${colors[placement as keyof typeof colors] || 'bg-gray-500'} text-white`}>
-        {placement.charAt(0).toUpperCase() + placement.slice(1)}
+        {placement.charAt(0).toUpperCase() + placement.slice(1).replace('-', ' ')}
       </Badge>
+    )
+  }
+
+  const handleViewAd = (ad: Ad) => {
+    // Open ad target URL in new tab
+    if (ad.target_url) {
+      window.open(ad.target_url, '_blank')
+    }
+  }
+
+  const handleEditAd = (adId: string) => {
+    router.push(`/admin/ads/edit/${adId}`)
+  }
+
+  const handleDeleteAd = async (adId: string, name: string) => {
+    if (window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+      console.log('🗑️ Deleting ad:', adId)
+      
+      const { success, error } = await deleteAd(adId)
+      
+      if (error) {
+        console.error('❌ Delete failed:', error)
+        alert(`Failed to delete ad: ${error}`)
+        return
+      }
+      
+      if (success) {
+        // Remove from local state
+        setAds(prev => prev.filter(ad => ad.id !== adId))
+        console.log('✅ Ad deleted successfully')
+        alert('Ad deleted successfully!')
+      }
+    }
+  }
+
+  const handleNewAd = () => {
+    router.push('/admin/ads/new')
+  }
+
+  const handleUploadCreative = () => {
+    // Future: Implement bulk creative upload
+    alert('Bulk creative upload feature coming soon!')
+  }
+
+  // Calculate totals for performance overview
+  const totalImpressions = ads.reduce((sum, ad) => sum + ad.impressions, 0)
+  const totalClicks = ads.reduce((sum, ad) => sum + ad.clicks, 0)
+  const averageCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Loading ads...</p>
+          </div>
+        </div>
+      </div>
     )
   }
 
@@ -120,11 +166,11 @@ export default function AdsPage() {
               />
             </div>
             <div className="flex gap-2">
-              <Button variant="outline">
+              <Button variant="outline" onClick={handleUploadCreative}>
                 <Upload className="w-4 h-4 mr-2" />
                 Upload Creative
               </Button>
-              <Button>
+              <Button onClick={handleNewAd}>
                 <Plus className="w-4 h-4 mr-2" />
                 New Ad
               </Button>
@@ -140,7 +186,7 @@ export default function AdsPage() {
             <CardTitle className="text-sm font-medium">Total Impressions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">82,010</div>
+            <div className="text-2xl font-bold">{totalImpressions.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+12% from last month</p>
           </CardContent>
         </Card>
@@ -149,7 +195,7 @@ export default function AdsPage() {
             <CardTitle className="text-sm font-medium">Total Clicks</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2,669</div>
+            <div className="text-2xl font-bold">{totalClicks.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+8% from last month</p>
           </CardContent>
         </Card>
@@ -158,7 +204,7 @@ export default function AdsPage() {
             <CardTitle className="text-sm font-medium">Average CTR</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3.25%</div>
+            <div className="text-2xl font-bold">{averageCTR.toFixed(2)}%</div>
             <p className="text-xs text-muted-foreground">+0.2% from last month</p>
           </CardContent>
         </Card>
@@ -192,7 +238,7 @@ export default function AdsPage() {
                 {filteredAds.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                      No ads found
+                      {searchQuery ? 'No ads found matching your search' : 'No ads found. Create your first ad!'}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -201,7 +247,7 @@ export default function AdsPage() {
                       <TableCell className="font-medium">
                         <div>
                           <div className="font-semibold">{ad.name}</div>
-                          <div className="text-sm text-muted-foreground">{ad.targetUrl}</div>
+                          <div className="text-sm text-muted-foreground">{ad.target_url}</div>
                         </div>
                       </TableCell>
                       <TableCell>{getPlacementBadge(ad.placement)}</TableCell>
@@ -219,13 +265,29 @@ export default function AdsPage() {
                       <TableCell>{ad.weight}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleViewAd(ad)}
+                            title="Visit ad URL"
+                          >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleEditAd(ad.id!)}
+                            title="Edit ad"
+                          >
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="text-destructive">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteAd(ad.id!, ad.name)}
+                            title="Delete ad"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
