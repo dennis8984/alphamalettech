@@ -127,11 +127,11 @@ async function processCsvContent(content: string): Promise<ParsedArticle[]> {
     Papa.parse(content, {
       header: true,
       skipEmptyLines: true,
-      complete: (results) => {
+      complete: (results: Papa.ParseResult<Record<string, string>>) => {
         try {
           const articles: ParsedArticle[] = []
           
-          results.data.forEach((row: any, index: number) => {
+          results.data.forEach((row: Record<string, string>, index: number) => {
             const article = mapCsvRowToArticle(row, index)
             articles.push(article)
           })
@@ -141,7 +141,7 @@ async function processCsvContent(content: string): Promise<ParsedArticle[]> {
           reject(error)
         }
       },
-      error: (error) => reject(error)
+      error: (error: Papa.ParseError) => reject(error)
     })
   })
 }
@@ -310,7 +310,7 @@ function parseMarkdownContent(content: string, filename: string): ParsedArticle 
   }
 }
 
-function mapCsvRowToArticle(row: any, index: number): ParsedArticle {
+function mapCsvRowToArticle(row: Record<string, string>, index: number): ParsedArticle {
   const warnings: string[] = []
   
   // Flexible field mapping
