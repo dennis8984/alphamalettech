@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Save, Upload, Image } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createAd } from '@/lib/ads-db'
+import { createAd, type Ad } from '@/lib/ads-db'
 
 const adSizes = [
   { value: '320x50', label: '320 × 50 - Mobile Leaderboard' },
@@ -32,11 +32,11 @@ export default function NewAdPage() {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   
-  const [ad, setAd] = useState({
+  const [ad, setAd] = useState<Omit<Ad, 'id' | 'created_at' | 'updated_at' | 'impressions' | 'clicks' | 'ctr'>>({
     name: '',
-    placement: '',
+    placement: 'header',
     size: '',
-    status: 'active' as 'active' | 'paused',
+    status: 'active',
     target_url: '',
     image_url: '',
     weight: 100
@@ -201,7 +201,10 @@ export default function NewAdPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="placement">Placement *</Label>
-                  <Select value={ad.placement} onValueChange={(value) => setAd(prev => ({ ...prev, placement: value }))}>
+                  <Select 
+                    value={ad.placement} 
+                    onValueChange={(value: Ad['placement']) => setAd(prev => ({ ...prev, placement: value }))}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select placement" />
                     </SelectTrigger>
@@ -253,7 +256,10 @@ export default function NewAdPage() {
 
                 <div>
                   <Label htmlFor="status">Status</Label>
-                  <Select value={ad.status} onValueChange={(value: 'active' | 'paused') => setAd(prev => ({ ...prev, status: value }))}>
+                  <Select 
+                    value={ad.status} 
+                    onValueChange={(value: Ad['status']) => setAd(prev => ({ ...prev, status: value }))}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
