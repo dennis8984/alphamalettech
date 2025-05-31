@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface CommentsProps {
   articleId: string
@@ -10,6 +10,7 @@ interface CommentsProps {
 
 export function OpenWebComments({ articleId, articleTitle, articleUrl }: CommentsProps) {
   const commentsRef = useRef<HTMLDivElement>(null)
+  const [showLoginModal, setShowLoginModal] = useState(false)
 
   useEffect(() => {
     // Directly show the beautiful fallback comments instead of trying Giscus
@@ -23,15 +24,15 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
             <h3 class="text-lg font-semibold mb-4">Join the Discussion</h3>
             <div class="bg-white rounded-lg p-4 border">
               <textarea 
+                id="comment-textarea"
                 placeholder="Share your thoughts about this article..."
-                class="w-full h-24 p-3 border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                disabled
+                class="w-full h-24 p-3 border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent cursor-pointer"
               ></textarea>
               <div class="flex justify-between items-center mt-3">
                 <span class="text-sm text-gray-500">
-                  💬 Sign in to join the conversation
+                  💬 <button id="signin-link" class="text-red-600 hover:text-red-700 underline cursor-pointer font-medium">Sign in</button> to join the conversation
                 </span>
-                <button class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors" disabled>
+                <button id="post-comment-btn" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors cursor-pointer">
                   Post Comment
                 </button>
               </div>
@@ -55,10 +56,10 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
                 The form tips in this article really helped me understand proper technique. 💪
               </p>
               <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                <button class="flex items-center hover:text-red-600 transition-colors">
+                <button class="flex items-center hover:text-red-600 transition-colors like-btn">
                   <span class="mr-1">👍</span> 12
                 </button>
-                <button class="hover:text-red-600 transition-colors">Reply</button>
+                <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
               </div>
             </div>
 
@@ -77,10 +78,10 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
                 Great progression from beginner to advanced moves. 🔥
               </p>
               <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                <button class="flex items-center hover:text-red-600 transition-colors">
+                <button class="flex items-center hover:text-red-600 transition-colors like-btn">
                   <span class="mr-1">👍</span> 8
                 </button>
-                <button class="hover:text-red-600 transition-colors">Reply</button>
+                <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
               </div>
             </div>
 
@@ -99,10 +100,10 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
                 The modification suggestions make it accessible for all fitness levels. Thanks! 🙏
               </p>
               <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                <button class="flex items-center hover:text-red-600 transition-colors">
+                <button class="flex items-center hover:text-red-600 transition-colors like-btn">
                   <span class="mr-1">👍</span> 15
                 </button>
-                <button class="hover:text-red-600 transition-colors">Reply</button>
+                <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
               </div>
             </div>
 
@@ -121,10 +122,10 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
                 Been training abs for 10 years and still learned something new!
               </p>
               <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                <button class="flex items-center hover:text-red-600 transition-colors">
+                <button class="flex items-center hover:text-red-600 transition-colors like-btn">
                   <span class="mr-1">👍</span> 23
                 </button>
-                <button class="hover:text-red-600 transition-colors">Reply</button>
+                <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
               </div>
             </div>
           </div>
@@ -142,7 +143,97 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
     // Show fallback comments immediately
     showFallbackComments()
 
+    // Add event listeners after content is loaded
+    setTimeout(() => {
+      const addEventListeners = () => {
+        // Sign in link
+        const signinLink = document.getElementById('signin-link')
+        if (signinLink) {
+          signinLink.addEventListener('click', () => setShowLoginModal(true))
+        }
+
+        // Comment textarea and post button
+        const textarea = document.getElementById('comment-textarea')
+        const postBtn = document.getElementById('post-comment-btn')
+        
+        if (textarea) {
+          textarea.addEventListener('click', () => setShowLoginModal(true))
+          textarea.addEventListener('focus', () => setShowLoginModal(true))
+        }
+        
+        if (postBtn) {
+          postBtn.addEventListener('click', () => setShowLoginModal(true))
+        }
+
+        // Like and reply buttons
+        const likeBtns = document.querySelectorAll('.like-btn')
+        const replyBtns = document.querySelectorAll('.reply-btn')
+        
+        likeBtns.forEach(btn => {
+          btn.addEventListener('click', () => setShowLoginModal(true))
+        })
+        
+        replyBtns.forEach(btn => {
+          btn.addEventListener('click', () => setShowLoginModal(true))
+        })
+      }
+
+      addEventListeners()
+    }, 100)
+
   }, [articleId, articleTitle, articleUrl])
+
+  const LoginModal = () => {
+    if (!showLoginModal) return null
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg max-w-md w-full p-6 relative">
+          <button
+            onClick={() => setShowLoginModal(false)}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          
+          <div className="text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Join the Conversation</h3>
+            <p className="text-gray-600 mb-6">
+              Sign in to share your thoughts, like comments, and connect with other readers.
+            </p>
+            
+            <div className="space-y-3">
+              <button
+                onClick={() => window.open('/subscribe', '_blank')}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+              >
+                Sign In / Register
+              </button>
+              
+              <button
+                onClick={() => setShowLoginModal(false)}
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors"
+              >
+                Continue Reading
+              </button>
+            </div>
+            
+            <p className="text-xs text-gray-500 mt-4">
+              Join Men's Hub community to engage with articles and connect with fellow readers
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="mt-12 border-t border-gray-200 pt-8">
@@ -151,6 +242,7 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
         ref={commentsRef}
         className="min-h-[200px]"
       />
+      <LoginModal />
     </div>
   )
 }
