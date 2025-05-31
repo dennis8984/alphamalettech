@@ -1,9 +1,9 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
 import Link from 'next/link'
+import { getCurrentUser, signOut } from '@/lib/supabase-auth'
 import { 
   Card, 
   CardContent, 
@@ -25,18 +25,32 @@ import {
 export const dynamic = 'force-dynamic'
 
 export default function AdminDashboard() {
-  const session = useSession()
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
-    if (session.status === 'loading') return // Still loading
-    if (!session.data) {
-      router.push('/admin/auth/signin')
-      return
+    const checkUser = async () => {
+      const { user, error } = await getCurrentUser()
+      
+      if (error || !user) {
+        router.push('/admin/auth/signin')
+        return
+      }
+      
+      setUser(user)
+      setLoading(false)
     }
-  }, [session, router])
 
-  if (session.status === 'loading') {
+    checkUser()
+  }, [router])
+
+  const handleSignOut = async () => {
+    await signOut()
+    router.push('/admin/auth/signin')
+  }
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -47,7 +61,7 @@ export default function AdminDashboard() {
     )
   }
 
-  if (!session.data) {
+  if (!user) {
     return null // Will redirect
   }
 
@@ -63,7 +77,7 @@ export default function AdminDashboard() {
                 HEALTH Admin
               </h1>
               <p className="text-sm text-gray-600">
-                Welcome back, {session.data.user?.name || session.data.user?.email}
+                Welcome back, {user.user_metadata?.name || user.email}
               </p>
             </div>
             <div className="flex items-center space-x-4">
@@ -75,7 +89,7 @@ export default function AdminDashboard() {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => router.push('/api/auth/signout')}
+                onClick={handleSignOut}
               >
                 Sign Out
               </Button>

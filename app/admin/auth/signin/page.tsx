@@ -1,62 +1,82 @@
 'use client'
 
-import { signIn, getProviders } from 'next-auth/react'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { signInWithEmail } from '@/lib/supabase-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import { Mail, Chrome } from 'lucide-react'
-
-interface Provider {
-  id: string
-  name: string
-  type: string
-  signinUrl: string
-  callbackUrl: string
-}
+import { Mail } from 'lucide-react'
 
 export default function SignInPage() {
-  const [providers, setProviders] = useState<Record<string, Provider> | null>(null)
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-
-  useEffect(() => {
-    const setAuthProviders = async () => {
-      const providers = await getProviders()
-      setProviders(providers)
-    }
-    setAuthProviders()
-  }, [])
+  const [message, setMessage] = useState('')
+  const [isSuccess, setIsSuccess] = useState(false)
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setMessage('')
+    
     try {
-      await signIn('email', { 
-        email, 
-        callbackUrl: '/admin',
-        redirect: true 
-      })
+      const { data, error } = await signInWithEmail(email)
+      
+      if (error) {
+        setMessage(error.message)
+        setIsSuccess(false)
+      } else {
+        setMessage('Check your email for the magic link!')
+        setIsSuccess(true)
+      }
     } catch (error) {
-      console.error('Email sign-in error:', error)
+      setMessage('Something went wrong. Please try again.')
+      setIsSuccess(false)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true)
-    try {
-      await signIn('google', { 
-        callbackUrl: '/admin',
-        redirect: true 
-      })
-    } catch (error) {
-      console.error('Google sign-in error:', error)
-    } finally {
-      setIsLoading(false)
-    }
+  if (isSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold">
+              <span className="bg-red-600 text-white px-2 py-1 mr-1">MEN'S</span>
+              HEALTH
+            </CardTitle>
+            <CardDescription>
+              Check Your Email
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+              <Mail className="h-8 w-8 text-green-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Magic link sent!</h3>
+              <p className="text-sm text-gray-600 mt-2">
+                We've sent a magic link to <strong>{email}</strong>
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                Click the link in your email to sign in to the admin dashboard.
+              </p>
+            </div>
+            <Button
+              onClick={() => {
+                setIsSuccess(false)
+                setEmail('')
+                setMessage('')
+              }}
+              variant="outline"
+              className="w-full"
+            >
+              Send Another Link
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -72,19 +92,6 @@ export default function SignInPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Google Sign In */}
-          <Button
-            onClick={handleGoogleSignIn}
-            disabled={isLoading}
-            variant="outline"
-            className="w-full"
-          >
-            <Chrome className="mr-2 h-4 w-4" />
-            Continue with Google
-          </Button>
-
-          <Separator className="my-4" />
-
           {/* Email Sign In */}
           <form onSubmit={handleEmailSignIn} className="space-y-4">
             <div>
@@ -100,18 +107,25 @@ export default function SignInPage() {
                 required
               />
             </div>
+            
+            {message && (
+              <div className={`text-sm ${isSuccess ? 'text-green-600' : 'text-red-600'}`}>
+                {message}
+              </div>
+            )}
+            
             <Button
               type="submit"
               disabled={isLoading || !email}
               className="w-full"
             >
               <Mail className="mr-2 h-4 w-4" />
-              Send magic link
+              {isLoading ? 'Sending...' : 'Send magic link'}
             </Button>
           </form>
 
           <div className="text-center text-sm text-gray-600">
-            A magic link will be sent to your email
+            A magic link will be sent to your email via Supabase
           </div>
         </CardContent>
       </Card>
