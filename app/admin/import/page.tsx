@@ -508,6 +508,14 @@ export default function ImportPage() {
                 >
                   Download Sample CSV Template
                 </a>
+                <span className="text-gray-400 mx-2">|</span>
+                <a 
+                  href="/sample-import-simple.csv" 
+                  download="sample-import-simple.csv"
+                  className="text-blue-600 hover:text-blue-700 font-medium text-sm underline"
+                >
+                  Simple Version
+                </a>
               </div>
             </div>
           </CardContent>
