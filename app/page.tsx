@@ -1,10 +1,9 @@
-'use client'
-
 import HeroArticle from '@/components/articles/HeroArticle';
 import TrendingArticles from '@/components/articles/TrendingArticles';
 import CategorySection from '@/components/articles/CategorySection';
 import Newsletter from '@/components/layout/Newsletter';
-import { AdSlot, usePageViewTracking } from '@/components/ui/ad-slot';
+import { AdSlot } from '@/components/ui/ad-slot';
+import { PageTracker } from '@/components/ui/page-tracker';
 import { 
   getFeaturedArticles,
   getTrendingArticles,
@@ -12,9 +11,6 @@ import {
 } from '@/lib/data';
 
 export default function Home() {
-  // Track page views for pop-under functionality
-  usePageViewTracking();
-
   const featuredArticles = getFeaturedArticles();
   const trendingArticles = getTrendingArticles();
   
@@ -25,6 +21,7 @@ export default function Home() {
 
   return (
     <div>
+      <PageTracker />
       {/* Header Ad */}
       <AdSlot placement="header" className="container mx-auto px-4 mb-6" />
 

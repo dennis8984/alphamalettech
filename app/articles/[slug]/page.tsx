@@ -1,10 +1,9 @@
-'use client'
-
 import { articles, categories, getArticlesByCategory } from '@/lib/data';
 import { formatDate } from '@/lib/utils';
 import ArticleCard from '@/components/articles/ArticleCard';
-import { AdSlot, usePageViewTracking } from '@/components/ui/ad-slot';
+import { AdSlot } from '@/components/ui/ad-slot';
 import { OpenWebComments } from '@/components/ui/openweb-comments';
+import { PageTracker } from '@/components/ui/page-tracker';
 import { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -65,9 +64,6 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
 }
 
 export default function ArticlePage({ params }: ArticlePageProps) {
-  // Track page views for pop-under functionality
-  usePageViewTracking();
-
   const { slug } = params;
 
   // Check if this is a category page
@@ -77,6 +73,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
     return (
       <div className="container mx-auto px-4 py-8">
+        <PageTracker />
         <div className="max-w-5xl mx-auto">
           {/* Header Ad */}
           <AdSlot placement="header" className="mb-6" />
@@ -158,6 +155,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
   return (
     <div className="pt-8">
+      <PageTracker />
       {/* Header Ad */}
       <AdSlot placement="header" className="mb-6" />
 
