@@ -1,0 +1,85 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+You are my senior full-stack architect.
+
+The repo is a Next.js 13 (app router, TypeScript) site that already deploys to Vercel.  
+**Goal:** turn it into a production-ready clone of MensHealth.com—clean magazine layout, fast Core Web Vitals.
+
+### Functional spec
+1. **Public site**
+   • Home page with featured stories, topic hubs, infinite scroll.  
+   • Article page SEO meta (OG tags, JSON-LD, canonical).  
+   • Responsive ad slots in header, sidebar, in-article, footer.  
+   • Dark-mode toggle.
+
+2. **Admin (/admin)**
+   • Auth with NextAuth.js → Google & email magic-link.  
+   • Dashboard cards: "Articles", "Ads", "Keyword Links", "Bulk Import".
+
+3. **Articles CRUD**
+   • Use **Tiptap** + StarterKit + Image/Video extensions (open source) for rich-text.  
+   • Slug auto-generates from title, editable.  
+   • Save as MDX in Postgres via **Prisma** (`article`, `author`, `tag`, `category` tables).
+
+4. **Bulk Importer**
+   • Drag-and-drop ZIP of scraped HTML/MD files.  
+   • Parse with **turndown & unified/remark-parse** → sanitize → store as MDX.  
+   • Show diff preview before committing.
+
+5. **Keyword Hot-Linker**
+   • Admin screen to add rows: `keyword`, `affiliateUrl`, `maxHitsPerPage`.  
+   • Implement as **remark-plugin-affiliate** (create) that rewrites AST during `next-mdx-remote` serialization.
+
+6. **Ad Manager**
+   • CRUD for ads: `name`, `image`, `targetUrl`, `sizes` [`300x250`, `728x90`, etc.], `placement` enum [`header`, `sidebar`, `inline`, `footer`], `weight`.  
+   • Serve via `<AdSlot placement="sidebar" />` component that chooses creatives by placement & weight.  
+   • Image upload with **next-cloudinary** (open source) or Vercel Blob if simpler.
+
+### Deliverables
+A. **Patch set**  
+   * Prisma schema additions + migration.  
+   * `/app/(magazine)/…` pages with MensHealth-style layouts (styled with Tailwind + shadcn/ui).  
+   * `/app/admin/*` routes with React-Hook-Form + Zod validation.  
+   * `remark-plugin-affiliate.ts`.  
+   * `<AdSlot>` component & hook.  
+   * Seed script (`pnpm seed`) to create demo ads & sample articles.
+
+B. **Docs** (`docs/cms.md`)  
+   * How to add an article, bulk-import, manage keywords & ads.  
+   * Environment vars needed (DATABASE_URL, NEXTAUTH_*, CLOUDINARY_*).
+
+C. **Performance**  
+   * Enable `next/font/google` for fonts, `next/image` everywhere.  
+   * Add `next-sitemap` & `@vercel/analytics`.  
+   * eslint, prettier, type-strict.
+
+### Constraints
+* Stay 100 % open-source (no paid SaaS).
+* Keep bundle ≤ 250 kB JS on home page (measure with `next build && pnpm dlx nextjs-bundle-analysis`).
+* No any-catch type escapes (`any`, `@ts-ignore`)—fix types properly.
+
+### Output format
+1. "### Patches" section – git-style diff blocks ready to apply.  
+2. "### Notes" – bullet explanation & next steps.  
+3. NOTHING else.
+
+--- /dev/null
++++ b/.env.example
+@@ -0,0 +1,13 @@
++# Database
++DATABASE_URL="postgresql://username:password@localhost:5432/menshealth"
++
++# NextAuth.js
++NEXTAUTH_SECRET="your-secret-key"
++NEXTAUTH_URL="http://localhost:3000"
++
++# Google OAuth (optional)
++GOOGLE_CLIENT_ID="your-google-client-id"
++GOOGLE_CLIENT_SECRET="your-google-client-secret"
++
++# Cloudinary (for image uploads)
++CLOUDINARY_CLOUD_NAME="your-cloud-name"
+

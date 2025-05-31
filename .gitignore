@@ -34,3 +34,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Add these to your existing .env.local:
+NEXTAUTH_SECRET="put-a-random-secret-here"
+NEXTAUTH_URL="http://localhost:3000"
+
+# Optional Google OAuth:
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
