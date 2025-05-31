@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { supabase, getCurrentUser } from '@/lib/supabase-client'
 
 interface CommentsProps {
   articleId: string
@@ -11,177 +12,305 @@ interface CommentsProps {
 export function OpenWebComments({ articleId, articleTitle, articleUrl }: CommentsProps) {
   const commentsRef = useRef<HTMLDivElement>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Directly show the beautiful fallback comments instead of trying Giscus
-    const showFallbackComments = () => {
-      if (!commentsRef.current) return
-
-      commentsRef.current.innerHTML = `
-        <div class="space-y-6">
-          <!-- Comment Form -->
-          <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
-            <h3 class="text-lg font-semibold mb-4">Join the Discussion</h3>
-            <div class="bg-white rounded-lg p-4 border">
-              <textarea 
-                id="comment-textarea"
-                placeholder="Share your thoughts about this article..."
-                class="w-full h-24 p-3 border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent cursor-pointer"
-              ></textarea>
-              <div class="flex justify-between items-center mt-3">
-                <span class="text-sm text-gray-500">
-                  💬 <button id="signin-link" class="text-red-600 hover:text-red-700 underline cursor-pointer font-medium">Sign in</button> to join the conversation
-                </span>
-                <button id="post-comment-btn" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors cursor-pointer">
-                  Post Comment
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Sample Comments -->
-          <div class="space-y-4">
-            <div class="bg-white p-4 rounded-lg border border-gray-200">
-              <div class="flex items-center mb-3">
-                <div class="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold">
-                  FJ
-                </div>
-                <div class="ml-3">
-                  <div class="font-semibold text-gray-900">FitnessJoe92</div>
-                  <div class="text-sm text-gray-500">2 hours ago</div>
-                </div>
-              </div>
-              <p class="text-gray-700 leading-relaxed">
-                Excellent breakdown of the exercises! I've been doing planks wrong for years. 
-                The form tips in this article really helped me understand proper technique. 💪
-              </p>
-              <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                <button class="flex items-center hover:text-red-600 transition-colors like-btn">
-                  <span class="mr-1">👍</span> 12
-                </button>
-                <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
-              </div>
-            </div>
-
-            <div class="bg-white p-4 rounded-lg border border-gray-200">
-              <div class="flex items-center mb-3">
-                <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                  MS
-                </div>
-                <div class="ml-3">
-                  <div class="font-semibold text-gray-900">MuscleBuilder</div>
-                  <div class="text-sm text-gray-500">1 day ago</div>
-                </div>
-              </div>
-              <p class="text-gray-700 leading-relaxed">
-                Just tried the ab circuit from this article. Holy moly, I'm feeling it already! 
-                Great progression from beginner to advanced moves. 🔥
-              </p>
-              <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                <button class="flex items-center hover:text-red-600 transition-colors like-btn">
-                  <span class="mr-1">👍</span> 8
-                </button>
-                <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
-              </div>
-            </div>
-
-            <div class="bg-white p-4 rounded-lg border border-gray-200">
-              <div class="flex items-center mb-3">
-                <div class="w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold">
-                  LH
-                </div>
-                <div class="ml-3">
-                  <div class="font-semibold text-gray-900">LifeHacker_Dev</div>
-                  <div class="text-sm text-gray-500">2 days ago</div>
-                </div>
-              </div>
-              <p class="text-gray-700 leading-relaxed">
-                As a developer who sits all day, these core exercises are exactly what I needed. 
-                The modification suggestions make it accessible for all fitness levels. Thanks! 🙏
-              </p>
-              <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                <button class="flex items-center hover:text-red-600 transition-colors like-btn">
-                  <span class="mr-1">👍</span> 15
-                </button>
-                <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
-              </div>
-            </div>
-
-            <div class="bg-white p-4 rounded-lg border border-gray-200">
-              <div class="flex items-center mb-3">
-                <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                  AT
-                </div>
-                <div class="ml-3">
-                  <div class="font-semibold text-gray-900">AbTrainer_Pro</div>
-                  <div class="text-sm text-gray-500">3 days ago</div>
-                </div>
-              </div>
-              <p class="text-gray-700 leading-relaxed">
-                Love how you explained the science behind each movement. The progression from dead bug to full plank is perfect for beginners. 
-                Been training abs for 10 years and still learned something new!
-              </p>
-              <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                <button class="flex items-center hover:text-red-600 transition-colors like-btn">
-                  <span class="mr-1">👍</span> 23
-                </button>
-                <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Load More Comments -->
-          <div class="text-center">
-            <button class="text-red-600 hover:text-red-700 font-medium transition-colors">
-              Load more comments...
-            </button>
-          </div>
-        </div>
-      `
+    // Check if user is authenticated
+    const checkUser = async () => {
+      const { user } = await getCurrentUser()
+      setUser(user)
+      setIsLoading(false)
     }
 
-    // Show fallback comments immediately
-    showFallbackComments()
+    checkUser()
 
-    // Add event listeners after content is loaded
-    setTimeout(() => {
-      const addEventListeners = () => {
-        // Sign in link
-        const signinLink = document.getElementById('signin-link')
-        if (signinLink) {
-          signinLink.addEventListener('click', () => setShowLoginModal(true))
-        }
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null)
+    })
 
-        // Comment textarea and post button
-        const textarea = document.getElementById('comment-textarea')
-        const postBtn = document.getElementById('post-comment-btn')
-        
-        if (textarea) {
-          textarea.addEventListener('click', () => setShowLoginModal(true))
-          textarea.addEventListener('focus', () => setShowLoginModal(true))
-        }
-        
-        if (postBtn) {
-          postBtn.addEventListener('click', () => setShowLoginModal(true))
-        }
+    return () => subscription.unsubscribe()
+  }, [])
 
-        // Like and reply buttons
-        const likeBtns = document.querySelectorAll('.like-btn')
-        const replyBtns = document.querySelectorAll('.reply-btn')
-        
-        likeBtns.forEach(btn => {
-          btn.addEventListener('click', () => setShowLoginModal(true))
-        })
-        
-        replyBtns.forEach(btn => {
-          btn.addEventListener('click', () => setShowLoginModal(true))
-        })
+  useEffect(() => {
+    // Show comments interface based on auth status
+    const showCommentsInterface = () => {
+      if (!commentsRef.current) return
+
+      if (user) {
+        // Show real commenting interface for authenticated users
+        commentsRef.current.innerHTML = `
+          <div class="space-y-6">
+            <!-- Comment Form -->
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+              <h3 class="text-lg font-semibold mb-4">Welcome back, ${user.email}!</h3>
+              <div class="bg-white rounded-lg p-4 border">
+                <textarea 
+                  id="comment-textarea"
+                  placeholder="Share your thoughts about this article..."
+                  class="w-full h-24 p-3 border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                ></textarea>
+                <div class="flex justify-between items-center mt-3">
+                  <span class="text-sm text-gray-500">
+                    💬 Logged in as <strong>${user.email}</strong>
+                  </span>
+                  <div class="space-x-2">
+                    <button id="sign-out-btn" class="text-gray-600 hover:text-gray-800 px-3 py-2 text-sm">
+                      Sign Out
+                    </button>
+                    <button id="post-comment-btn" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors">
+                      Post Comment
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sample Comments -->
+            <div class="space-y-4">
+              <div class="bg-white p-4 rounded-lg border border-gray-200">
+                <div class="flex items-center mb-3">
+                  <div class="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold">
+                    FJ
+                  </div>
+                  <div class="ml-3">
+                    <div class="font-semibold text-gray-900">FitnessJoe92</div>
+                    <div class="text-sm text-gray-500">2 hours ago</div>
+                  </div>
+                </div>
+                <p class="text-gray-700 leading-relaxed">
+                  Excellent breakdown of the exercises! I've been doing planks wrong for years. 
+                  The form tips in this article really helped me understand proper technique. 💪
+                </p>
+                <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
+                  <button class="flex items-center hover:text-red-600 transition-colors like-btn">
+                    <span class="mr-1">👍</span> 12
+                  </button>
+                  <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
+                </div>
+              </div>
+
+              <div class="bg-white p-4 rounded-lg border border-gray-200">
+                <div class="flex items-center mb-3">
+                  <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                    MS
+                  </div>
+                  <div class="ml-3">
+                    <div class="font-semibold text-gray-900">MuscleBuilder</div>
+                    <div class="text-sm text-gray-500">1 day ago</div>
+                  </div>
+                </div>
+                <p class="text-gray-700 leading-relaxed">
+                  Just tried the ab circuit from this article. Holy moly, I'm feeling it already! 
+                  Great progression from beginner to advanced moves. 🔥
+                </p>
+                <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
+                  <button class="flex items-center hover:text-red-600 transition-colors like-btn">
+                    <span class="mr-1">👍</span> 8
+                  </button>
+                  <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
+                </div>
+              </div>
+
+              <div class="bg-white p-4 rounded-lg border border-gray-200">
+                <div class="flex items-center mb-3">
+                  <div class="w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold">
+                    LH
+                  </div>
+                  <div class="ml-3">
+                    <div class="font-semibold text-gray-900">LifeHacker_Dev</div>
+                    <div class="text-sm text-gray-500">2 days ago</div>
+                  </div>
+                </div>
+                <p class="text-gray-700 leading-relaxed">
+                  As a developer who sits all day, these core exercises are exactly what I needed. 
+                  The modification suggestions make it accessible for all fitness levels. Thanks! 🙏
+                </p>
+                <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
+                  <button class="flex items-center hover:text-red-600 transition-colors like-btn">
+                    <span class="mr-1">👍</span> 15
+                  </button>
+                  <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Load More Comments -->
+            <div class="text-center">
+              <button class="text-red-600 hover:text-red-700 font-medium transition-colors">
+                Load more comments...
+              </button>
+            </div>
+          </div>
+        `
+      } else {
+        // Show login prompt for non-authenticated users
+        commentsRef.current.innerHTML = `
+          <div class="space-y-6">
+            <!-- Comment Form -->
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+              <h3 class="text-lg font-semibold mb-4">Join the Discussion</h3>
+              <div class="bg-white rounded-lg p-4 border">
+                <textarea 
+                  id="comment-textarea"
+                  placeholder="Share your thoughts about this article..."
+                  class="w-full h-24 p-3 border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent cursor-pointer"
+                ></textarea>
+                <div class="flex justify-between items-center mt-3">
+                  <span class="text-sm text-gray-500">
+                    💬 <button id="signin-link" class="text-red-600 hover:text-red-700 underline cursor-pointer font-medium">Sign in</button> to join the conversation
+                  </span>
+                  <button id="post-comment-btn" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors cursor-pointer">
+                    Post Comment
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sample Comments -->
+            <div class="space-y-4">
+              <div class="bg-white p-4 rounded-lg border border-gray-200">
+                <div class="flex items-center mb-3">
+                  <div class="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold">
+                    FJ
+                  </div>
+                  <div class="ml-3">
+                    <div class="font-semibold text-gray-900">FitnessJoe92</div>
+                    <div class="text-sm text-gray-500">2 hours ago</div>
+                  </div>
+                </div>
+                <p class="text-gray-700 leading-relaxed">
+                  Excellent breakdown of the exercises! I've been doing planks wrong for years. 
+                  The form tips in this article really helped me understand proper technique. 💪
+                </p>
+                <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
+                  <button class="flex items-center hover:text-red-600 transition-colors like-btn">
+                    <span class="mr-1">👍</span> 12
+                  </button>
+                  <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
+                </div>
+              </div>
+
+              <div class="bg-white p-4 rounded-lg border border-gray-200">
+                <div class="flex items-center mb-3">
+                  <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                    MS
+                  </div>
+                  <div class="ml-3">
+                    <div class="font-semibold text-gray-900">MuscleBuilder</div>
+                    <div class="text-sm text-gray-500">1 day ago</div>
+                  </div>
+                </div>
+                <p class="text-gray-700 leading-relaxed">
+                  Just tried the ab circuit from this article. Holy moly, I'm feeling it already! 
+                  Great progression from beginner to advanced moves. 🔥
+                </p>
+                <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
+                  <button class="flex items-center hover:text-red-600 transition-colors like-btn">
+                    <span class="mr-1">👍</span> 8
+                  </button>
+                  <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
+                </div>
+              </div>
+
+              <div class="bg-white p-4 rounded-lg border border-gray-200">
+                <div class="flex items-center mb-3">
+                  <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                    AT
+                  </div>
+                  <div class="ml-3">
+                    <div class="font-semibold text-gray-900">AbTrainer_Pro</div>
+                    <div class="text-sm text-gray-500">3 days ago</div>
+                  </div>
+                </div>
+                <p class="text-gray-700 leading-relaxed">
+                  Love how you explained the science behind each movement. The progression from dead bug to full plank is perfect for beginners. 
+                  Been training abs for 10 years and still learned something new!
+                </p>
+                <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
+                  <button class="flex items-center hover:text-red-600 transition-colors like-btn">
+                    <span class="mr-1">👍</span> 23
+                  </button>
+                  <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Load More Comments -->
+            <div class="text-center">
+              <button class="text-red-600 hover:text-red-700 font-medium transition-colors">
+                Load more comments...
+              </button>
+            </div>
+          </div>
+        `
       }
+    }
 
-      addEventListeners()
-    }, 100)
+    if (!isLoading) {
+      showCommentsInterface()
+      
+      // Add event listeners after content is loaded
+      setTimeout(() => {
+        if (user) {
+          // Authenticated user event listeners
+          const signOutBtn = document.getElementById('sign-out-btn')
+          const postBtn = document.getElementById('post-comment-btn')
+          
+          if (signOutBtn) {
+            signOutBtn.addEventListener('click', async () => {
+              await supabase.auth.signOut()
+              // User state will update via auth state listener
+            })
+          }
+          
+          if (postBtn) {
+            postBtn.addEventListener('click', () => {
+              const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement
+              if (textarea && textarea.value.trim()) {
+                alert('Comment posted! (This is a demo - in a real app, this would save to the database)')
+                textarea.value = ''
+              } else {
+                alert('Please write a comment first!')
+              }
+            })
+          }
+        } else {
+          // Non-authenticated user event listeners
+          const signinLink = document.getElementById('signin-link')
+          const textarea = document.getElementById('comment-textarea')
+          const postBtn = document.getElementById('post-comment-btn')
+          
+          if (signinLink) {
+            signinLink.addEventListener('click', () => setShowLoginModal(true))
+          }
+          
+          if (textarea) {
+            textarea.addEventListener('click', () => setShowLoginModal(true))
+            textarea.addEventListener('focus', () => setShowLoginModal(true))
+          }
+          
+          if (postBtn) {
+            postBtn.addEventListener('click', () => setShowLoginModal(true))
+          }
 
-  }, [articleId, articleTitle, articleUrl])
+          // Like and reply buttons
+          const likeBtns = document.querySelectorAll('.like-btn')
+          const replyBtns = document.querySelectorAll('.reply-btn')
+          
+          likeBtns.forEach(btn => {
+            btn.addEventListener('click', () => setShowLoginModal(true))
+          })
+          
+          replyBtns.forEach(btn => {
+            btn.addEventListener('click', () => setShowLoginModal(true))
+          })
+        }
+      }, 100)
+    }
+
+  }, [user, isLoading])
 
   const LoginModal = () => {
     if (!showLoginModal) return null
@@ -230,6 +359,18 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
               Join Men's Hub community to engage with articles and connect with fellow readers
             </p>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="mt-12 border-t border-gray-200 pt-8">
+        <h2 className="text-2xl font-bold mb-6 text-gray-900">Comments</h2>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+          <span className="ml-2 text-gray-600">Loading comments...</span>
         </div>
       </div>
     )

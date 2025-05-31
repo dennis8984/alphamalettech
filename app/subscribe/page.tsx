@@ -1,10 +1,60 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Check, Star, Users, BookOpen, MessageCircle } from 'lucide-react'
+import { Check, Star, Users, BookOpen, MessageCircle, CheckCircle, AlertCircle } from 'lucide-react'
+import { subscribeToNewsletter } from '@/lib/supabase-client'
 
 export default function SubscribePage() {
+  const [formData, setFormData] = useState({ name: '', email: '' })
+  const [isLoading, setIsLoading] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [message, setMessage] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!formData.name || !formData.email) {
+      setStatus('error')
+      setMessage('Please fill in all fields')
+      return
+    }
+
+    setIsLoading(true)
+    setStatus('idle')
+
+    try {
+      const result = await subscribeToNewsletter(formData.name, formData.email)
+
+      if (result.success) {
+        setStatus('success')
+        setMessage(result.message)
+        setFormData({ name: '', email: '' })
+      } else {
+        setStatus('error')
+        setMessage(result.error)
+      }
+    } catch (error) {
+      setStatus('error')
+      setMessage('Network error. Please check your connection and try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    // Clear status when user starts typing
+    if (status !== 'idle') {
+      setStatus('idle')
+      setMessage('')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12">
       <div className="max-w-4xl mx-auto px-4">
@@ -78,16 +128,35 @@ export default function SubscribePage() {
               <p className="text-gray-600">Join thousands of men transforming their lives</p>
             </CardHeader>
             <CardContent className="space-y-6">
-              <form className="space-y-4">
+              {/* Status Messages */}
+              {status === 'success' && (
+                <div className="flex items-center space-x-2 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  <p className="text-green-800">{message}</p>
+                </div>
+              )}
+              
+              {status === 'error' && (
+                <div className="flex items-center space-x-2 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                  <p className="text-red-800">{message}</p>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                     Full Name
                   </label>
                   <Input
                     id="name"
+                    name="name"
                     type="text"
                     placeholder="Enter your full name"
+                    value={formData.name}
+                    onChange={handleInputChange}
                     className="w-full"
+                    disabled={isLoading}
                   />
                 </div>
                 
@@ -97,14 +166,22 @@ export default function SubscribePage() {
                   </label>
                   <Input
                     id="email"
+                    name="email"
                     type="email"
                     placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={handleInputChange}
                     className="w-full"
+                    disabled={isLoading}
                   />
                 </div>
                 
-                <Button className="w-full bg-red-600 hover:bg-red-700 text-lg py-3">
-                  Join Men's Hub Community
+                <Button 
+                  type="submit"
+                  className="w-full bg-red-600 hover:bg-red-700 text-lg py-3"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Sending Magic Link...' : 'Join Men\'s Hub Community'}
                 </Button>
               </form>
 
@@ -136,8 +213,8 @@ export default function SubscribePage() {
                   <Check className="h-5 w-5 text-green-500 mt-1" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-900">Weekly Newsletter</h4>
-                  <p className="text-gray-600">Get the latest fitness tips, nutrition advice, and lifestyle content delivered to your inbox.</p>
+                  <h4 className="font-semibold text-gray-900">Magic Link Login</h4>
+                  <p className="text-gray-600">No passwords needed! Get a secure login link sent directly to your email.</p>
                 </div>
               </div>
               
@@ -194,12 +271,12 @@ export default function SubscribePage() {
 
         {/* Back to Article Link */}
         <div className="text-center mt-12">
-          <Link 
-            href="javascript:history.back()" 
+          <button 
+            onClick={() => window.history.back()} 
             className="text-red-600 hover:text-red-700 font-medium"
           >
             ← Back to Article
-          </Link>
+          </button>
         </div>
       </div>
     </div>
