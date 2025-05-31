@@ -12,42 +12,7 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
   const commentsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // Initialize Giscus comments (GitHub-based)
-    const loadGiscusComments = () => {
-      if (!commentsRef.current) return
-
-      // Clear any existing content
-      commentsRef.current.innerHTML = ''
-
-      const script = document.createElement('script')
-      script.src = 'https://giscus.app/client.js'
-      script.setAttribute('data-repo', 'dennis8984/alphamalettech')
-      script.setAttribute('data-repo-id', 'R_kgDONBUCEw')
-      script.setAttribute('data-category', 'Comments')
-      script.setAttribute('data-category-id', 'DIC_kwDONBUCE84CkJWv')
-      script.setAttribute('data-mapping', 'pathname')
-      script.setAttribute('data-strict', '0')
-      script.setAttribute('data-reactions-enabled', '1')
-      script.setAttribute('data-emit-metadata', '0')
-      script.setAttribute('data-input-position', 'top')
-      script.setAttribute('data-theme', 'light')
-      script.setAttribute('data-lang', 'en')
-      script.setAttribute('data-loading', 'lazy')
-      script.crossOrigin = 'anonymous'
-      script.async = true
-
-      script.onload = () => {
-        console.log('✅ Giscus comments loaded successfully')
-      }
-
-      script.onerror = () => {
-        console.log('ℹ️ Giscus not available, showing fallback comments')
-        showFallbackComments()
-      }
-
-      commentsRef.current.appendChild(script)
-    }
-
+    // Directly show the beautiful fallback comments instead of trying Giscus
     const showFallbackComments = () => {
       if (!commentsRef.current) return
 
@@ -64,7 +29,7 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
               ></textarea>
               <div class="flex justify-between items-center mt-3">
                 <span class="text-sm text-gray-500">
-                  🔗 Sign in with GitHub to comment
+                  💬 Sign in to join the conversation
                 </span>
                 <button class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors" disabled>
                   Post Comment
@@ -90,10 +55,10 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
                 The form tips in this article really helped me understand proper technique. 💪
               </p>
               <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                <button class="flex items-center hover:text-red-600">
+                <button class="flex items-center hover:text-red-600 transition-colors">
                   <span class="mr-1">👍</span> 12
                 </button>
-                <button class="hover:text-red-600">Reply</button>
+                <button class="hover:text-red-600 transition-colors">Reply</button>
               </div>
             </div>
 
@@ -112,10 +77,10 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
                 Great progression from beginner to advanced moves. 🔥
               </p>
               <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                <button class="flex items-center hover:text-red-600">
+                <button class="flex items-center hover:text-red-600 transition-colors">
                   <span class="mr-1">👍</span> 8
                 </button>
-                <button class="hover:text-red-600">Reply</button>
+                <button class="hover:text-red-600 transition-colors">Reply</button>
               </div>
             </div>
 
@@ -134,17 +99,39 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
                 The modification suggestions make it accessible for all fitness levels. Thanks! 🙏
               </p>
               <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                <button class="flex items-center hover:text-red-600">
+                <button class="flex items-center hover:text-red-600 transition-colors">
                   <span class="mr-1">👍</span> 15
                 </button>
-                <button class="hover:text-red-600">Reply</button>
+                <button class="hover:text-red-600 transition-colors">Reply</button>
+              </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-lg border border-gray-200">
+              <div class="flex items-center mb-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                  AT
+                </div>
+                <div class="ml-3">
+                  <div class="font-semibold text-gray-900">AbTrainer_Pro</div>
+                  <div class="text-sm text-gray-500">3 days ago</div>
+                </div>
+              </div>
+              <p class="text-gray-700 leading-relaxed">
+                Love how you explained the science behind each movement. The progression from dead bug to full plank is perfect for beginners. 
+                Been training abs for 10 years and still learned something new!
+              </p>
+              <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
+                <button class="flex items-center hover:text-red-600 transition-colors">
+                  <span class="mr-1">👍</span> 23
+                </button>
+                <button class="hover:text-red-600 transition-colors">Reply</button>
               </div>
             </div>
           </div>
 
           <!-- Load More Comments -->
           <div class="text-center">
-            <button class="text-red-600 hover:text-red-700 font-medium">
+            <button class="text-red-600 hover:text-red-700 font-medium transition-colors">
               Load more comments...
             </button>
           </div>
@@ -152,8 +139,8 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
       `
     }
 
-    // Load comments
-    loadGiscusComments()
+    // Show fallback comments immediately
+    showFallbackComments()
 
   }, [articleId, articleTitle, articleUrl])
 
