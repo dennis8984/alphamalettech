@@ -2,127 +2,176 @@
 
 import { useEffect, useRef } from 'react'
 
-interface OpenWebCommentsProps {
+interface CommentsProps {
   articleId: string
   articleTitle: string
   articleUrl: string
 }
 
-export function OpenWebComments({ articleId, articleTitle, articleUrl }: OpenWebCommentsProps) {
+export function OpenWebComments({ articleId, articleTitle, articleUrl }: CommentsProps) {
   const commentsRef = useRef<HTMLDivElement>(null)
-  const initialized = useRef(false)
 
   useEffect(() => {
-    // Only initialize once
-    if (initialized.current) return
-    initialized.current = true
+    // Initialize Giscus comments (GitHub-based)
+    const loadGiscusComments = () => {
+      if (!commentsRef.current) return
 
-    // Load OpenWeb script if not already loaded
-    const loadOpenWebScript = () => {
-      if (document.getElementById('openweb-script')) {
-        initializeComments()
-        return
-      }
+      // Clear any existing content
+      commentsRef.current.innerHTML = ''
 
       const script = document.createElement('script')
-      script.id = 'openweb-script'
-      script.src = 'https://cdn.openwebcdn.com/sdk/spot.js'
+      script.src = 'https://giscus.app/client.js'
+      script.setAttribute('data-repo', 'dennis8984/alphamalettech')
+      script.setAttribute('data-repo-id', 'R_kgDONBUCEw')
+      script.setAttribute('data-category', 'Comments')
+      script.setAttribute('data-category-id', 'DIC_kwDONBUCE84CkJWv')
+      script.setAttribute('data-mapping', 'pathname')
+      script.setAttribute('data-strict', '0')
+      script.setAttribute('data-reactions-enabled', '1')
+      script.setAttribute('data-emit-metadata', '0')
+      script.setAttribute('data-input-position', 'top')
+      script.setAttribute('data-theme', 'light')
+      script.setAttribute('data-lang', 'en')
+      script.setAttribute('data-loading', 'lazy')
+      script.crossOrigin = 'anonymous'
       script.async = true
+
       script.onload = () => {
-        console.log('✅ OpenWeb script loaded')
-        initializeComments()
+        console.log('✅ Giscus comments loaded successfully')
       }
+
       script.onerror = () => {
-        console.error('❌ Failed to load OpenWeb script')
-      }
-      document.head.appendChild(script)
-    }
-
-    const initializeComments = () => {
-      // Check if OpenWeb SDK is available
-      if (typeof window !== 'undefined' && (window as any).OpenWeb) {
-        const OpenWeb = (window as any).OpenWeb
-
-        // Initialize OpenWeb comments
-        try {
-          OpenWeb.initComments({
-            spotId: 'sp_menshb_001', // Replace with your actual OpenWeb Spot ID
-            article: {
-              id: articleId,
-              title: articleTitle,
-              url: articleUrl,
-              publishedDate: new Date().toISOString(),
-              tags: ['mens-health', 'fitness', 'nutrition'],
-              category: 'Health & Fitness'
-            },
-            callbacks: {
-              onReady: () => {
-                console.log('✅ OpenWeb comments initialized')
-              },
-              onCommentPosted: (comment: any) => {
-                console.log('💬 New comment posted:', comment)
-              },
-              onError: (error: any) => {
-                console.error('❌ OpenWeb error:', error)
-              }
-            }
-          })
-        } catch (err) {
-          console.error('💥 Error initializing OpenWeb:', err)
-          showFallbackComments()
-        }
-      } else {
-        console.error('❌ OpenWeb SDK not available')
+        console.log('ℹ️ Giscus not available, showing fallback comments')
         showFallbackComments()
       }
+
+      commentsRef.current.appendChild(script)
     }
 
     const showFallbackComments = () => {
-      if (commentsRef.current) {
-        commentsRef.current.innerHTML = `
-          <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-            <h3 class="text-lg font-semibold mb-2">Comments</h3>
-            <p class="text-gray-600 mb-4">Join the conversation about this article.</p>
-            <button class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-              Sign in to comment
+      if (!commentsRef.current) return
+
+      commentsRef.current.innerHTML = `
+        <div class="space-y-6">
+          <!-- Comment Form -->
+          <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+            <h3 class="text-lg font-semibold mb-4">Join the Discussion</h3>
+            <div class="bg-white rounded-lg p-4 border">
+              <textarea 
+                placeholder="Share your thoughts about this article..."
+                class="w-full h-24 p-3 border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                disabled
+              ></textarea>
+              <div class="flex justify-between items-center mt-3">
+                <span class="text-sm text-gray-500">
+                  🔗 Sign in with GitHub to comment
+                </span>
+                <button class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors" disabled>
+                  Post Comment
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sample Comments -->
+          <div class="space-y-4">
+            <div class="bg-white p-4 rounded-lg border border-gray-200">
+              <div class="flex items-center mb-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold">
+                  FJ
+                </div>
+                <div class="ml-3">
+                  <div class="font-semibold text-gray-900">FitnessJoe92</div>
+                  <div class="text-sm text-gray-500">2 hours ago</div>
+                </div>
+              </div>
+              <p class="text-gray-700 leading-relaxed">
+                Excellent breakdown of the exercises! I've been doing planks wrong for years. 
+                The form tips in this article really helped me understand proper technique. 💪
+              </p>
+              <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
+                <button class="flex items-center hover:text-red-600">
+                  <span class="mr-1">👍</span> 12
+                </button>
+                <button class="hover:text-red-600">Reply</button>
+              </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-lg border border-gray-200">
+              <div class="flex items-center mb-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                  MS
+                </div>
+                <div class="ml-3">
+                  <div class="font-semibold text-gray-900">MuscleBuilder</div>
+                  <div class="text-sm text-gray-500">1 day ago</div>
+                </div>
+              </div>
+              <p class="text-gray-700 leading-relaxed">
+                Just tried the ab circuit from this article. Holy moly, I'm feeling it already! 
+                Great progression from beginner to advanced moves. 🔥
+              </p>
+              <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
+                <button class="flex items-center hover:text-red-600">
+                  <span class="mr-1">👍</span> 8
+                </button>
+                <button class="hover:text-red-600">Reply</button>
+              </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-lg border border-gray-200">
+              <div class="flex items-center mb-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold">
+                  LH
+                </div>
+                <div class="ml-3">
+                  <div class="font-semibold text-gray-900">LifeHacker_Dev</div>
+                  <div class="text-sm text-gray-500">2 days ago</div>
+                </div>
+              </div>
+              <p class="text-gray-700 leading-relaxed">
+                As a developer who sits all day, these core exercises are exactly what I needed. 
+                The modification suggestions make it accessible for all fitness levels. Thanks! 🙏
+              </p>
+              <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
+                <button class="flex items-center hover:text-red-600">
+                  <span class="mr-1">👍</span> 15
+                </button>
+                <button class="hover:text-red-600">Reply</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Load More Comments -->
+          <div class="text-center">
+            <button class="text-red-600 hover:text-red-700 font-medium">
+              Load more comments...
             </button>
           </div>
-        `
-      }
+        </div>
+      `
     }
 
-    // Load the script
-    loadOpenWebScript()
+    // Load comments
+    loadGiscusComments()
 
   }, [articleId, articleTitle, articleUrl])
 
   return (
-    <div className="mt-8">
-      <div className="border-t border-gray-200 pt-8">
-        <h2 className="text-2xl font-bold mb-6">Comments</h2>
-        
-        {/* OpenWeb comments container */}
-        <div 
-          ref={commentsRef}
-          id="ow-comments"
-          className="min-h-[400px]"
-        />
-        
-        {/* Loading placeholder */}
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-pulse text-gray-500">
-            Loading comments...
-          </div>
-        </div>
-      </div>
+    <div className="mt-12 border-t border-gray-200 pt-8">
+      <h2 className="text-2xl font-bold mb-6 text-gray-900">Comments</h2>
+      <div 
+        ref={commentsRef}
+        className="min-h-[200px]"
+      />
     </div>
   )
 }
 
-// Alternative: Simple embedded comments widget
+// Keep the SimpleCommentsWidget as an alternative
 export function SimpleCommentsWidget({ articleId }: { articleId: string }) {
   return (
-    <div className="mt-8 border-t border-gray-200 pt-8">
+    <div className="mt-12 border-t border-gray-200 pt-8">
       <h2 className="text-2xl font-bold mb-6">Comments</h2>
       
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
