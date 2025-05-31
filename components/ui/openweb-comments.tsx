@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { supabase, getCurrentUser } from '@/lib/supabase-client'
+import { createComment, getComments, type Comment } from '@/lib/supabase-database'
 
 interface CommentsProps {
   articleId: string
@@ -14,6 +15,8 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [comments, setComments] = useState<Comment[]>([])
+  const [isPostingComment, setIsPostingComment] = useState(false)
 
   useEffect(() => {
     // Check if user is authenticated
@@ -34,17 +37,98 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
   }, [])
 
   useEffect(() => {
+    // Load comments when component mounts or articleId changes
+    const loadComments = async () => {
+      const result = await getComments(articleId)
+      if (result.success && result.comments) {
+        setComments(result.comments)
+      }
+    }
+
+    loadComments()
+  }, [articleId])
+
+  const handlePostComment = async (content: string) => {
+    if (!user || !content.trim()) return
+
+    setIsPostingComment(true)
+    
+    try {
+      const userName = user.user_metadata?.name || user.email?.split('@')[0] || 'Anonymous'
+      
+      const result = await createComment(
+        articleId,
+        content.trim(),
+        user.email,
+        userName
+      )
+
+      if (result.success && result.comment) {
+        // Add new comment to the top of the list
+        setComments(prev => [result.comment!, ...prev])
+        
+        // Clear the textarea
+        const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement
+        if (textarea) {
+          textarea.value = ''
+        }
+        
+        // Show success message
+        alert('Comment posted successfully!')
+      } else {
+        alert(`Failed to post comment: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Comment posting error:', error)
+      alert('Failed to post comment. Please try again.')
+    } finally {
+      setIsPostingComment(false)
+    }
+  }
+
+  const formatTimeAgo = (dateString: string) => {
+    const now = new Date()
+    const commentDate = new Date(dateString)
+    const diffInMinutes = Math.floor((now.getTime() - commentDate.getTime()) / (1000 * 60))
+    
+    if (diffInMinutes < 1) return 'Just now'
+    if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} hours ago`
+    return `${Math.floor(diffInMinutes / 1440)} days ago`
+  }
+
+  const getAvatarInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  }
+
+  const getAvatarColor = (email: string) => {
+    const colors = [
+      'from-red-500 to-red-600',
+      'from-blue-500 to-blue-600', 
+      'from-green-500 to-green-600',
+      'from-purple-500 to-purple-600',
+      'from-yellow-500 to-yellow-600',
+      'from-pink-500 to-pink-600',
+      'from-indigo-500 to-indigo-600'
+    ]
+    const hash = email.split('').reduce((a, b) => a + b.charCodeAt(0), 0)
+    return colors[hash % colors.length]
+  }
+
+  useEffect(() => {
     // Show comments interface based on auth status
     const showCommentsInterface = () => {
       if (!commentsRef.current) return
 
       if (user) {
         // Show real commenting interface for authenticated users
+        const userName = user.user_metadata?.name || user.email?.split('@')[0] || 'Anonymous'
+        
         commentsRef.current.innerHTML = `
           <div class="space-y-6">
             <!-- Comment Form -->
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
-              <h3 class="text-lg font-semibold mb-4">Welcome back, ${user.email}!</h3>
+              <h3 class="text-lg font-semibold mb-4">Welcome back, ${userName}!</h3>
               <div class="bg-white rounded-lg p-4 border">
                 <textarea 
                   id="comment-textarea"
@@ -67,85 +151,35 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
               </div>
             </div>
 
-            <!-- Sample Comments -->
-            <div class="space-y-4">
-              <div class="bg-white p-4 rounded-lg border border-gray-200">
-                <div class="flex items-center mb-3">
-                  <div class="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold">
-                    FJ
+            <!-- Real Comments -->
+            <div class="space-y-4" id="comments-list">
+              ${comments.map(comment => `
+                <div class="bg-white p-4 rounded-lg border border-gray-200">
+                  <div class="flex items-center mb-3">
+                    <div class="w-10 h-10 bg-gradient-to-r ${getAvatarColor(comment.user_email)} rounded-full flex items-center justify-center text-white font-bold">
+                      ${getAvatarInitials(comment.user_name)}
+                    </div>
+                    <div class="ml-3">
+                      <div class="font-semibold text-gray-900">${comment.user_name}</div>
+                      <div class="text-sm text-gray-500">${formatTimeAgo(comment.created_at)}</div>
+                    </div>
                   </div>
-                  <div class="ml-3">
-                    <div class="font-semibold text-gray-900">FitnessJoe92</div>
-                    <div class="text-sm text-gray-500">2 hours ago</div>
-                  </div>
+                  <p class="text-gray-700 leading-relaxed">
+                    ${comment.content}
+                  </p>
                 </div>
-                <p class="text-gray-700 leading-relaxed">
-                  Excellent breakdown of the exercises! I've been doing planks wrong for years. 
-                  The form tips in this article really helped me understand proper technique. 💪
-                </p>
-                <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                  <button class="flex items-center hover:text-red-600 transition-colors like-btn">
-                    <span class="mr-1">👍</span> 12
-                  </button>
-                  <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
-                </div>
-              </div>
-
-              <div class="bg-white p-4 rounded-lg border border-gray-200">
-                <div class="flex items-center mb-3">
-                  <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                    MS
-                  </div>
-                  <div class="ml-3">
-                    <div class="font-semibold text-gray-900">MuscleBuilder</div>
-                    <div class="text-sm text-gray-500">1 day ago</div>
-                  </div>
-                </div>
-                <p class="text-gray-700 leading-relaxed">
-                  Just tried the ab circuit from this article. Holy moly, I'm feeling it already! 
-                  Great progression from beginner to advanced moves. 🔥
-                </p>
-                <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                  <button class="flex items-center hover:text-red-600 transition-colors like-btn">
-                    <span class="mr-1">👍</span> 8
-                  </button>
-                  <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
-                </div>
-              </div>
-
-              <div class="bg-white p-4 rounded-lg border border-gray-200">
-                <div class="flex items-center mb-3">
-                  <div class="w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold">
-                    LH
-                  </div>
-                  <div class="ml-3">
-                    <div class="font-semibold text-gray-900">LifeHacker_Dev</div>
-                    <div class="text-sm text-gray-500">2 days ago</div>
-                  </div>
-                </div>
-                <p class="text-gray-700 leading-relaxed">
-                  As a developer who sits all day, these core exercises are exactly what I needed. 
-                  The modification suggestions make it accessible for all fitness levels. Thanks! 🙏
-                </p>
-                <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                  <button class="flex items-center hover:text-red-600 transition-colors like-btn">
-                    <span class="mr-1">👍</span> 15
-                  </button>
-                  <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
-                </div>
-              </div>
+              `).join('')}
             </div>
 
-            <!-- Load More Comments -->
-            <div class="text-center">
-              <button class="text-red-600 hover:text-red-700 font-medium transition-colors">
-                Load more comments...
-              </button>
-            </div>
+            ${comments.length === 0 ? `
+              <div class="text-center py-8 text-gray-500">
+                <p>No comments yet. Be the first to share your thoughts!</p>
+              </div>
+            ` : ''}
           </div>
         `
       } else {
-        // Show login prompt for non-authenticated users
+        // Show login prompt for non-authenticated users with sample comments
         commentsRef.current.innerHTML = `
           <div class="space-y-6">
             <!-- Comment Form -->
@@ -168,80 +202,54 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
               </div>
             </div>
 
-            <!-- Sample Comments -->
+            <!-- Real Comments + Sample Comments -->
             <div class="space-y-4">
-              <div class="bg-white p-4 rounded-lg border border-gray-200">
-                <div class="flex items-center mb-3">
-                  <div class="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold">
-                    FJ
+              ${comments.map(comment => `
+                <div class="bg-white p-4 rounded-lg border border-gray-200">
+                  <div class="flex items-center mb-3">
+                    <div class="w-10 h-10 bg-gradient-to-r ${getAvatarColor(comment.user_email)} rounded-full flex items-center justify-center text-white font-bold">
+                      ${getAvatarInitials(comment.user_name)}
+                    </div>
+                    <div class="ml-3">
+                      <div class="font-semibold text-gray-900">${comment.user_name}</div>
+                      <div class="text-sm text-gray-500">${formatTimeAgo(comment.created_at)}</div>
+                    </div>
                   </div>
-                  <div class="ml-3">
-                    <div class="font-semibold text-gray-900">FitnessJoe92</div>
-                    <div class="text-sm text-gray-500">2 hours ago</div>
+                  <p class="text-gray-700 leading-relaxed">
+                    ${comment.content}
+                  </p>
+                  <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
+                    <button class="flex items-center hover:text-red-600 transition-colors like-btn">
+                      <span class="mr-1">👍</span> Like
+                    </button>
+                    <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
                   </div>
                 </div>
-                <p class="text-gray-700 leading-relaxed">
-                  Excellent breakdown of the exercises! I've been doing planks wrong for years. 
-                  The form tips in this article really helped me understand proper technique. 💪
-                </p>
-                <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                  <button class="flex items-center hover:text-red-600 transition-colors like-btn">
-                    <span class="mr-1">👍</span> 12
-                  </button>
-                  <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
-                </div>
-              </div>
+              `).join('')}
 
-              <div class="bg-white p-4 rounded-lg border border-gray-200">
-                <div class="flex items-center mb-3">
-                  <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                    MS
+              ${comments.length === 0 ? `
+                <div class="bg-white p-4 rounded-lg border border-gray-200">
+                  <div class="flex items-center mb-3">
+                    <div class="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold">
+                      FJ
+                    </div>
+                    <div class="ml-3">
+                      <div class="font-semibold text-gray-900">FitnessJoe92</div>
+                      <div class="text-sm text-gray-500">2 hours ago</div>
+                    </div>
                   </div>
-                  <div class="ml-3">
-                    <div class="font-semibold text-gray-900">MuscleBuilder</div>
-                    <div class="text-sm text-gray-500">1 day ago</div>
-                  </div>
-                </div>
-                <p class="text-gray-700 leading-relaxed">
-                  Just tried the ab circuit from this article. Holy moly, I'm feeling it already! 
-                  Great progression from beginner to advanced moves. 🔥
-                </p>
-                <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                  <button class="flex items-center hover:text-red-600 transition-colors like-btn">
-                    <span class="mr-1">👍</span> 8
-                  </button>
-                  <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
-                </div>
-              </div>
-
-              <div class="bg-white p-4 rounded-lg border border-gray-200">
-                <div class="flex items-center mb-3">
-                  <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                    AT
-                  </div>
-                  <div class="ml-3">
-                    <div class="font-semibold text-gray-900">AbTrainer_Pro</div>
-                    <div class="text-sm text-gray-500">3 days ago</div>
+                  <p class="text-gray-700 leading-relaxed">
+                    Excellent breakdown of the exercises! I've been doing planks wrong for years. 
+                    The form tips in this article really helped me understand proper technique. 💪
+                  </p>
+                  <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
+                    <button class="flex items-center hover:text-red-600 transition-colors like-btn">
+                      <span class="mr-1">👍</span> 12
+                    </button>
+                    <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
                   </div>
                 </div>
-                <p class="text-gray-700 leading-relaxed">
-                  Love how you explained the science behind each movement. The progression from dead bug to full plank is perfect for beginners. 
-                  Been training abs for 10 years and still learned something new!
-                </p>
-                <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                  <button class="flex items-center hover:text-red-600 transition-colors like-btn">
-                    <span class="mr-1">👍</span> 23
-                  </button>
-                  <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Load More Comments -->
-            <div class="text-center">
-              <button class="text-red-600 hover:text-red-700 font-medium transition-colors">
-                Load more comments...
-              </button>
+              ` : ''}
             </div>
           </div>
         `
@@ -269,10 +277,23 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
             postBtn.addEventListener('click', () => {
               const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement
               if (textarea && textarea.value.trim()) {
-                alert('Comment posted! (This is a demo - in a real app, this would save to the database)')
-                textarea.value = ''
+                handlePostComment(textarea.value.trim())
               } else {
                 alert('Please write a comment first!')
+              }
+            })
+          }
+
+          // Enable Enter key to post
+          const textarea = document.getElementById('comment-textarea')
+          if (textarea) {
+            textarea.addEventListener('keydown', (e: KeyboardEvent) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault()
+                const content = (e.target as HTMLTextAreaElement).value.trim()
+                if (content) {
+                  handlePostComment(content)
+                }
               }
             })
           }
@@ -310,7 +331,7 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
       }, 100)
     }
 
-  }, [user, isLoading])
+  }, [user, isLoading, comments])
 
   const LoginModal = () => {
     if (!showLoginModal) return null
@@ -378,7 +399,7 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
 
   return (
     <div className="mt-12 border-t border-gray-200 pt-8">
-      <h2 className="text-2xl font-bold mb-6 text-gray-900">Comments</h2>
+      <h2 className="text-2xl font-bold mb-6 text-gray-900">Comments ({comments.length})</h2>
       <div 
         ref={commentsRef}
         className="min-h-[200px]"

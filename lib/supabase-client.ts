@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { saveNewsletterSubscriber } from './supabase-database'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vopntrgtkefstqbzsmot.supabase.co'
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvcG50cmd0a2Vmc3RxYnpzbW90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ1Njg1NzEsImV4cCI6MjA1MDE0NDU3MX0.gfhEDwJyMZmF6K63gPfhKvtJJ3l_K_hNHWQwJ0KRFcU'
@@ -11,7 +12,14 @@ type SubscriptionResult =
 
 export const subscribeToNewsletter = async (name: string, email: string): Promise<SubscriptionResult> => {
   try {
-    // Send magic link for authentication
+    // First, save the subscriber to the database
+    const saveResult = await saveNewsletterSubscriber(name, email)
+    
+    if (!saveResult.success) {
+      return { success: false, error: saveResult.error || 'Failed to save subscription' }
+    }
+
+    // Then send magic link for authentication
     const { error: authError } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -30,7 +38,7 @@ export const subscribeToNewsletter = async (name: string, email: string): Promis
 
     return { 
       success: true, 
-      message: 'Check your email for a magic link to complete your signup and join the community!' 
+      message: 'Successfully subscribed to newsletter! Check your email for a magic link to complete your signup and join the community!' 
     }
 
   } catch (error) {
