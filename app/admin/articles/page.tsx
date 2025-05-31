@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { ArrowLeft, Plus, Search, Edit, Trash2, Eye } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 // Mock data for articles
 const mockArticles = [
@@ -44,6 +45,7 @@ const mockArticles = [
 ]
 
 export default function ArticlesPage() {
+  const router = useRouter()
   const [articles, setArticles] = useState(mockArticles)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -62,6 +64,22 @@ export default function ArticlesPage() {
         return <Badge variant="outline">Archived</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
+    }
+  }
+
+  const handleViewArticle = (article: any) => {
+    // Open article in new tab
+    window.open(`/${article.slug}`, '_blank')
+  }
+
+  const handleEditArticle = (articleId: string) => {
+    router.push(`/admin/articles/edit/${articleId}`)
+  }
+
+  const handleDeleteArticle = (articleId: string, title: string) => {
+    if (window.confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
+      setArticles(prev => prev.filter(article => article.id !== articleId))
+      alert('Article deleted successfully!')
     }
   }
 
@@ -96,10 +114,12 @@ export default function ArticlesPage() {
                 className="pl-10"
               />
             </div>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              New Article
-            </Button>
+            <Link href="/admin/articles/new">
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                New Article
+              </Button>
+            </Link>
           </div>
         </CardContent>
       </Card>
@@ -153,13 +173,29 @@ export default function ArticlesPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleViewArticle(article)}
+                            title="View article"
+                          >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleEditArticle(article.id)}
+                            title="Edit article"
+                          >
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="text-destructive">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteArticle(article.id, article.title)}
+                            title="Delete article"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
