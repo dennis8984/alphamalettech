@@ -21,19 +21,22 @@ import {
   BarChart3
 } from 'lucide-react'
 
+// Force this page to be dynamic (not statically generated)
+export const dynamic = 'force-dynamic'
+
 export default function AdminDashboard() {
-  const { data: session, status } = useSession()
+  const session = useSession()
   const router = useRouter()
 
   useEffect(() => {
-    if (status === 'loading') return // Still loading
-    if (!session) {
+    if (session.status === 'loading') return // Still loading
+    if (!session.data) {
       router.push('/admin/auth/signin')
       return
     }
-  }, [session, status, router])
+  }, [session, router])
 
-  if (status === 'loading') {
+  if (session.status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -44,7 +47,7 @@ export default function AdminDashboard() {
     )
   }
 
-  if (!session) {
+  if (!session.data) {
     return null // Will redirect
   }
 
@@ -60,7 +63,7 @@ export default function AdminDashboard() {
                 HEALTH Admin
               </h1>
               <p className="text-sm text-gray-600">
-                Welcome back, {session.user?.name || session.user?.email}
+                Welcome back, {session.data.user?.name || session.data.user?.email}
               </p>
             </div>
             <div className="flex items-center space-x-4">
