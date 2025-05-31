@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Save, Eye, Upload, Bold, Italic, List, Link as LinkIcon, Image } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { createArticle } from '@/lib/articles-db'
+// import { uploadImage } from '@/lib/supabase-storage'
 
 const categories = [
   { value: 'fitness', label: 'Fitness' },
@@ -21,19 +25,24 @@ const categories = [
 ]
 
 export default function NewArticlePage() {
+  const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  
   const [article, setArticle] = useState({
     title: '',
     slug: '',
     category: '',
-    status: 'draft',
+    status: 'draft' as 'draft' | 'published',
     content: '',
     excerpt: '',
-    featuredImage: '',
+    featured_image: '',
     tags: [] as string[],
     author: 'Current User'
   })
 
   const [newTag, setNewTag] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   // Auto-generate slug from title
   const handleTitleChange = (title: string) => {
@@ -63,19 +72,108 @@ export default function NewArticlePage() {
     }))
   }
 
-  const handleSave = (status: 'draft' | 'published') => {
-    console.log('Saving article:', { ...article, status })
-    // Here you would save to your database
-    alert(`Article ${status === 'published' ? 'published' : 'saved as draft'} successfully!`)
+  const handleSave = async (status: 'draft' | 'published') => {
+    setSaving(true)
+    
+    try {
+      // Validate required fields
+      if (!article.title.trim()) {
+        alert('Please enter a title')
+        return
+      }
+      
+      if (!article.category) {
+        alert('Please select a category')
+        return
+      }
+
+      console.log('💾 Saving article...', { title: article.title, status })
+      
+      const { data, error } = await createArticle({
+        ...article,
+        status
+      })
+
+      if (error) {
+        console.error('❌ Save failed:', error)
+        alert(`Failed to save article: ${error}`)
+        return
+      }
+
+      console.log('✅ Article saved successfully!')
+      alert(`Article ${status === 'published' ? 'published' : 'saved as draft'} successfully!`)
+      
+      // Redirect to articles list
+      router.push('/admin/articles')
+      
+    } catch (err) {
+      console.error('💥 Unexpected save error:', err)
+      alert('An unexpected error occurred while saving')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleImageUpload = () => {
-    // Placeholder for image upload functionality
-    alert('Image upload functionality will be implemented with cloud storage')
+    fileInputRef.current?.click()
+  }
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB')
+      return
+    }
+
+    setUploading(true)
+
+    try {
+      console.log('📸 Uploading image...', file.name)
+      
+      // For now, create a mock URL - replace with actual Supabase upload
+      const mockUrl = URL.createObjectURL(file)
+      
+      // TODO: Replace with actual Supabase upload
+      // const { url, error } = await uploadImage(file)
+      // if (error) {
+      //   alert(`Upload failed: ${error}`)
+      //   return
+      // }
+
+      setArticle(prev => ({ ...prev, featured_image: mockUrl }))
+      console.log('✅ Image uploaded successfully!')
+      
+      // Note: In production, this should be the Supabase public URL
+      alert('Image uploaded successfully! (Using mock URL for demo)')
+
+    } catch (err) {
+      console.error('💥 Upload error:', err)
+      alert('Failed to upload image')
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (
     <div className="container mx-auto py-6 max-w-6xl">
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelected}
+        accept="image/*"
+        className="hidden"
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -93,13 +191,20 @@ export default function NewArticlePage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => handleSave('draft')}>
+          <Button 
+            variant="outline" 
+            onClick={() => handleSave('draft')}
+            disabled={saving}
+          >
             <Save className="w-4 h-4 mr-2" />
-            Save Draft
+            {saving ? 'Saving...' : 'Save Draft'}
           </Button>
-          <Button onClick={() => handleSave('published')}>
+          <Button 
+            onClick={() => handleSave('published')}
+            disabled={saving}
+          >
             <Eye className="w-4 h-4 mr-2" />
-            Publish
+            {saving ? 'Publishing...' : 'Publish'}
           </Button>
         </div>
       </div>
@@ -159,53 +264,20 @@ export default function NewArticlePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Editor Toolbar */}
-              <div className="border rounded-t-lg p-2 bg-gray-50 flex items-center gap-1 flex-wrap">
-                <Button variant="ghost" size="sm" onClick={handleImageUpload}>
-                  <Upload className="w-4 h-4 mr-1" />
-                  Image
-                </Button>
-                <div className="h-6 w-px bg-gray-300 mx-1" />
-                <Button variant="ghost" size="sm">
-                  <Bold className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <Italic className="w-4 h-4" />
-                </Button>
-                <div className="h-6 w-px bg-gray-300 mx-1" />
-                <Button variant="ghost" size="sm">
-                  <List className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <LinkIcon className="w-4 h-4" />
-                </Button>
-                <div className="h-6 w-px bg-gray-300 mx-1" />
-                <Select defaultValue="paragraph">
-                  <SelectTrigger className="w-32 h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="paragraph">Paragraph</SelectItem>
-                    <SelectItem value="h1">Heading 1</SelectItem>
-                    <SelectItem value="h2">Heading 2</SelectItem>
-                    <SelectItem value="h3">Heading 3</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <RichTextEditor
+                value={article.content}
+                onChange={(content) => setArticle(prev => ({ ...prev, content }))}
+                placeholder="Start writing your article here... 
 
-              {/* Editor Content Area */}
-              <div className="border border-t-0 rounded-b-lg min-h-[400px] p-4 bg-white">
-                <Textarea
-                  value={article.content}
-                  onChange={(e) => setArticle(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder="Start writing your article here... 
+Use the toolbar above to format your text:
+- **Bold text** and *italic text*
+- # Headings and ## Subheadings  
+- [Links](https://example.com)
+- Bullet lists
 
-Use this space to create engaging content about fitness, nutrition, health, style, weight loss, or entertainment.
-
-This will be replaced with a full WYSIWYG editor once Tiptap is installed."
-                  className="min-h-[350px] border-0 resize-none focus:ring-0 focus:outline-none"
-                />
-              </div>
+This editor supports Markdown formatting and will be enhanced with Tiptap WYSIWYG editing soon."
+                onImageUpload={handleImageUpload}
+              />
             </CardContent>
           </Card>
         </div>
@@ -236,7 +308,7 @@ This will be replaced with a full WYSIWYG editor once Tiptap is installed."
 
               <div>
                 <Label htmlFor="status">Status</Label>
-                <Select value={article.status} onValueChange={(value) => setArticle(prev => ({ ...prev, status: value }))}>
+                <Select value={article.status} onValueChange={(value: 'draft' | 'published') => setArticle(prev => ({ ...prev, status: value }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -265,10 +337,10 @@ This will be replaced with a full WYSIWYG editor once Tiptap is installed."
               <CardTitle>Featured Image</CardTitle>
             </CardHeader>
             <CardContent>
-              {article.featuredImage ? (
+              {article.featured_image ? (
                 <div className="space-y-2">
-                  <img src={article.featuredImage} alt="Featured" className="w-full rounded-lg" />
-                  <Button variant="outline" size="sm" className="w-full">
+                  <img src={article.featured_image} alt="Featured" className="w-full rounded-lg" />
+                  <Button variant="outline" size="sm" className="w-full" onClick={handleImageUpload}>
                     Change Image
                   </Button>
                 </div>
@@ -276,8 +348,13 @@ This will be replaced with a full WYSIWYG editor once Tiptap is installed."
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                   <Image className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                   <p className="text-sm text-gray-600 mb-2">No featured image</p>
-                  <Button variant="outline" size="sm" onClick={handleImageUpload}>
-                    Upload Image
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleImageUpload}
+                    disabled={uploading}
+                  >
+                    {uploading ? 'Uploading...' : 'Upload Image'}
                   </Button>
                 </div>
               )}

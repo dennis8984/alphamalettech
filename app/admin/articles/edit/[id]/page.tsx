@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Save, Eye, Upload, Bold, Italic, List, Link as LinkIcon, Image, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Save, Eye, Image, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { getArticle, updateArticle, type Article } from '@/lib/articles-db'
+// import { uploadImage } from '@/lib/supabase-storage'
 
 const categories = [
   { value: 'fitness', label: 'Fitness' },
@@ -21,110 +23,59 @@ const categories = [
   { value: 'entertainment', label: 'Entertainment' },
 ]
 
-// Mock articles data for editing
-const mockArticles = {
-  '1': {
-    id: '1',
-    title: 'The Ultimate Guide to Building Muscle Mass',
-    slug: 'ultimate-guide-building-muscle-mass',
-    category: 'fitness',
-    status: 'published',
-    content: `# The Ultimate Guide to Building Muscle Mass
-
-Building muscle mass is one of the most rewarding fitness goals you can pursue. Not only does it improve your physical appearance, but it also enhances your overall health, boosts your metabolism, and increases your functional strength.
-
-## Understanding Muscle Growth
-
-Muscle growth, or hypertrophy, occurs when you consistently challenge your muscles through resistance training while providing adequate nutrition and recovery time.
-
-### Key Principles:
-
-1. **Progressive Overload** - Gradually increase weight, reps, or intensity
-2. **Adequate Protein** - Consume 1.6-2.2g of protein per kg of body weight
-3. **Sufficient Rest** - Allow 48-72 hours between training the same muscle groups
-4. **Consistency** - Stick to your routine for at least 8-12 weeks
-
-## Essential Exercises for Muscle Building
-
-Focus on compound movements that work multiple muscle groups:
-
-- **Squats** - Target quads, glutes, and core
-- **Deadlifts** - Work your entire posterior chain
-- **Bench Press** - Build chest, shoulders, and triceps
-- **Pull-ups** - Strengthen back and biceps
-
-Remember to start with proper form before adding weight. Quality always beats quantity when it comes to muscle building.`,
-    excerpt: 'Learn the essential principles and strategies for building muscle mass effectively, including proper training techniques, nutrition guidelines, and recovery protocols.',
-    featuredImage: '',
-    tags: ['muscle building', 'fitness', 'strength training', 'bodybuilding'],
-    author: 'John Smith',
-    publishedAt: '2024-01-15'
-  },
-  '2': {
-    id: '2',
-    title: 'Top 10 Protein-Rich Foods for Men',
-    slug: 'top-10-protein-rich-foods-men',
-    category: 'nutrition',
-    status: 'published',
-    content: 'Content for protein-rich foods article...',
-    excerpt: 'Discover the best protein sources to fuel your workouts and support muscle growth.',
-    featuredImage: '',
-    tags: ['protein', 'nutrition', 'diet'],
-    author: 'Mike Johnson',
-    publishedAt: '2024-01-12'
-  },
-  '3': {
-    id: '3',
-    title: 'Mental Health Tips for Modern Men',
-    slug: 'mental-health-tips-modern-men',
-    category: 'health',
-    status: 'draft',
-    content: 'Content for mental health article...',
-    excerpt: 'Essential mental health strategies for men in today\'s demanding world.',
-    featuredImage: '',
-    tags: ['mental health', 'wellness'],
-    author: 'David Wilson',
-    publishedAt: null
-  }
-}
-
 export default function EditArticlePage() {
   const params = useParams()
+  const router = useRouter()
   const articleId = params.id as string
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [article, setArticle] = useState({
     title: '',
     slug: '',
     category: '',
-    status: 'draft',
+    status: 'draft' as 'draft' | 'published',
     content: '',
     excerpt: '',
-    featuredImage: '',
+    featured_image: '',
     tags: [] as string[],
     author: ''
   })
   
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [notFound, setNotFound] = useState(false)
   const [newTag, setNewTag] = useState('')
 
   // Load article data
   useEffect(() => {
-    const loadArticle = () => {
-      const existingArticle = mockArticles[articleId as keyof typeof mockArticles]
+    const loadArticle = async () => {
+      if (!articleId) return
       
-      if (existingArticle) {
+      console.log('📖 Loading article for editing:', articleId)
+      
+      const { data, error } = await getArticle(articleId)
+      
+      if (error) {
+        console.error('❌ Failed to load article:', error)
+        setNotFound(true)
+        setLoading(false)
+        return
+      }
+      
+      if (data) {
         setArticle({
-          title: existingArticle.title,
-          slug: existingArticle.slug,
-          category: existingArticle.category,
-          status: existingArticle.status,
-          content: existingArticle.content,
-          excerpt: existingArticle.excerpt,
-          featuredImage: existingArticle.featuredImage,
-          tags: existingArticle.tags,
-          author: existingArticle.author
+          title: data.title,
+          slug: data.slug,
+          category: data.category,
+          status: data.status,
+          content: data.content,
+          excerpt: data.excerpt,
+          featured_image: data.featured_image || '',
+          tags: data.tags,
+          author: data.author
         })
+        console.log('✅ Article loaded for editing')
       } else {
         setNotFound(true)
       }
@@ -132,9 +83,7 @@ export default function EditArticlePage() {
       setLoading(false)
     }
 
-    if (articleId) {
-      loadArticle()
-    }
+    loadArticle()
   }, [articleId])
 
   // Auto-generate slug from title
@@ -165,14 +114,95 @@ export default function EditArticlePage() {
     }))
   }
 
-  const handleSave = (status: 'draft' | 'published') => {
-    console.log('Updating article:', { ...article, status, id: articleId })
-    // Here you would update in your database
-    alert(`Article ${status === 'published' ? 'published' : 'saved as draft'} successfully!`)
+  const handleSave = async (status: 'draft' | 'published') => {
+    setSaving(true)
+    
+    try {
+      // Validate required fields
+      if (!article.title.trim()) {
+        alert('Please enter a title')
+        return
+      }
+      
+      if (!article.category) {
+        alert('Please select a category')
+        return
+      }
+
+      console.log('💾 Updating article...', { id: articleId, title: article.title, status })
+      
+      const { data, error } = await updateArticle(articleId, {
+        ...article,
+        status
+      })
+
+      if (error) {
+        console.error('❌ Update failed:', error)
+        alert(`Failed to update article: ${error}`)
+        return
+      }
+
+      console.log('✅ Article updated successfully!')
+      alert(`Article ${status === 'published' ? 'published' : 'saved as draft'} successfully!`)
+      
+      // Redirect to articles list
+      router.push('/admin/articles')
+      
+    } catch (err) {
+      console.error('💥 Unexpected update error:', err)
+      alert('An unexpected error occurred while updating')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleImageUpload = () => {
-    alert('Image upload functionality will be implemented with cloud storage')
+    fileInputRef.current?.click()
+  }
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB')
+      return
+    }
+
+    setUploading(true)
+
+    try {
+      console.log('📸 Uploading image...', file.name)
+      
+      // For now, create a mock URL - replace with actual Supabase upload
+      const mockUrl = URL.createObjectURL(file)
+      
+      // TODO: Replace with actual Supabase upload
+      // const { url, error } = await uploadImage(file)
+      // if (error) {
+      //   alert(`Upload failed: ${error}`)
+      //   return
+      // }
+
+      setArticle(prev => ({ ...prev, featured_image: mockUrl }))
+      console.log('✅ Image uploaded successfully!')
+      
+      // Note: In production, this should be the Supabase public URL
+      alert('Image uploaded successfully! (Using mock URL for demo)')
+
+    } catch (err) {
+      console.error('💥 Upload error:', err)
+      alert('Failed to upload image')
+    } finally {
+      setUploading(false)
+    }
   }
 
   if (loading) {
@@ -217,6 +247,15 @@ export default function EditArticlePage() {
 
   return (
     <div className="container mx-auto py-6 max-w-6xl">
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelected}
+        accept="image/*"
+        className="hidden"
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -234,13 +273,20 @@ export default function EditArticlePage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => handleSave('draft')}>
+          <Button 
+            variant="outline" 
+            onClick={() => handleSave('draft')}
+            disabled={saving}
+          >
             <Save className="w-4 h-4 mr-2" />
-            Save Draft
+            {saving ? 'Saving...' : 'Save Draft'}
           </Button>
-          <Button onClick={() => handleSave('published')}>
+          <Button 
+            onClick={() => handleSave('published')}
+            disabled={saving}
+          >
             <Eye className="w-4 h-4 mr-2" />
-            {article.status === 'published' ? 'Update' : 'Publish'}
+            {saving ? 'Updating...' : (article.status === 'published' ? 'Update' : 'Publish')}
           </Button>
         </div>
       </div>
@@ -280,12 +326,13 @@ export default function EditArticlePage() {
 
               <div>
                 <Label htmlFor="excerpt">Excerpt</Label>
-                <Textarea
+                <textarea
                   id="excerpt"
                   value={article.excerpt}
                   onChange={(e) => setArticle(prev => ({ ...prev, excerpt: e.target.value }))}
                   placeholder="Brief description for SEO and social sharing..."
                   rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </CardContent>
@@ -300,49 +347,12 @@ export default function EditArticlePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Editor Toolbar */}
-              <div className="border rounded-t-lg p-2 bg-gray-50 flex items-center gap-1 flex-wrap">
-                <Button variant="ghost" size="sm" onClick={handleImageUpload}>
-                  <Upload className="w-4 h-4 mr-1" />
-                  Image
-                </Button>
-                <div className="h-6 w-px bg-gray-300 mx-1" />
-                <Button variant="ghost" size="sm">
-                  <Bold className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <Italic className="w-4 h-4" />
-                </Button>
-                <div className="h-6 w-px bg-gray-300 mx-1" />
-                <Button variant="ghost" size="sm">
-                  <List className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <LinkIcon className="w-4 h-4" />
-                </Button>
-                <div className="h-6 w-px bg-gray-300 mx-1" />
-                <Select defaultValue="paragraph">
-                  <SelectTrigger className="w-32 h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="paragraph">Paragraph</SelectItem>
-                    <SelectItem value="h1">Heading 1</SelectItem>
-                    <SelectItem value="h2">Heading 2</SelectItem>
-                    <SelectItem value="h3">Heading 3</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Editor Content Area */}
-              <div className="border border-t-0 rounded-b-lg min-h-[400px] p-4 bg-white">
-                <Textarea
-                  value={article.content}
-                  onChange={(e) => setArticle(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder="Edit your article content here..."
-                  className="min-h-[350px] border-0 resize-none focus:ring-0 focus:outline-none"
-                />
-              </div>
+              <RichTextEditor
+                value={article.content}
+                onChange={(content) => setArticle(prev => ({ ...prev, content }))}
+                placeholder="Edit your article content here..."
+                onImageUpload={handleImageUpload}
+              />
             </CardContent>
           </Card>
         </div>
@@ -373,7 +383,7 @@ export default function EditArticlePage() {
 
               <div>
                 <Label htmlFor="status">Status</Label>
-                <Select value={article.status} onValueChange={(value) => setArticle(prev => ({ ...prev, status: value }))}>
+                <Select value={article.status} onValueChange={(value: 'draft' | 'published') => setArticle(prev => ({ ...prev, status: value }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -402,10 +412,10 @@ export default function EditArticlePage() {
               <CardTitle>Featured Image</CardTitle>
             </CardHeader>
             <CardContent>
-              {article.featuredImage ? (
+              {article.featured_image ? (
                 <div className="space-y-2">
-                  <img src={article.featuredImage} alt="Featured" className="w-full rounded-lg" />
-                  <Button variant="outline" size="sm" className="w-full">
+                  <img src={article.featured_image} alt="Featured" className="w-full rounded-lg" />
+                  <Button variant="outline" size="sm" className="w-full" onClick={handleImageUpload}>
                     Change Image
                   </Button>
                 </div>
@@ -413,8 +423,13 @@ export default function EditArticlePage() {
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                   <Image className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                   <p className="text-sm text-gray-600 mb-2">No featured image</p>
-                  <Button variant="outline" size="sm" onClick={handleImageUpload}>
-                    Upload Image
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleImageUpload}
+                    disabled={uploading}
+                  >
+                    {uploading ? 'Uploading...' : 'Upload Image'}
                   </Button>
                 </div>
               )}

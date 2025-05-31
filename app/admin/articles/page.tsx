@@ -9,45 +9,37 @@ import { Input } from '@/components/ui/input'
 import { ArrowLeft, Plus, Search, Edit, Trash2, Eye } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-
-// Mock data for articles
-const mockArticles = [
-  {
-    id: '1',
-    title: 'The Ultimate Guide to Building Muscle Mass',
-    slug: 'ultimate-guide-building-muscle-mass',
-    category: 'Fitness',
-    status: 'published',
-    views: 2543,
-    publishedAt: '2024-01-15',
-    author: 'John Smith'
-  },
-  {
-    id: '2',
-    title: 'Top 10 Protein-Rich Foods for Men',
-    slug: 'top-10-protein-rich-foods-men',
-    category: 'Nutrition',
-    status: 'published',
-    views: 1876,
-    publishedAt: '2024-01-12',
-    author: 'Mike Johnson'
-  },
-  {
-    id: '3',
-    title: 'Mental Health Tips for Modern Men',
-    slug: 'mental-health-tips-modern-men',
-    category: 'Health',
-    status: 'draft',
-    views: 0,
-    publishedAt: null,
-    author: 'David Wilson'
-  },
-]
+import { getAllArticles, deleteArticle, type Article } from '@/lib/articles-db'
 
 export default function ArticlesPage() {
   const router = useRouter()
-  const [articles, setArticles] = useState(mockArticles)
+  const [articles, setArticles] = useState<Article[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Load articles
+  useEffect(() => {
+    const loadArticles = async () => {
+      console.log('📄 Loading articles...')
+      
+      const { data, error } = await getAllArticles()
+      
+      if (error) {
+        console.error('❌ Failed to load articles:', error)
+        alert(`Failed to load articles: ${error}`)
+        return
+      }
+      
+      if (data) {
+        setArticles(data)
+        console.log('✅ Articles loaded:', data.length)
+      }
+      
+      setLoading(false)
+    }
+
+    loadArticles()
+  }, [])
 
   const filteredArticles = articles.filter(article =>
     article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -67,7 +59,7 @@ export default function ArticlesPage() {
     }
   }
 
-  const handleViewArticle = (article: any) => {
+  const handleViewArticle = (article: Article) => {
     // Open article in new tab
     window.open(`/${article.slug}`, '_blank')
   }
@@ -76,11 +68,38 @@ export default function ArticlesPage() {
     router.push(`/admin/articles/edit/${articleId}`)
   }
 
-  const handleDeleteArticle = (articleId: string, title: string) => {
+  const handleDeleteArticle = async (articleId: string, title: string) => {
     if (window.confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
-      setArticles(prev => prev.filter(article => article.id !== articleId))
-      alert('Article deleted successfully!')
+      console.log('🗑️ Deleting article:', articleId)
+      
+      const { success, error } = await deleteArticle(articleId)
+      
+      if (error) {
+        console.error('❌ Delete failed:', error)
+        alert(`Failed to delete article: ${error}`)
+        return
+      }
+      
+      if (success) {
+        // Remove from local state
+        setArticles(prev => prev.filter(article => article.id !== articleId))
+        console.log('✅ Article deleted successfully')
+        alert('Article deleted successfully!')
+      }
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Loading articles...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -140,17 +159,16 @@ export default function ArticlesPage() {
                   <TableHead>Title</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Views</TableHead>
                   <TableHead>Author</TableHead>
-                  <TableHead>Published</TableHead>
+                  <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredArticles.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No articles found
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      {searchQuery ? 'No articles found matching your search' : 'No articles found. Create your first article!'}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -166,10 +184,9 @@ export default function ArticlesPage() {
                         <Badge variant="outline">{article.category}</Badge>
                       </TableCell>
                       <TableCell>{getStatusBadge(article.status)}</TableCell>
-                      <TableCell>{article.views.toLocaleString()}</TableCell>
                       <TableCell>{article.author}</TableCell>
                       <TableCell>
-                        {article.publishedAt ? new Date(article.publishedAt).toLocaleDateString() : '-'}
+                        {article.created_at ? new Date(article.created_at).toLocaleDateString() : '-'}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -184,7 +201,7 @@ export default function ArticlesPage() {
                           <Button 
                             variant="ghost" 
                             size="sm"
-                            onClick={() => handleEditArticle(article.id)}
+                            onClick={() => handleEditArticle(article.id!)}
                             title="Edit article"
                           >
                             <Edit className="w-4 h-4" />
@@ -193,7 +210,7 @@ export default function ArticlesPage() {
                             variant="ghost" 
                             size="sm" 
                             className="text-destructive hover:text-destructive"
-                            onClick={() => handleDeleteArticle(article.id, article.title)}
+                            onClick={() => handleDeleteArticle(article.id!, article.title)}
                             title="Delete article"
                           >
                             <Trash2 className="w-4 h-4" />
