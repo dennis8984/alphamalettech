@@ -43,8 +43,8 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
   const category = categories.find(c => c.slug === slug);
   if (category) {
     return {
-      title: `${category.name} Articles - Men's Health`,
-      description: `Browse the latest ${category.name.toLowerCase()} articles, tips, and advice from Men's Health.`
+      title: `${category.name} Articles - Men's Hub`,
+      description: `Browse the latest ${category.name.toLowerCase()} articles, tips, and advice from Men's Hub.`
     };
   }
 
@@ -52,7 +52,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
   const article = articles.find(a => a.slug === slug);
   if (article) {
     return {
-      title: `${article.title} - Men's Health`,
+      title: `${article.title} - Men's Hub`,
       description: article.excerpt
     };
   }
@@ -82,7 +82,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold mb-4">{category.name}</h1>
             <p className="text-gray-600 max-w-3xl mx-auto">
-              Explore the latest {category.name.toLowerCase()} articles, tips, and expert advice from Men&apos;s Health.
+              Explore the latest {category.name.toLowerCase()} articles, tips, and expert advice from Men&apos;s Hub.
             </p>
           </div>
 

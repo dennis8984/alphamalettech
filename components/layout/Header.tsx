@@ -37,7 +37,7 @@ const Header = () => {
             className="text-2xl font-bold text-black"
           >
             <span className="bg-red-600 text-white px-2 py-1 mr-1">MEN&apos;S</span>
-            HEALTH
+            HUB
           </Link>
 
           {/* Desktop Navigation */}

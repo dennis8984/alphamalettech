@@ -7,7 +7,7 @@ import Footer from '@/components/layout/Footer';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "Men's Health - Fitness, Health, and Lifestyle",
+  title: "Men's Hub - Fitness, Health, and Lifestyle",
   description: 'Your ultimate guide to fitness, health, nutrition, and lifestyle for men.',
 };
 

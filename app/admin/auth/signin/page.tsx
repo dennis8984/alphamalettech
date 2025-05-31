@@ -46,7 +46,7 @@ export default function SignInPage() {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold">
               <span className="bg-red-600 text-white px-2 py-1 mr-1">MEN'S</span>
-              HEALTH
+              HUB
             </CardTitle>
             <CardDescription>
               Check Your Email
@@ -88,7 +88,7 @@ export default function SignInPage() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">
             <span className="bg-red-600 text-white px-2 py-1 mr-1">MEN'S</span>
-            HEALTH
+            HUB
           </CardTitle>
           <CardDescription>
             Admin Dashboard - Sign in to continue

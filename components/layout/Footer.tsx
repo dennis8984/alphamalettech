@@ -18,11 +18,11 @@ const Footer = () => {
             <Link href="/" className="flex items-center">
               <span className="text-xl font-bold">
                 <span className="bg-red-600 text-white px-2 py-1 mr-1">MEN&apos;S</span>
-                HEALTH
+                HUB
               </span>
             </Link>
             <p className="mt-4 text-gray-400 text-sm">
-              Men&apos;s Health is the brand men live by for fitness, nutrition, health, sex, style, grooming, tech, and more.
+              Men&apos;s Hub is the brand men live by for fitness, nutrition, health, sex, style, grooming, tech, and more.
             </p>
             <div className="flex space-x-4 mt-6">
               <Link href="#" className="text-gray-400 hover:text-white transition-colors">
@@ -122,7 +122,7 @@ const Footer = () => {
 
         <div className="border-t border-gray-800 mt-12 pt-6 text-sm text-gray-400">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <p>&copy; {new Date().getFullYear()} Men&apos;s Health. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Men&apos;s Hub. All rights reserved.</p>
             <div className="mt-4 md:mt-0 space-x-4">
               <Link href="#" className="hover:text-white transition-colors">
                 Privacy Policy

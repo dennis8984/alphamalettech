@@ -74,7 +74,7 @@ export default function AdminDashboard() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 <span className="bg-red-600 text-white px-2 py-1 mr-2">MEN'S</span>
-                HEALTH Admin
+                HUB Admin
               </h1>
               <p className="text-sm text-gray-600">
                 Welcome back, {user.user_metadata?.name || user.email}
