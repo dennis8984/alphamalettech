@@ -14,10 +14,19 @@ const getSupabaseConfig = () => {
   let url = envUrl || 'https://vopntrgtkefstqbzsmot.supabase.co'
   const key = envKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvcG50cmd0a2Vmc3RxYnpzbW90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ1Njg1NzEsImV4cCI6MjA1MDE0NDU3MX0.gfhEDwJyMZmF6K63gPfhKvtJJ3l_K_hNHWQwJ0KRFcU'
   
-  // Auto-fix URL if missing protocol
-  if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
-    console.log('🔧 Auto-fixing URL by adding https://')
-    url = `https://${url}`
+  // Fix common URL issues
+  if (url) {
+    // Remove extra "db." prefix if present
+    if (url.includes('db.vopntrgtkefstqbzsmot.supabase.co')) {
+      console.log('🔧 Fixing URL: removing extra "db." prefix')
+      url = url.replace('db.vopntrgtkefstqbzsmot.supabase.co', 'vopntrgtkefstqbzsmot.supabase.co')
+    }
+    
+    // Auto-fix URL if missing protocol
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      console.log('🔧 Auto-fixing URL by adding https://')
+      url = `https://${url}`
+    }
   }
   
   console.log('📝 Final URL to use:', url)
