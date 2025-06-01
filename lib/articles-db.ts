@@ -1,7 +1,3 @@
-'use client'
-
-import { getCurrentUser } from './supabase-auth'
-
 // Article type definition
 export interface Article {
   id?: string
