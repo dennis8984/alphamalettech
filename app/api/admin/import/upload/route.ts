@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir, readFile, readdir } from 'fs/promises'
-import { join } from 'path'
-import { unlink } from 'fs/promises'
 import JSZip from 'jszip'
 import Papa from 'papaparse'
 import { DOMParser } from '@xmldom/xmldom'
@@ -41,16 +38,8 @@ export async function POST(request: NextRequest) {
 
     console.log('Processing file:', file.name, 'Size:', file.size, 'Type:', file.type)
 
-    const uploadDir = join(process.cwd(), 'uploads')
-    await mkdir(uploadDir, { recursive: true })
-
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const fileHash = createHash('md5').update(buffer).digest('hex')
-    const tempPath = join(uploadDir, `${fileHash}_${file.name}`)
-
-    // Save uploaded file temporarily
-    await writeFile(tempPath, buffer)
 
     let parsedArticles: ParsedArticle[] = []
     let csvHeaders: string[] | null = null
@@ -85,9 +74,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Unsupported file format. Please upload ZIP, CSV, XML, or HTML files.' }, { status: 400 })
       }
 
-      // Clean up temp file
-      await unlink(tempPath).catch(() => {})
-
       console.log(`Processed ${parsedArticles.length} articles`)
 
       return NextResponse.json({
@@ -100,8 +86,6 @@ export async function POST(request: NextRequest) {
       })
 
     } catch (parseError) {
-      // Clean up temp file on error
-      await unlink(tempPath).catch(() => {})
       console.error('Parse error:', parseError)
       throw parseError
     }

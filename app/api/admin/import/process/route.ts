@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createArticle } from '@/lib/articles-db'
 
 interface ImportArticle {
   id: string
@@ -15,128 +15,117 @@ interface ImportArticle {
   trending: boolean
 }
 
+interface ImportResult {
+  articleId: string
+  title: string
+  status: 'success' | 'error'
+  error?: string
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // Initialize Supabase inside the function to avoid build-time errors
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const { articles } = await request.json()
     
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return NextResponse.json(
-        { error: 'Supabase configuration missing' },
-        { status: 500 }
-      )
+    if (!articles || !Array.isArray(articles)) {
+      return NextResponse.json({ error: 'Invalid request data' }, { status: 400 })
     }
+
+    console.log(`Processing ${articles.length} articles for import...`)
     
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-    
-    const { articles }: { articles: ImportArticle[] } = await request.json()
+    const results: ImportResult[] = []
+    let successCount = 0
+    let errorCount = 0
 
-    if (!articles || !Array.isArray(articles) || articles.length === 0) {
-      return NextResponse.json({ error: 'No articles provided' }, { status: 400 })
-    }
-
-    if (articles.length > 1000) {
-      return NextResponse.json({ error: 'Cannot import more than 1000 articles at once' }, { status: 400 })
-    }
-
-    // Process articles in batches of 100 for better performance
-    const batchSize = 100
-    const results = {
-      imported: 0,
-      failed: 0,
-      errors: [] as string[]
-    }
-
-    for (let i = 0; i < articles.length; i += batchSize) {
-      const batch = articles.slice(i, i + batchSize)
-      
+    // Process each article
+    for (const article of articles) {
       try {
-        // Transform articles for Supabase
-        const supabaseArticles = await Promise.all(
-          batch.map(async (article) => ({
-            title: article.title,
-            slug: await ensureUniqueSlug(article.slug, supabase),
-            excerpt: article.excerpt,
-            content: article.content,
-            image_url: article.image,
-            category: article.category,
-            author: article.author,
-            published_at: article.date,
-            featured: article.featured,
-            trending: article.trending,
-            status: 'published',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }))
-        )
-
-        const { data, error } = await supabase
-          .from('articles')
-          .insert(supabaseArticles)
-          .select('id, title')
-
-        if (error) {
-          throw error
+        // Convert the imported article format to match the database format
+        const articleData = {
+          title: article.title,
+          slug: article.slug,
+          content: article.content,
+          excerpt: article.excerpt,
+          category: article.category,
+          status: 'published' as const,
+          featured_image: article.image,
+          tags: extractTags(article.title + ' ' + article.content),
+          author: article.author || 'Imported Author'
         }
 
-        results.imported += batch.length
+        // Create the article in the database
+        const { data, error } = await createArticle(articleData)
         
-        // Update progress
-        const progress = Math.round((results.imported / articles.length) * 100)
-        console.log(`Import progress: ${progress}% (${results.imported}/${articles.length})`)
-
-      } catch (batchError) {
-        console.error(`Batch import error:`, batchError)
-        results.failed += batch.length
-        results.errors.push(`Batch ${Math.floor(i/batchSize) + 1}: ${batchError}`)
+        if (error || !data) {
+          console.error(`Failed to import article "${article.title}":`, error)
+          results.push({
+            articleId: article.id,
+            title: article.title,
+            status: 'error',
+            error: error || 'Failed to create article'
+          })
+          errorCount++
+        } else {
+          console.log(`✅ Successfully imported: "${article.title}"`)
+          results.push({
+            articleId: data.id!,
+            title: article.title,
+            status: 'success'
+          })
+          successCount++
+        }
+      } catch (err) {
+        console.error(`Error processing article "${article.title}":`, err)
+        results.push({
+          articleId: article.id,
+          title: article.title,
+          status: 'error',
+          error: err instanceof Error ? err.message : 'Unknown error'
+        })
+        errorCount++
       }
+      
+      // Add a small delay to avoid overwhelming the database
+      await new Promise(resolve => setTimeout(resolve, 100))
     }
+
+    console.log(`Import complete: ${successCount} successful, ${errorCount} failed`)
 
     return NextResponse.json({
       success: true,
       results: {
         total: articles.length,
-        imported: results.imported,
-        failed: results.failed,
-        errors: results.errors
+        imported: successCount,
+        failed: errorCount,
+        details: results
       }
     })
 
   } catch (error) {
-    console.error('Import process error:', error)
+    console.error('Import processing error:', error)
     return NextResponse.json(
-      { error: 'Failed to process import' },
+      { error: 'Failed to process import', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
 }
 
-async function ensureUniqueSlug(slug: string, supabase: any): Promise<string> {
-  let uniqueSlug = slug
-  let counter = 1
-
-  while (true) {
-    const { data, error } = await supabase
-      .from('articles')
-      .select('id')
-      .eq('slug', uniqueSlug)
-      .single()
-
-    if (error && error.code === 'PGRST116') {
-      // No article found with this slug, it's unique
-      break
+// Helper function to extract tags from content
+function extractTags(text: string): string[] {
+  const commonTags = [
+    'fitness', 'nutrition', 'health', 'muscle building', 'weight loss',
+    'workout', 'exercise', 'diet', 'protein', 'strength training',
+    'cardio', 'mental health', 'wellness', 'lifestyle', 'supplements'
+  ]
+  
+  const textLower = text.toLowerCase()
+  const tags: string[] = []
+  
+  for (const tag of commonTags) {
+    if (textLower.includes(tag)) {
+      tags.push(tag)
     }
-
-    if (error) {
-      // Some other error, break and use the slug as is
-      break
-    }
-
-    // Slug exists, try with counter
-    uniqueSlug = `${slug}-${counter}`
-    counter++
   }
-
-  return uniqueSlug
+  
+  // Limit to 5 tags
+  return tags.slice(0, 5)
 } 
