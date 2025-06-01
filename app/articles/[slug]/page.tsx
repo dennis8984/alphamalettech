@@ -146,35 +146,8 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     .filter(a => a.category === article.category && a.id !== article.id)
     .slice(0, 3);
 
-  // Create full article content with keyword linking enabled
-  const fullArticleContent = `
-    <p class="lead">${article.excerpt}</p>
-    
-    <p>Fuel your morning with these protein-packed recipes that will keep you full until lunch.</p>
-    
-    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula. Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor. Ut in nulla enim.</p>
-    
-    <p>Suspendisse in justo eu magna luctus suscipit. Sed lectus. Integer euismod lacus luctus magna. Quisque cursus, metus vitae pharetra auctor, sem massa mattis sem, at interdum magna augue eget diam.</p>
-    
-    <h2>Key Benefits</h2>
-    <p>Morbi in sem quis dui placerat ornare. Pellentesque odio nisi, euismod in, pharetra a, ultricies in, diam. Sed arcu. Cras consequat.</p>
-    
-    <ul>
-      <li>Increased strength and muscle mass</li>
-      <li>Improved cardiovascular health</li>
-      <li>Better metabolic function</li>
-      <li>Enhanced mental focus and clarity</li>
-    </ul>
-    
-    <p>Praesent dapibus, neque id cursus faucibus, tortor neque egestas auguae, eu vulputate magna eros eu erat. Aliquam erat volutpat. Nam dui mi, tincidunt quis, accumsan porttitor, facilisis luctus, metus.</p>
-    
-    <h2>How to Get Started</h2>
-    <p>Phasellus ultrices nulla quis nibh. Quisque a lectus. Donec consectetuer ligula vulputate sem tristique cursus. Nam nulla quam, gravida non, commodo a, sodales sit amet, nisi.</p>
-    
-    <p>Pellentesque fermentum dolor. Aliquam quam lectus, facilisis auctor, ultrices ut, elementum vulputate, nunc. Sed adipiscing ornare risus. Morbi est est, blandit sit amet, sagittis vel, euismod vel, velit.</p>
-    
-    <p>Pellentesque egestas sem. Suspendisse commodo ullamcorper magna. Ut aliquam sollicitudin leo. Cras iaculis ultricies nulla. Donec quis dui at dolor tempor interdum.</p>
-  `;
+  // Use the actual article content
+  const fullArticleContent = article.content || `<p class="lead">${article.excerpt}</p>`;
 
   return (
     <div className="pt-8">
