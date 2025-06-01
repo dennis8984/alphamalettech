@@ -1,4 +1,4 @@
-import { articles, categories, getArticlesByCategory } from '@/lib/data';
+import { articles, categories, getArticlesByCategory, initializeArticles } from '@/lib/data';
 import { formatDate } from '@/lib/utils';
 import ArticleCard from '@/components/articles/ArticleCard';
 import { AdSlot } from '@/components/ui/ad-slot';
@@ -11,8 +11,12 @@ import Link from 'next/link';
 import Newsletter from '@/components/layout/Newsletter';
 
 // Generate static params for all articles and categories
-const generateStaticParamsFn = () => {
+export async function generateStaticParams() {
   console.log('[generateStaticParams] Generating params...'); // Added for cache busting
+  
+  // Initialize articles to get the latest data
+  await initializeArticles();
+  
   // Generate paths for all articles
   const articlePaths = articles.map((article) => ({
     slug: article.slug,
@@ -27,9 +31,7 @@ const generateStaticParamsFn = () => {
   const allPaths = [...articlePaths, ...categoryPaths];
   console.log(`[generateStaticParams] Generated ${allPaths.length} paths.`); // Added for cache busting
   return allPaths;
-};
-
-export const generateStaticParams = generateStaticParamsFn;
+}
 
 interface ArticlePageProps {
   params: {
@@ -64,8 +66,11 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
   };
 }
 
-export default function ArticlePage({ params }: ArticlePageProps) {
+export default async function ArticlePage({ params }: ArticlePageProps) {
   const { slug } = params;
+  
+  // Initialize articles to get the latest data
+  await initializeArticles();
 
   // Check if this is a category page
   const category = categories.find(c => c.slug === slug);

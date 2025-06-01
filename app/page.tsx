@@ -7,10 +7,14 @@ import { PageTracker } from '@/components/ui/page-tracker';
 import { 
   getFeaturedArticles,
   getTrendingArticles,
-  getArticlesByCategory
+  getArticlesByCategory,
+  initializeArticles
 } from '@/lib/data';
 
-export default function Home() {
+export default async function Home() {
+  // Initialize articles from the database
+  await initializeArticles();
+  
   const featuredArticles = getFeaturedArticles();
   const trendingArticles = getTrendingArticles();
   

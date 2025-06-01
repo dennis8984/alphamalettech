@@ -1,4 +1,5 @@
 import { Article, Category } from '@/types';
+import { getAllArticles } from './articles-db';
 
 export const categories: Category[] = [
   { id: 'fitness', name: 'Fitness', slug: 'fitness' },
@@ -9,183 +10,73 @@ export const categories: Category[] = [
   { id: 'entertainment', name: 'Entertainment', slug: 'entertainment' },
 ];
 
-export const articles: Article[] = [
-  {
-    id: '1',
-    title: 'The 30-Day Workout Plan to Build Total-Body Strength',
-    slug: 'workout-plan-total-body-strength',
-    excerpt:
-      'This four-week program will help you build muscle and increase your overall strength with minimal equipment.',
-    content: '',
-    image: 'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    category: 'fitness',
-    author: 'Mike Johnson',
-    date: '2025-04-01',
-    featured: true,
-    trending: true,
-  },
-  {
-    id: '2',
-    title: '10 High-Protein Breakfast Ideas to Start Your Day Right',
-    slug: 'high-protein-breakfast-ideas',
-    excerpt:
-      'Fuel your morning with these protein-packed recipes that will keep you full until lunch.',
-    content: '',
-    image: 'https://images.pexels.com/photos/1640770/pexels-photo-1640770.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    category: 'nutrition',
-    author: 'Sarah Mitchell',
-    date: '2025-03-28',
-    featured: false,
-    trending: true,
-  },
-  {
-    id: '3',
-    title: 'The Best Running Shoes for Every Type of Runner',
-    slug: 'best-running-shoes',
-    excerpt:
-      'Find the perfect pair of running shoes based on your gait, terrain preference, and training goals.',
-    content: '',
-    image: 'https://images.pexels.com/photos/1472947/pexels-photo-1472947.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    category: 'style',
-    author: 'Tom Rodriguez',
-    date: '2025-03-25',
-    featured: false,
-    trending: true,
-  },
-  {
-    id: '4',
-    title: 'How to Lower Your Blood Pressure Naturally',
-    slug: 'lower-blood-pressure-naturally',
-    excerpt:
-      'These lifestyle changes and dietary habits can help reduce hypertension without medication.',
-    content: '',
-    image: 'https://images.pexels.com/photos/4386467/pexels-photo-4386467.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    category: 'health',
-    author: 'Dr. James Wilson',
-    date: '2025-03-20',
-    featured: true,
-    trending: false,
-  },
-  {
-    id: '5',
-    title: 'The Ultimate Guide to Intermittent Fasting',
-    slug: 'ultimate-guide-intermittent-fasting',
-    excerpt:
-      'Everything you need to know about intermittent fasting methods, benefits, and how to get started.',
-    content: '',
-    image: 'https://images.pexels.com/photos/5589029/pexels-photo-5589029.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    category: 'weight-loss',
-    author: 'Emily Davidson',
-    date: '2025-03-18',
-    featured: true,
-    trending: false,
-  },
-  {
-    id: '6',
-    title: 'The 15 Best Abs Exercises for a Stronger Core',
-    slug: 'best-abs-exercises',
-    excerpt:
-      'Build a stronger, more defined midsection with these effective core strengthening moves.',
-    content: '',
-    image: 'https://images.pexels.com/photos/4498151/pexels-photo-4498151.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    category: 'fitness',
-    author: 'Chris Torres',
-    date: '2025-03-15',
-    featured: false,
-    trending: false,
-  },
-  {
-    id: '7',
-    title: 'How Much Protein Do You Really Need to Build Muscle?',
-    slug: 'protein-needs-muscle-building',
-    excerpt:
-      'The science-backed answer to one of the most common questions in fitness and nutrition.',
-    content: '',
-    image: 'https://images.pexels.com/photos/1547248/pexels-photo-1547248.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    category: 'nutrition',
-    author: 'Mark Stevens',
-    date: '2025-03-12',
-    featured: false,
-    trending: false,
-  },
-  {
-    id: '8',
-    title: '5 Warning Signs Your Heart Is in Trouble',
-    slug: 'heart-health-warning-signs',
-    excerpt:
-      'Learn to recognize these early symptoms that could indicate heart problems requiring medical attention.',
-    content: '',
-    image: 'https://images.pexels.com/photos/4047076/pexels-photo-4047076.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    category: 'health',
-    author: 'Dr. Lisa Wang',
-    date: '2025-03-10',
-    featured: false,
-    trending: false,
-  },
-  {
-    id: '9',
-    title: 'The 2025 Style Guide: What to Wear This Season',
-    slug: '2025-mens-style-guide',
-    excerpt:
-      'Stay ahead of the trends with our comprehensive breakdown of men\'s fashion for 2025.',
-    content: '',
-    image: 'https://images.pexels.com/photos/1300550/pexels-photo-1300550.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    category: 'style',
-    author: 'Alex Mercer',
-    date: '2025-03-08',
-    featured: false,
-    trending: false,
-  },
-  {
-    id: '10',
-    title: 'How to Drop 5 Pounds in 2 Weeks, According to Experts',
-    slug: 'drop-5-pounds-2-weeks',
-    excerpt:
-      'Safe, effective strategies for quick weight loss that won\'t compromise your health.',
-    content: '',
-    image: 'https://images.pexels.com/photos/4098228/pexels-photo-4098228.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    category: 'weight-loss',
-    author: 'Jennifer Adams',
-    date: '2025-03-05',
-    featured: false,
-    trending: false,
-  },
-  {
-    id: '11',
-    title: 'The Top 10 Movies and Shows to Stream This Month',
-    slug: 'top-streaming-entertainment',
-    excerpt:
-      'Don\'t miss these must-watch new releases and classics coming to streaming platforms.',
-    content: '',
-    image: 'https://images.pexels.com/photos/7991579/pexels-photo-7991579.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    category: 'entertainment',
-    author: 'Ryan Cooper',
-    date: '2025-03-03',
-    featured: false,
-    trending: false,
-  },
-  {
-    id: '12',
-    title: 'The 5 Worst Foods for Your Heart, According to Cardiologists',
-    slug: 'worst-foods-heart-health',
-    excerpt:
-      'These common foods could be damaging your cardiovascular health without you realizing it.',
-    content: '',
-    image: 'https://images.pexels.com/photos/5876328/pexels-photo-5876328.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    category: 'health',
-    author: 'Dr. Michael Chen',
-    date: '2025-03-01',
-    featured: false,
-    trending: false,
-  },
-];
+// Cache for articles to avoid multiple fetches
+let articlesCache: Article[] | null = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 60000; // 1 minute cache
+
+// Helper function to get all articles with caching
+const getArticles = async (): Promise<Article[]> => {
+  const now = Date.now();
+  
+  // Return cached data if it's still fresh
+  if (articlesCache && (now - lastFetchTime) < CACHE_DURATION) {
+    return articlesCache;
+  }
+  
+  // Fetch fresh data
+  const { data, error } = await getAllArticles();
+  
+  if (error || !data) {
+    console.error('Failed to fetch articles:', error);
+    // Return empty array or cached data if available
+    return articlesCache || [];
+  }
+  
+  // Transform the data to match the expected format
+  const transformedArticles = data
+    .filter(article => article.status === 'published')
+    .map(article => ({
+      id: article.id || '',
+      title: article.title,
+      slug: article.slug,
+      excerpt: article.excerpt,
+      content: article.content || '',
+      image: article.featured_image || 'https://images.pexels.com/photos/1547248/pexels-photo-1547248.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+      category: article.category,
+      author: article.author,
+      date: article.published_at || article.created_at || new Date().toISOString(),
+      featured: false, // You can add logic to determine featured articles
+      trending: false  // You can add logic to determine trending articles
+    }));
+  
+  // Update cache
+  articlesCache = transformedArticles;
+  lastFetchTime = now;
+  
+  return transformedArticles;
+};
+
+// For server-side rendering, we need synchronous versions that use the cached data
+// These will be called after the initial async load
+export const articles: Article[] = [];
+
+// Function to initialize articles (call this in page components)
+export const initializeArticles = async () => {
+  const fetchedArticles = await getArticles();
+  articles.length = 0;
+  articles.push(...fetchedArticles);
+  return fetchedArticles;
+};
 
 export const getFeaturedArticles = (): Article[] => {
-  return articles.filter((article) => article.featured);
+  // For now, return the first 3 articles as featured
+  return articles.slice(0, 3);
 };
 
 export const getTrendingArticles = (): Article[] => {
-  return articles.filter((article) => article.trending);
+  // For now, return articles 3-8 as trending
+  return articles.slice(3, 8);
 };
 
 export const getArticlesByCategory = (category: string): Article[] => {
