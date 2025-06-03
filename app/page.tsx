@@ -2,6 +2,7 @@ import HeroArticle from '@/components/articles/HeroArticle';
 import TrendingArticles from '@/components/articles/TrendingArticles';
 import CategorySection from '@/components/articles/CategorySection';
 import Newsletter from '@/components/layout/Newsletter';
+import SidebarNewsletter from '@/components/ui/sidebar-newsletter';
 import { AdSlot } from '@/components/ui/ad-slot';
 import { PageTracker } from '@/components/ui/page-tracker';
 import { 
@@ -94,7 +95,7 @@ export default async function Home() {
                 <p className="text-sm text-gray-600 mb-4">
                   Get the latest fitness, nutrition, and health tips delivered to your inbox.
                 </p>
-                <Newsletter />
+                <SidebarNewsletter />
               </div>
 
               {/* More Sidebar Ads */}

@@ -9,6 +9,7 @@ import { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import Newsletter from '@/components/layout/Newsletter';
+import SidebarNewsletter from '@/components/ui/sidebar-newsletter';
 
 // Generate static params for all articles and categories
 export async function generateStaticParams() {
@@ -268,7 +269,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                   <p className="text-sm text-gray-600 mb-4">
                     Join our newsletter for exclusive tips and advice.
                   </p>
-                  <Newsletter />
+                  <SidebarNewsletter />
                 </div>
 
                 {/* More Sidebar Ads */}
