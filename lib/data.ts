@@ -13,7 +13,14 @@ export const categories: Category[] = [
 // Cache for articles to avoid multiple fetches
 let articlesCache: Article[] | null = null;
 let lastFetchTime = 0;
-const CACHE_DURATION = 60000; // 1 minute cache
+const CACHE_DURATION = 10000; // Reduced to 10 seconds for testing
+
+// Function to clear cache (useful after imports)
+export const clearArticlesCache = () => {
+  articlesCache = null;
+  lastFetchTime = 0;
+  console.log('🗑️ Articles cache cleared');
+};
 
 // Helper function to get all articles with caching
 const getArticles = async (): Promise<Article[]> => {
@@ -21,17 +28,26 @@ const getArticles = async (): Promise<Article[]> => {
   
   // Return cached data if it's still fresh
   if (articlesCache && (now - lastFetchTime) < CACHE_DURATION) {
+    console.log('📦 Using cached articles:', articlesCache.length);
     return articlesCache;
   }
+  
+  console.log('🔄 Fetching fresh articles from database...');
   
   // Fetch fresh data
   const { data, error } = await getAllArticles();
   
   if (error || !data) {
-    console.error('Failed to fetch articles:', error);
+    console.error('❌ Failed to fetch articles:', error);
     // Return empty array or cached data if available
     return articlesCache || [];
   }
+  
+  console.log('📄 Raw articles from database:', data.length);
+  console.log('📊 Articles by status:', data.reduce((acc, article) => {
+    acc[article.status] = (acc[article.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>));
   
   // Transform the data to match the expected format
   const transformedArticles = data
@@ -49,6 +65,12 @@ const getArticles = async (): Promise<Article[]> => {
       featured: false, // You can add logic to determine featured articles
       trending: false  // You can add logic to determine trending articles
     }));
+  
+  console.log('✅ Published articles after filtering:', transformedArticles.length);
+  console.log('📋 Articles by category:', transformedArticles.reduce((acc, article) => {
+    acc[article.category] = (acc[article.category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>));
   
   // Update cache
   articlesCache = transformedArticles;

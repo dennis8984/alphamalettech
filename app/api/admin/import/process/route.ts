@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createArticle } from '@/lib/articles-db'
+import { clearArticlesCache } from '@/lib/data'
 
 interface ImportArticle {
   id: string
@@ -89,6 +90,12 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`Import complete: ${successCount} successful, ${errorCount} failed`)
+
+    // Clear the articles cache so new articles show up immediately on public pages
+    if (successCount > 0) {
+      clearArticlesCache()
+      console.log('🔄 Cache cleared - new articles will show on public site immediately')
+    }
 
     return NextResponse.json({
       success: true,
