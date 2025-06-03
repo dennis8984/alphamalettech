@@ -1,3 +1,4 @@
+
 interface ContentEnhancementOptions {
   rewriteForOriginality?: boolean
   improveReadability?: boolean
@@ -12,6 +13,9 @@ interface EnhancedContent {
   readabilityScore: number
   wordCount: number
   warnings: string[]
+}
+
+  }
 }
 
 export class ContentEnhancer {
