@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createArticle } from '@/lib/articles-db'
 import { clearArticlesCache } from '@/lib/data'
+import { ContentEnhancer } from '@/lib/content-enhancer'
 
 interface ImportArticle {
   id: string
@@ -21,6 +22,9 @@ interface ImportResult {
   title: string
   status: 'success' | 'error'
   error?: string
+  wordCount?: number
+  readabilityScore?: number
+  warnings?: string[]
 }
 
 export async function POST(request: NextRequest) {
@@ -31,7 +35,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request data' }, { status: 400 })
     }
 
-    console.log(`Processing ${articles.length} articles for import...`)
+    console.log(`Processing ${articles.length} articles for import with ContentEnhancer...`)
     
     const results: ImportResult[] = []
     let successCount = 0
@@ -40,16 +44,36 @@ export async function POST(request: NextRequest) {
     // Process each article
     for (const article of articles) {
       try {
+        console.log(`🔄 Processing article: "${article.title}"`)
+        
+        // Enhance content using ContentEnhancer
+        console.log('   ↳ Enhancing content for originality and readability...')
+        const enhancedContent = await ContentEnhancer.enhanceContent(
+          article.title,
+          article.content,
+          {
+            rewriteForOriginality: true,
+            improveReadability: true,
+            addHeadings: true,
+            optimizeForSEO: true
+          }
+        )
+        
+        console.log(`   ↳ Enhanced: ${enhancedContent.wordCount} words, ${enhancedContent.readabilityScore}% readability`)
+        if (enhancedContent.warnings.length > 0) {
+          console.log(`   ↳ Warnings: ${enhancedContent.warnings.join(', ')}`)
+        }
+
         // Convert the imported article format to match the database format
         const articleData = {
-          title: article.title,
+          title: enhancedContent.title,
           slug: article.slug,
-          content: article.content,
-          excerpt: article.excerpt,
+          content: enhancedContent.content,
+          excerpt: enhancedContent.excerpt,
           category: article.category,
           status: 'published' as const,
           featured_image: article.image,
-          tags: extractTags(article.title + ' ' + article.content),
+          tags: extractTags(enhancedContent.title + ' ' + enhancedContent.content),
           author: article.author || 'Imported Author'
         }
 
@@ -66,11 +90,14 @@ export async function POST(request: NextRequest) {
           })
           errorCount++
         } else {
-          console.log(`✅ Successfully imported: "${article.title}"`)
+          console.log(`✅ Successfully imported: "${enhancedContent.title}"`)
           results.push({
             articleId: data.id!,
-            title: article.title,
-            status: 'success'
+            title: enhancedContent.title,
+            status: 'success',
+            wordCount: enhancedContent.wordCount,
+            readabilityScore: enhancedContent.readabilityScore,
+            warnings: enhancedContent.warnings
           })
           successCount++
         }
