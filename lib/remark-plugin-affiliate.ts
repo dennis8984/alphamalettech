@@ -53,8 +53,8 @@ export const remarkPluginAffiliate: Plugin<[AffiliatePluginOptions], Root> = (op
       .sort((a, b) => b.weight - a.weight)
 
     // Visit all text nodes in the AST
-    visit(tree, 'text', (node: Text, index: number, parent: any) => {
-      if (!parent || !node.value) return
+    visit(tree, 'text', (node: Text, index: number | undefined, parent: any) => {
+      if (!parent || !node.value || index === undefined) return
 
       // Skip if we're inside an existing link
       if (excludeExistingLinks && isInsideLink(parent)) {
