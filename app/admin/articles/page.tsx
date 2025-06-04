@@ -310,8 +310,8 @@ export default function ArticlesPage() {
                     <TableRow key={article.id}>
                       <TableCell>
                         <Checkbox
-                          checked={selectedArticles.has(article.id)}
-                          onCheckedChange={() => handleSelectArticle(article.id)}
+                          checked={article.id ? selectedArticles.has(article.id) : false}
+                          onCheckedChange={() => article.id && handleSelectArticle(article.id)}
                           aria-label={`Select ${article.title}`}
                         />
                       </TableCell>
