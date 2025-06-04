@@ -266,11 +266,15 @@ async function main() {
     ]
 
     for (const ad of ads) {
-      await prisma.ad.upsert({
-        where: { name: ad.name },
-        update: {},
-        create: ad
+      const existingAd = await prisma.ad.findFirst({
+        where: { name: ad.name }
       })
+      
+      if (!existingAd) {
+        await prisma.ad.create({
+          data: ad
+        })
+      }
     }
     console.log('✅ Created demo ads')
 
