@@ -131,8 +131,8 @@ export const remarkPluginAffiliate: Plugin<[AffiliatePluginOptions], Root> = (op
     })
 
     // Second pass: convert link markers to actual HTML elements
-    visit(tree, 'text', (node: Text, index: number, parent: any) => {
-      if (!node.value || !(tree as any).data?.affiliateLinks) return
+    visit(tree, 'text', (node: Text, index: number | undefined, parent: any) => {
+      if (!node.value || !(tree as any).data?.affiliateLinks || index === undefined) return
 
       const linkMarkers = Array.from(node.value.matchAll(/__AFFILIATE_LINK_([^_]+)_(\d+)__/g)) as RegExpMatchArray[]
       
