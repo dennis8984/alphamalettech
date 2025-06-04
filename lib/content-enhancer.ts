@@ -1043,7 +1043,7 @@ ${selectedActions.map(action => `    <li class="flex items-start"><span class="t
     if (sectionSynonyms.includes(primaryTopic)) return 0.8;
     
     // Check category relevance
-    const categoryTopics = {
+    const categoryTopics: Record<string, string[]> = {
       'health': ['health', 'medical', 'wellness', 'nutrition', 'diet'],
       'fitness': ['fitness', 'exercise', 'workout', 'training', 'muscle'],
       'nutrition': ['nutrition', 'diet', 'food', 'protein', 'eating'],
@@ -1130,7 +1130,7 @@ ${selectedActions.map(action => `    <li class="flex items-start"><span class="t
     for (const article of articles) {
       const articleWords = article.title.toLowerCase().split(' ');
       const matchingWords = titleWords.filter(word => 
-        articleWords.some(articleWord => articleWord.includes(word) || word.includes(articleWord))
+        articleWords.some((articleWord: string) => articleWord.includes(word) || word.includes(articleWord))
       );
       
       let score = matchingWords.length / titleWords.length;
