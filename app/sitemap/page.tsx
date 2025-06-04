@@ -21,6 +21,16 @@ const collections = [
   { name: 'Relationship Advice', slug: 'relationship-advice', description: 'Dating, relationships, and social skills' }
 ]
 
+// Category descriptions mapping
+const categoryDescriptions: Record<string, string> = {
+  'fitness': 'Workouts, training programs, and exercise routines for all fitness levels',
+  'nutrition': 'Healthy eating, meal plans, and nutritional guidance for optimal health',
+  'health': 'Health tips, wellness advice, and medical insights for better living',
+  'style': 'Fashion trends, grooming tips, and style advice for the modern man',
+  'weight-loss': 'Effective weight loss strategies, diet tips, and fat burning techniques',
+  'entertainment': 'Movies, TV shows, gaming, and entertainment news and reviews'
+}
+
 export default async function SitemapPage() {
   const { data: articles } = await getAllArticles()
   const recentArticles = articles?.slice(0, 20) || []
@@ -64,7 +74,7 @@ export default async function SitemapPage() {
                   <h3 className="font-semibold text-lg text-gray-900 capitalize">
                     {category.name}
                   </h3>
-                  <p className="text-gray-600 text-sm">{category.description}</p>
+                  <p className="text-gray-600 text-sm">{categoryDescriptions[category.id] || `Explore ${category.name.toLowerCase()} content and articles`}</p>
                 </Link>
               ))}
               
