@@ -35,7 +35,7 @@ interface ImageContext {
 }
 
 export class ImageService {
-  private static readonly UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY || ''
+  private static readonly UNSPLASH_ACCESS_KEY = process?.env?.UNSPLASH_ACCESS_KEY || ''
   private static readonly BASE_URL = 'https://api.unsplash.com'
   
   /**

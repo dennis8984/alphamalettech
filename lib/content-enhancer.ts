@@ -197,79 +197,89 @@ export class ContentEnhancer {
   }
   
   private static generateMensHealthStructure(sentences: string[], primaryKeyword: string): string {
-    // Generate hook lede (2 sentences, first may be ALL-CAPS)
-    const hookLede = this.generateHookLede(sentences)
+    // Apply the proven Men's Health editorial structure
+    console.log('🎯 Applying impactful Men\'s Health editorial structure...')
     
-    // Generate Quick Takeaways box
-    const quickTakeaways = this.generateQuickTakeaways(primaryKeyword)
+    // Generate LSI synonyms for the primary keyword
+    const lsiSynonyms = this.generateLSISynonyms(primaryKeyword)
     
-    // Process body content with Men's Health structure
-    const bodyContent = this.generateMensHealthBody(sentences, primaryKeyword)
+    // Create the hook lede (2 sentences, first may be ALL-CAPS)
+    const hookLede = this.createImpactfulLede(sentences)
+    
+    // Generate Quick Takeaways box (3-5 bullet points)
+    const quickTakeaways = this.createQuickTakeawaysBox(primaryKeyword)
+    
+    // Create body sections with H2s every 150-250 words
+    const bodySections = this.createMensHealthBodySections(sentences, primaryKeyword, lsiSynonyms)
     
     return `${hookLede}
 
 ${quickTakeaways}
 
-${bodyContent}`
+${bodySections}`
   }
   
-  private static generateHookLede(sentences: string[]): string {
-    const capsOptions = [
+  private static createImpactfulLede(sentences: string[]): string {
+    // ALL-CAPS attention grabbers for first sentence
+    const allCapsHooks = [
       "YOUR FITNESS GAME IS ABOUT TO CHANGE.",
-      "THIS CHANGES EVERYTHING.",
-      "YOU'VE BEEN DOING IT WRONG.",
-      "THE GAME HAS CHANGED.",
-      "THIS IS A GAME-CHANGER.",
-      "EVERYTHING YOU KNOW IS WRONG.",
-      "THE SECRET IS OUT."
+      "THIS CHANGES EVERYTHING YOU KNOW ABOUT HEALTH.",
+      "YOU'VE BEEN DOING IT WRONG—HERE'S WHY.",
+      "THE GAME HAS CHANGED, AND SO SHOULD YOU.",
+      "THIS ONE DISCOVERY WILL SHOCK YOU.",
+      "EVERYTHING YOU BELIEVE IS WRONG.",
+      "THE SECRET THE PROS DON'T WANT YOU TO KNOW."
     ]
     
-    const firstSentence = Math.random() > 0.6 ? 
-      capsOptions[Math.floor(Math.random() * capsOptions.length)] : 
-      this.enhanceSentenceForSecondPerson(sentences[0] || "Your approach to health is about to transform.")
+    // Use ALL-CAPS hook 60% of the time, regular sentence 40%
+    const firstSentence = Math.random() > 0.4 ? 
+      allCapsHooks[Math.floor(Math.random() * allCapsHooks.length)] : 
+      this.enhanceSentenceForImpact(sentences[0] || "Your approach to health is about to transform completely.")
     
-    const secondSentence = this.enhanceSentenceForSecondPerson(
-      sentences[1] || "Here's everything you need to know to get results that actually last."
+    const secondSentence = this.enhanceSentenceForImpact(
+      sentences[1] || "Here's everything you need to know to get results that actually last and change your life."
     )
     
-    return `<p class="lead text-xl text-gray-700 mb-8 leading-relaxed">${firstSentence} ${secondSentence}</p>`
+    return `<p class="lead text-xl text-gray-700 mb-8 leading-relaxed font-medium">${firstSentence} ${secondSentence}</p>`
   }
   
-  private static generateQuickTakeaways(primaryKeyword: string): string {
+  private static createQuickTakeawaysBox(primaryKeyword: string): string {
     const takeaways = [
-      `${primaryKeyword} can transform your health in ways you never imagined`,
-      `The right approach makes all the difference between success and failure`,
-      `Expert-backed strategies deliver results faster than DIY methods`,
-      `Small changes compound into massive improvements over time`,
-      `Consistency beats perfection every single time`,
-      `Most people quit too early—the real results come after week 3`,
-      `Science shows that ${primaryKeyword} works best with a systematic approach`
+      `${primaryKeyword} can transform your health in ways science is just beginning to understand`,
+      `The right approach makes the difference between mediocre results and life-changing transformation`,
+      `Expert-backed strategies deliver measurable results faster than trial-and-error methods`,
+      `Small, consistent changes compound into massive improvements over just 30 days`,
+      `Most people quit right before the breakthrough—consistency is your secret weapon`,
+      `The latest research reveals why ${primaryKeyword} works better than anyone expected`,
+      `Professional athletes use these exact techniques to maximize their ${primaryKeyword} results`
     ]
     
+    // Select 3-5 takeaways randomly
     const selectedTakeaways = takeaways
       .sort(() => Math.random() - 0.5)
-      .slice(0, Math.random() > 0.5 ? 4 : 5)
+      .slice(0, Math.floor(Math.random() * 3) + 3) // 3-5 items
     
-    return `<div class="bg-red-50 border-l-4 border-red-600 p-6 mb-8">
-  <h3 class="text-lg font-bold text-red-900 mb-3">Quick Takeaways</h3>
-  <ul class="space-y-2 text-red-800">
-${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span class="text-red-600 mr-2">•</span>${takeaway}</li>`).join('\n')}
+    return `<div class="bg-red-50 border-l-4 border-red-600 p-6 mb-8 rounded-r-lg">
+  <h3 class="text-lg font-bold text-red-900 mb-4">Quick Takeaways</h3>
+  <ul class="space-y-3 text-red-800">
+${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span class="text-red-600 font-bold mr-3">•</span><span class="leading-relaxed">${takeaway}</span></li>`).join('\n')}
   </ul>
 </div>`
   }
   
-  private static generateMensHealthBody(sentences: string[], primaryKeyword: string): string {
+  private static createMensHealthBodySections(sentences: string[], primaryKeyword: string, lsiSynonyms: string[]): string {
     const sections: string[] = []
+    const targetWordsPerSection = 200 // 150-250 word range
+    
+    // Generate strategic H2 headings that include primary keyword and LSI synonyms
+    const h2Headings = this.generateSEOOptimizedH2s(primaryKeyword, lsiSynonyms)
+    
     let currentSection: string[] = []
     let wordCount = 0
-    const targetWordsPerSection = 200
-    
-    // Generate strategic H2 headings
-    const h2Headings = this.generateStrategicH2s(primaryKeyword)
     let headingIndex = 0
     
     sentences.forEach((sentence, index) => {
-      const enhancedSentence = this.enhanceSentenceForSecondPerson(sentence)
+      const enhancedSentence = this.enhanceSentenceForImpact(sentence)
       currentSection.push(enhancedSentence)
       wordCount += enhancedSentence.split(' ').length
       
@@ -277,8 +287,8 @@ ${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span clas
       if (wordCount >= targetWordsPerSection || index === sentences.length - 1) {
         if (currentSection.length > 0) {
           const heading = h2Headings[headingIndex % h2Headings.length]
-          const sectionContent = this.formatSectionContent(currentSection, headingIndex, primaryKeyword)
-          sections.push(`<h2 class="text-2xl font-bold text-gray-900 mt-12 mb-6">${heading}</h2>\n\n${sectionContent}`)
+          const sectionContent = this.formatMensHealthSection(currentSection, headingIndex, primaryKeyword)
+          sections.push(`<h2 class="text-2xl font-bold text-gray-900 mt-12 mb-6 leading-tight">${heading}</h2>\n\n${sectionContent}`)
           headingIndex++
         }
         currentSection = []
@@ -289,53 +299,57 @@ ${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span clas
     return sections.join('\n\n')
   }
   
-  private static generateStrategicH2s(primaryKeyword: string): string[] {
+  private static generateSEOOptimizedH2s(primaryKeyword: string, lsiSynonyms: string[]): string[] {
     return [
-      `Why ${primaryKeyword} Works Better Than You Think`,
-      `The Science Behind ${primaryKeyword} Success`,
-      `Expert-Approved ${primaryKeyword} Strategies`,
-      `Common ${primaryKeyword} Mistakes to Avoid`,
-      `Advanced ${primaryKeyword} Techniques That Work`,
-      `How to Maximize Your ${primaryKeyword} Results`,
-      `The Future of ${primaryKeyword} Training`,
-      `Building Long-Term ${primaryKeyword} Success`
+      `Why ${primaryKeyword} Works Better Than You Think`, // Primary keyword
+      `The Science Behind ${lsiSynonyms[0] || primaryKeyword} Success`, // LSI synonym
+      `Expert-Approved ${primaryKeyword} Strategies That Actually Work`,
+      `Common ${primaryKeyword} Mistakes That Are Sabotaging Your Results`,
+      `Advanced ${lsiSynonyms[1] || primaryKeyword} Techniques for Maximum Impact`,
+      `How to Maximize Your ${primaryKeyword} Results in Record Time`,
+      `The Future of ${lsiSynonyms[2] || primaryKeyword} Research and Innovation`,
+      `Building Long-Term ${primaryKeyword} Success That Lasts`
     ]
   }
   
-  private static formatSectionContent(sentences: string[], sectionIndex: number, primaryKeyword: string): string {
-    // Break into short paragraphs (1-3 sentences)
-    const paragraphs = this.createShortParagraphs(sentences)
+  private static formatMensHealthSection(sentences: string[], sectionIndex: number, primaryKeyword: string): string {
+    // Break into short paragraphs (1-3 sentences each)
+    const paragraphs = this.createImpactfulParagraphs(sentences)
     let content = paragraphs.map(para => `<p class="mb-6 text-gray-700 leading-relaxed">${para}</p>`).join('\n\n')
     
-    // Add special content elements based on section
+    // Add strategic content elements based on section position
     if (sectionIndex === 1) {
-      // Add expert quote in second section
-      content += `\n\n${this.generateExpertQuote(primaryKeyword)}`
+      // Second section: Add expert quote in blockquote format
+      content += `\n\n${this.generateExpertBlockquote(primaryKeyword)}`
     } else if (sectionIndex === 2) {
-      // Add action list in third section
-      content += `\n\n${this.generateActionList(primaryKeyword)}`
+      // Third section: Add numbered or bulleted actionable list
+      content += `\n\n${this.generateActionableList(primaryKeyword)}`
     } else if (sectionIndex === 3) {
-      // Add CTA call-out
-      content += `\n\n${this.generateCTACallout()}`
+      // Fourth section: Add CTA call-out
+      content += `\n\n${this.generateImpactfulCTACallout()}`
     }
     
-    // Add image placeholder occasionally
-    if (Math.random() > 0.7) {
-      content += `\n\n${this.generateImagePlaceholder(primaryKeyword)}`
+    // Add image placeholder strategically (not every section)
+    if (Math.random() > 0.6) {
+      content += `\n\n${this.generateContextualImagePlaceholder(primaryKeyword, sectionIndex)}`
     }
     
     return content
   }
   
-  private static createShortParagraphs(sentences: string[]): string[] {
+  private static createImpactfulParagraphs(sentences: string[]): string[] {
     const paragraphs: string[] = []
     let currentParagraph: string[] = []
     
     sentences.forEach((sentence, index) => {
       currentParagraph.push(sentence)
       
-      // Create paragraph every 1-3 sentences
-      if (currentParagraph.length >= Math.floor(Math.random() * 3) + 1 || index === sentences.length - 1) {
+      // Create paragraph every 1-3 sentences for better readability
+      const shouldEndParagraph = 
+        currentParagraph.length >= Math.floor(Math.random() * 3) + 1 || 
+        index === sentences.length - 1
+      
+      if (shouldEndParagraph) {
         paragraphs.push(currentParagraph.join(' '))
         currentParagraph = []
       }
@@ -344,106 +358,166 @@ ${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span clas
     return paragraphs
   }
   
-  private static generateExpertQuote(primaryKeyword: string): string {
+  private static generateExpertBlockquote(primaryKeyword: string): string {
     const experts = [
-      { name: "Dr. Sarah Johnson", credential: "Exercise Physiologist" },
-      { name: "Michael Chen", credential: "Certified Strength Coach" },
-      { name: "Dr. Amanda Rodriguez", credential: "Sports Nutritionist" },
-      { name: "James Thompson", credential: "Performance Specialist" },
-      { name: "Dr. Kevin Martinez", credential: "Sports Medicine Physician" }
+      { name: "Dr. Sarah Johnson", credential: "Exercise Physiologist, Harvard Medical School" },
+      { name: "Michael Chen", credential: "Certified Strength and Conditioning Specialist" },
+      { name: "Dr. Amanda Rodriguez", credential: "Sports Nutritionist, Stanford University" },
+      { name: "James Thompson", credential: "Performance Specialist, Olympic Training Center" },
+      { name: "Dr. Kevin Martinez", credential: "Sports Medicine Physician, Mayo Clinic" }
     ]
     
     const expert = experts[Math.floor(Math.random() * experts.length)]
     
-    const quotes = [
-      `The key to ${primaryKeyword} success is consistency over intensity. Most people try to do too much too fast.`,
-      `What we see in the research is that ${primaryKeyword} works best when it's part of a comprehensive approach.`,
-      `The biggest mistake I see is people neglecting the fundamentals of ${primaryKeyword} training.`,
-      `Every client I work with sees better results when they focus on quality over quantity with ${primaryKeyword}.`,
-      `The science is clear: ${primaryKeyword} delivers results when you follow evidence-based protocols.`
+    const impactfulQuotes = [
+      `The key to ${primaryKeyword} success isn't just consistency—it's progressive overload combined with intelligent recovery protocols.`,
+      `What separates elite performers from weekend warriors is their systematic approach to ${primaryKeyword} optimization.`,
+      `The biggest mistake I see is people neglecting the neurological adaptations that make ${primaryKeyword} training truly effective.`,
+      `Every high-performing client I work with understands that ${primaryKeyword} is a skill that requires deliberate practice, not just effort.`,
+      `The latest research confirms what we've suspected: ${primaryKeyword} affects your entire physiological system in ways we're still discovering.`
     ]
     
-    const quote = quotes[Math.floor(Math.random() * quotes.length)]
+    const quote = impactfulQuotes[Math.floor(Math.random() * impactfulQuotes.length)]
     
-    return `<blockquote class="border-l-4 border-red-600 pl-6 my-8 bg-gray-50 py-4">
-  <p class="text-lg italic text-gray-700 mb-2">"${quote}"</p>
-  <footer class="text-gray-600">— <strong>${expert.name}, ${expert.credential}</strong></footer>
+    return `<blockquote class="border-l-4 border-red-600 pl-6 my-8 bg-gray-50 py-6 rounded-r-lg">
+  <p class="text-lg italic text-gray-700 mb-3 leading-relaxed">"${quote}"</p>
+  <footer class="text-gray-600 font-medium">— <strong>${expert.name}</strong>, ${expert.credential}</footer>
 </blockquote>`
   }
   
-  private static generateActionList(primaryKeyword: string): string {
-    const actions = [
-      `Start with proper form over heavy weight`,
-      `Track your progress consistently every week`,
-      `Focus on compound movements first`,
-      `Allow adequate recovery time between sessions`,
-      `Gradually increase intensity over time`,
-      `Stay consistent with your routine for at least 8 weeks`,
-      `Listen to your body and adjust accordingly`
+  private static generateActionableList(primaryKeyword: string): string {
+    const actionableSteps = [
+      `Start with proper form assessment—technique trumps intensity every single time`,
+      `Track your progress using objective metrics, not just how you feel`,
+      `Focus on compound movements that deliver maximum return on investment`,
+      `Allow adequate recovery time—your gains happen during rest, not during work`,
+      `Gradually increase intensity using the 10% rule to avoid plateaus`,
+      `Stay consistent for a minimum of 8-12 weeks to see meaningful adaptations`,
+      `Listen to your body's feedback and adjust your approach accordingly`,
+      `Work with qualified professionals when plateau-breaking is necessary`
     ]
     
-    const selectedActions = actions.slice(0, Math.floor(Math.random() * 3) + 4)
+    const selectedActions = actionableSteps
+      .sort(() => Math.random() - 0.5)
+      .slice(0, Math.floor(Math.random() * 3) + 5) // 5-7 items
     
-    return `<div class="bg-gray-100 p-6 rounded-lg my-8">
+    const listType = Math.random() > 0.5 ? 'numbered' : 'bulleted'
+    
+    if (listType === 'numbered') {
+      return `<div class="bg-gray-100 p-6 rounded-lg my-8">
   <h3 class="text-lg font-bold text-gray-900 mb-4">${primaryKeyword} Action Steps:</h3>
-  <ol class="space-y-2 text-gray-700">
-${selectedActions.map((action, index) => `    <li class="flex items-start"><span class="font-bold text-red-600 mr-2">${index + 1}.</span>${action}</li>`).join('\n')}
+  <ol class="space-y-3 text-gray-700">
+${selectedActions.map((action, index) => `    <li class="flex items-start"><span class="font-bold text-red-600 mr-3 text-lg">${index + 1}.</span><span class="leading-relaxed">${action}</span></li>`).join('\n')}
   </ol>
 </div>`
+    } else {
+      return `<div class="bg-blue-50 p-6 rounded-lg my-8">
+  <h3 class="text-lg font-bold text-blue-900 mb-4">Essential ${primaryKeyword} Principles:</h3>
+  <ul class="space-y-3 text-blue-800">
+${selectedActions.map(action => `    <li class="flex items-start"><span class="text-blue-600 font-bold mr-3">•</span><span class="leading-relaxed">${action}</span></li>`).join('\n')}
+  </ul>
+</div>`
+    }
   }
   
-  private static generateCTACallout(): string {
+  private static generateImpactfulCTACallout(): string {
     const callouts = [
       {
         title: "Quick Tip",
-        content: "Start small and build momentum. Consistency beats perfection every time."
+        content: "The best time to start is now—small actions today compound into massive results tomorrow."
       },
       {
         title: "READ MORE",
-        content: "Ready to take your training to the next level? The science says this one change makes all the difference."
+        content: "Ready to take your performance to the next level? The science shows this one change makes all the difference."
       },
       {
         title: "Pro Tip",
-        content: "The best time to start is now. Your future self will thank you."
+        content: "Elite performers focus on consistency over perfection—progress beats paralysis every time."
       },
       {
-        title: "Expert Insight",
-        content: "Most people quit too early. The real results come after the first month."
+        title: "Expert Insight", 
+        content: "Most people quit right before the breakthrough happens—push through the plateau."
+      },
+      {
+        title: "Game Changer",
+        content: "This single adjustment has helped thousands of men transform their results in just weeks."
       }
     ]
     
     const callout = callouts[Math.floor(Math.random() * callouts.length)]
     
     return `<div class="bg-red-600 text-white p-6 rounded-lg my-8">
-  <h3 class="text-lg font-bold mb-2">${callout.title}</h3>
-  <p>${callout.content}</p>
+  <h3 class="text-lg font-bold mb-3">${callout.title}</h3>
+  <p class="leading-relaxed">${callout.content}</p>
 </div>`
   }
   
-  private static generateImagePlaceholder(primaryKeyword: string): string {
+  private static generateContextualImagePlaceholder(primaryKeyword: string, sectionIndex: number): string {
+    const imageTypes = [
+      'demonstration',
+      'technique',
+      'results',
+      'comparison',
+      'scientific study',
+      'professional training'
+    ]
+    
+    const imageType = imageTypes[sectionIndex % imageTypes.length]
+    
     return `<figure class="my-8">
-  <img src="{IMAGE_URL}" alt="Man demonstrating proper ${primaryKeyword} technique in gym" class="w-full rounded-lg">
-  <figcaption class="text-center text-gray-600 text-sm mt-2">Proper form is essential for maximizing ${primaryKeyword} results.</figcaption>
+  <img src="{IMAGE_URL}" alt="Professional ${primaryKeyword} ${imageType} showing proper form and technique" class="w-full rounded-lg shadow-lg">
+  <figcaption class="text-center text-gray-600 text-sm mt-3 italic">Proper ${primaryKeyword} technique is essential for maximizing results and preventing injury.</figcaption>
 </figure>`
   }
   
-  private static enhanceSentenceForSecondPerson(sentence: string): string {
-    // Convert to second-person voice and active verbs
+  private static enhanceSentenceForImpact(sentence: string): string {
+    // Convert to powerful second-person voice with active verbs
     let enhanced = sentence
-      .replace(/\b(people|individuals|one|someone)\b/gi, 'you')
-      .replace(/\b(they|them)\b/gi, 'you')
+      .replace(/\b(people|individuals|one|someone|persons)\b/gi, 'you')
+      .replace(/\b(they|them|their)\b/gi, 'your')
       .replace(/\b(is done|can be done|should be done)\b/gi, 'you should do')
       .replace(/\b(it's important|it is important)\b/gi, 'you need')
-      .replace(/\b(research shows|studies show)\b/gi, 'research shows that you')
+      .replace(/\b(research shows|studies show|science shows)\b/gi, 'research proves that you')
+      .replace(/\b(may help|might help|could help)\b/gi, 'will help you')
+      .replace(/\b(can improve|may improve)\b/gi, 'will improve your')
     
-    // Add power words occasionally
-    if (Math.random() > 0.8) {
-      const powerWords = ['proven', 'essential', 'crucial', 'game-changing', 'powerful']
+    // Add power words for more impact
+    if (Math.random() > 0.7) {
+      const powerWords = ['proven', 'essential', 'crucial', 'game-changing', 'revolutionary', 'breakthrough', 'cutting-edge']
       const powerWord = powerWords[Math.floor(Math.random() * powerWords.length)]
-      enhanced = enhanced.replace(/\b(important|good|effective)\b/gi, powerWord)
+      enhanced = enhanced.replace(/\b(important|good|effective|helpful)\b/gi, powerWord)
     }
     
+    // Add urgency and specificity
+    enhanced = enhanced
+      .replace(/\bsoon\b/gi, 'within days')
+      .replace(/\bquickly\b/gi, 'in record time')
+      .replace(/\bmany\b/gi, 'countless')
+      .replace(/\bsome\b/gi, 'specific')
+    
     return enhanced
+  }
+  
+  private static generateLSISynonyms(primaryKeyword: string): string[] {
+    const lsiMap: Record<string, string[]> = {
+      'exercise': ['training', 'workout', 'fitness'],
+      'workout': ['training', 'exercise', 'fitness routine'],
+      'fitness': ['conditioning', 'training', 'physical fitness'],
+      'nutrition': ['diet', 'eating', 'nutritional strategy'],
+      'health': ['wellness', 'vitality', 'wellbeing'],
+      'muscle': ['strength', 'muscle building', 'muscular development'],
+      'weight': ['fat loss', 'body composition', 'weight management'],
+      'strength': ['power', 'muscle building', 'resistance training'],
+      'cardio': ['cardiovascular', 'aerobic', 'endurance'],
+      'diet': ['nutrition', 'eating plan', 'nutritional approach'],
+      'caffeine': ['stimulants', 'energy', 'performance enhancers'],
+      'energy': ['vitality', 'stamina', 'endurance'],
+      'sleep': ['recovery', 'rest', 'sleep optimization'],
+      'stress': ['stress management', 'mental health', 'psychological wellness']
+    }
+    
+    const keyword = primaryKeyword.toLowerCase()
+    return lsiMap[keyword] || ['training', 'performance', 'optimization']
   }
   
   private static generateMetaDescription(title: string, content: string, primaryKeyword: string): string {
@@ -563,7 +637,7 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
     // If no headings exist, add strategic ones
     if (!/<h[1-6]/i.test(content)) {
       const paragraphs = content.split('\n\n').filter(p => p.trim().length > 0)
-      const headings = this.generateStrategicH2s(primaryKeyword)
+      const headings = this.generateSEOOptimizedH2s(primaryKeyword, this.generateLSISynonyms(primaryKeyword))
       
       let result = ''
       let headingIndex = 0
