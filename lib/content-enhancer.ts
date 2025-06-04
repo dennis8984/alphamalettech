@@ -91,58 +91,105 @@ export class ContentEnhancer {
         currentParagraph.length >= 4 || 
         this.isLogicalBreak(sentence, sentences[index + 1])
       )) {
-        paragraphs.push(currentParagraph.join('. ') + '.')
+        // First paragraph gets special treatment as lead paragraph
+        if (paragraphs.length === 0) {
+          paragraphs.push(`<p class="lead text-xl text-gray-700 mb-8 leading-relaxed">${currentParagraph.join('. ')}.</p>`)
+        } else {
+          paragraphs.push(`<p class="mb-6 text-gray-700 leading-relaxed">${currentParagraph.join('. ')}.</p>`)
+        }
         currentParagraph = []
       }
     })
     
     if (currentParagraph.length > 0) {
-      paragraphs.push(currentParagraph.join('. ') + '.')
+      if (paragraphs.length === 0) {
+        paragraphs.push(`<p class="lead text-xl text-gray-700 mb-8 leading-relaxed">${currentParagraph.join('. ')}.</p>`)
+      } else {
+        paragraphs.push(`<p class="mb-6 text-gray-700 leading-relaxed">${currentParagraph.join('. ')}.</p>`)
+      }
     }
     
-    return paragraphs
-      .map(para => `<p>${para}</p>`)
-      .join('\n\n')
+    return paragraphs.join('\n\n')
   }
   
   private static addStructuredHeadings(content: string): string {
     const paragraphs = content.split('</p>')
     const enhancedParagraphs: string[] = []
+    let headingLevel = 2 // Start with H2 for main sections
     
     paragraphs.forEach((para, index) => {
-      if (index > 0 && index % 3 === 0 && index < paragraphs.length - 1) {
-        const headingText = this.generateHeading(para)
-        enhancedParagraphs.push(`<h2>${headingText}</h2>\n\n${para}</p>`)
+      // Add heading every 2-3 paragraphs after the lead
+      if (index > 1 && (index - 1) % 3 === 0 && index < paragraphs.length - 1) {
+        const headingText = this.generateSEOHeading(para, index)
+        const headingTag = headingLevel <= 3 ? `h${headingLevel}` : 'h3'
+        enhancedParagraphs.push(`<${headingTag} class="text-2xl font-bold text-gray-900 mt-12 mb-6">${headingText}</${headingTag}>\n\n${para}</p>`)
+        
+        // Alternate between H2 and H3 for variety
+        headingLevel = headingLevel === 2 ? 3 : 2
       } else {
-        enhancedParagraphs.push(para + (para.includes('<p>') ? '</p>' : ''))
+        enhancedParagraphs.push(para + (para.includes('<p') ? '</p>' : ''))
       }
     })
     
     return enhancedParagraphs.join('\n\n')
   }
   
-  private static generateHeading(paragraph: string): string {
+  private static generateSEOHeading(paragraph: string, index: number): string {
     const text = paragraph.replace(/<[^>]*>/g, '').toLowerCase()
     
-    if (text.includes('workout') || text.includes('exercise')) return 'Effective Workout Strategies'
-    if (text.includes('muscle') || text.includes('strength')) return 'Building Muscle and Strength'
-    if (text.includes('cardio') || text.includes('running')) return 'Cardiovascular Training'
-    if (text.includes('protein') || text.includes('diet')) return 'Nutritional Guidelines'
-    if (text.includes('meal') || text.includes('food')) return 'Meal Planning Tips'
-    if (text.includes('supplement') || text.includes('vitamin')) return 'Supplementation Advice'
-    if (text.includes('sleep') || text.includes('rest')) return 'Recovery and Rest'
-    if (text.includes('stress') || text.includes('mental')) return 'Mental Health Considerations'
+    // Topic-specific SEO headers
+    if (text.includes('workout') || text.includes('exercise') || text.includes('training')) {
+      return 'Optimal Workout Strategies for Maximum Results'
+    }
+    if (text.includes('muscle') || text.includes('strength') || text.includes('build')) {
+      return 'Building Lean Muscle Mass: Expert Techniques'
+    }
+    if (text.includes('cardio') || text.includes('running') || text.includes('heart')) {
+      return 'Cardiovascular Training for Peak Performance'
+    }
+    if (text.includes('protein') || text.includes('diet') || text.includes('nutrition')) {
+      return 'Essential Nutrition Guidelines for Success'
+    }
+    if (text.includes('meal') || text.includes('food') || text.includes('eating')) {
+      return 'Strategic Meal Planning for Optimal Health'
+    }
+    if (text.includes('supplement') || text.includes('vitamin') || text.includes('nutrient')) {
+      return 'Smart Supplementation: What Actually Works'
+    }
+    if (text.includes('sleep') || text.includes('rest') || text.includes('recovery')) {
+      return 'Recovery and Rest: The Missing Link'
+    }
+    if (text.includes('stress') || text.includes('mental') || text.includes('mind')) {
+      return 'Mental Health and Wellness Strategies'
+    }
+    if (text.includes('weight') || text.includes('fat') || text.includes('lose')) {
+      return 'Effective Weight Management Techniques'
+    }
+    if (text.includes('benefit') || text.includes('advantage') || text.includes('positive')) {
+      return 'Key Benefits You Need to Know'
+    }
+    if (text.includes('research') || text.includes('study') || text.includes('science')) {
+      return 'What the Science Actually Says'
+    }
+    if (text.includes('tip') || text.includes('advice') || text.includes('recommend')) {
+      return 'Expert Tips for Better Results'
+    }
     
-    const genericHeadings = [
-      'Key Considerations',
-      'Important Points', 
+    // SEO-optimized generic headers based on position
+    const seoHeadings = [
+      'Understanding the Fundamentals',
+      'Advanced Strategies That Work',
+      'Common Mistakes to Avoid',
+      'Maximizing Your Results',
       'Expert Recommendations',
-      'Best Practices',
-      'Additional Benefits',
-      'Implementation Tips'
+      'Taking Action: Next Steps',
+      'Long-Term Success Strategies',
+      'The Science Behind the Method',
+      'Real-World Implementation',
+      'Troubleshooting Common Issues'
     ]
     
-    return genericHeadings[Math.floor(Math.random() * genericHeadings.length)]
+    return seoHeadings[index % seoHeadings.length]
   }
   
   private static async rewriteForOriginality(title: string, content: string): Promise<{title: string, content: string}> {

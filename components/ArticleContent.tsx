@@ -25,6 +25,9 @@ export default function ArticleContent({
   useEffect(() => {
     if (enableKeywordLinking && content) {
       processContent()
+    } else if (content) {
+      // Even if keyword linking is disabled, still add drop cap
+      setProcessedContent(addDropCap(content))
     }
     
     // Initialize click tracking for affiliate links
@@ -40,7 +43,12 @@ export default function ArticleContent({
       const result = await processArticleContent(articleId, content)
       
       if (result.success) {
-        setProcessedContent(result.content)
+        let enhancedContent = result.content
+        
+        // Add drop cap to the first paragraph
+        enhancedContent = addDropCap(enhancedContent)
+        
+        setProcessedContent(enhancedContent)
         setLinkingStats(result)
         
         console.log(`✅ Keyword linking complete:`, {
@@ -49,14 +57,46 @@ export default function ArticleContent({
         })
       } else {
         console.error('❌ Keyword linking failed:', result.error)
-        setProcessedContent(content) // Fallback to original content
+        // Still add drop cap even if keyword linking fails
+        setProcessedContent(addDropCap(content))
       }
     } catch (error) {
       console.error('❌ Error processing article content:', error)
-      setProcessedContent(content) // Fallback to original content
+      // Still add drop cap even if processing fails
+      setProcessedContent(addDropCap(content))
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  // Function to add drop cap to first paragraph
+  const addDropCap = (htmlContent: string): string => {
+    // Find the first paragraph with actual text content
+    const paragraphRegex = /<p[^>]*>(.*?)<\/p>/i
+    const match = htmlContent.match(paragraphRegex)
+    
+    if (match && match[1]) {
+      const paragraphContent = match[1].trim()
+      
+      // Skip if paragraph is too short or starts with HTML tags
+      if (paragraphContent.length < 20 || paragraphContent.startsWith('<')) {
+        return htmlContent
+      }
+      
+      // Extract first letter and rest of content
+      const firstLetter = paragraphContent.charAt(0)
+      const restOfContent = paragraphContent.substring(1)
+      
+      // Create drop cap version
+      const dropCapParagraph = match[0].replace(
+        match[1],
+        `<span class="drop-cap">${firstLetter}</span>${restOfContent}`
+      )
+      
+      return htmlContent.replace(match[0], dropCapParagraph)
+    }
+    
+    return htmlContent
   }
 
   return (
@@ -113,6 +153,59 @@ export default function ArticleContent({
         
         .article-content :global(a[data-mh-affiliate="true"]:hover) {
           color: #b91c1c !important; /* text-red-700 */
+        }
+
+        /* Drop cap styling */
+        .article-content :global(.drop-cap) {
+          float: left;
+          font-family: Georgia, serif;
+          font-size: 4.5rem;
+          line-height: 3.5rem;
+          padding-right: 8px;
+          padding-top: 4px;
+          color: #dc2626; /* Men's Hub red */
+          font-weight: 700;
+          margin-bottom: -6px;
+        }
+
+        /* Enhanced paragraph styling */
+        .article-content :global(.lead) {
+          font-size: 1.25rem !important;
+          color: #374151 !important;
+          margin-bottom: 2rem !important;
+          line-height: 1.75 !important;
+        }
+
+        /* Better spacing for enhanced content */
+        .article-content :global(h2) {
+          font-size: 1.875rem !important;
+          font-weight: 700 !important;
+          color: #111827 !important;
+          margin-top: 3rem !important;
+          margin-bottom: 1.5rem !important;
+          line-height: 1.2 !important;
+        }
+
+        .article-content :global(h3) {
+          font-size: 1.5rem !important;
+          font-weight: 600 !important;
+          color: #1f2937 !important;
+          margin-top: 2.5rem !important;
+          margin-bottom: 1rem !important;
+          line-height: 1.3 !important;
+        }
+
+        .article-content :global(p) {
+          margin-bottom: 1.5rem !important;
+          color: #374151 !important;
+          line-height: 1.75 !important;
+        }
+
+        /* Clear float after drop cap */
+        .article-content :global(p:first-of-type::after) {
+          content: "";
+          display: table;
+          clear: both;
         }
       `}</style>
     </div>
