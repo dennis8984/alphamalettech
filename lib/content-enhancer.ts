@@ -60,13 +60,19 @@ export class ContentEnhancer {
       console.log('🖼️ Replacing image placeholders...')
       try {
         const originalPlaceholders = (enhancedContent.match(/\{IMAGE_URL\}/g) || []).length
+        console.log(`📊 Found ${originalPlaceholders} image placeholders to replace`)
+        
+        // Determine category from options or infer from primaryKeyword
+        const category = options.category || this.inferCategoryFromKeyword(primaryKeyword)
+        console.log(`🏷️ Using category: "${category}" for contextual images`)
+        
         enhancedContent = await ImageService.replaceImagePlaceholders(
           enhancedContent, 
           enhancedTitle, 
-          primaryKeyword
+          category
         )
         imageReplacements = originalPlaceholders
-        console.log(`✅ Replaced ${imageReplacements} images`)
+        console.log(`✅ Replaced ${imageReplacements} images with contextual search`)
       } catch (error) {
         console.error('🚨 Image replacement failed:', error)
         warnings.push('Image replacement failed - using fallback images')
@@ -747,5 +753,65 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
     })
     
     return paragraphs.join('\n\n')
+  }
+
+  private static inferCategoryFromKeyword(primaryKeyword: string): string {
+    const keyword = primaryKeyword.toLowerCase()
+    
+    // Map keywords to appropriate categories
+    const categoryMap: Record<string, string> = {
+      // Fitness related
+      'exercise': 'fitness',
+      'workout': 'fitness', 
+      'training': 'fitness',
+      'muscle': 'fitness',
+      'strength': 'fitness',
+      'cardio': 'fitness',
+      'gym': 'fitness',
+      'fitness': 'fitness',
+      
+      // Nutrition related
+      'nutrition': 'nutrition',
+      'diet': 'nutrition',
+      'protein': 'nutrition',
+      'food': 'nutrition',
+      'supplements': 'nutrition',
+      'vitamins': 'nutrition',
+      'eating': 'nutrition',
+      'meal': 'nutrition',
+      
+      // Health related  
+      'health': 'health',
+      'medical': 'health',
+      'wellness': 'health',
+      'disease': 'health',
+      'prevention': 'health',
+      'caffeine': 'health',
+      'energy': 'health',
+      'sleep': 'health',
+      'stress': 'health',
+      
+      // Weight loss
+      'weight': 'weight-loss',
+      'loss': 'weight-loss',
+      'fat': 'weight-loss',
+      'calories': 'weight-loss',
+      
+      // Style/lifestyle
+      'style': 'style',
+      'fashion': 'style',
+      'grooming': 'style',
+      'lifestyle': 'style'
+    }
+    
+    // Find matching category
+    for (const [key, category] of Object.entries(categoryMap)) {
+      if (keyword.includes(key)) {
+        return category
+      }
+    }
+    
+    // Default to health if no match found
+    return 'health'
   }
 }
