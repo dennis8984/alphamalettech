@@ -274,30 +274,142 @@ export class ContentEnhancer {
   }
   
   private static rewriteTitle(title: string): string {
-    const titlePatterns = [
-      'The Ultimate Guide to {topic}',
-      'Everything You Need to Know About {topic}',
-      'Mastering {topic}: A Complete Guide',
-      '{topic}: The Complete Breakdown',
-      'Your Complete Guide to {topic}',
-      'The Science Behind {topic}',
-      'Unlocking the Secrets of {topic}',
-      'Transform Your {topic} Journey'
+    const cleanTitle = title.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    
+    // Extract key topic words for SEO keywords
+    const topicWords = cleanTitle.split(' ')
+      .filter(word => word.length > 3)
+      .filter(word => !['with', 'from', 'that', 'this', 'they', 'have', 'will', 'been', 'were', 'said', 'what', 'when', 'where', 'how'].includes(word))
+      .slice(0, 3)
+    
+    const primaryKeyword = topicWords[0] || 'health'
+    const secondaryKeywords = topicWords.slice(1).join(' ')
+    
+    // Men's Health headline patterns following editorial guidelines
+    const headlinePatterns = [
+      // How-to patterns (instructional)
+      {
+        pattern: `How to ${this.getActionVerb()} ${primaryKeyword} ${secondaryKeywords}`.trim(),
+        category: 'instructional'
+      },
+      {
+        pattern: `How to ${this.getActionVerb()} Your ${primaryKeyword} in 30 Days`,
+        category: 'instructional'
+      },
+      
+      // Curiosity patterns
+      {
+        pattern: `Why ${primaryKeyword} ${this.getPowerAdjective()} Your Health`,
+        category: 'curiosity'
+      },
+      {
+        pattern: `What Happens When You ${this.getActionVerb()} ${primaryKeyword}`,
+        category: 'curiosity'
+      },
+      
+      // Numbered list patterns
+      {
+        pattern: `${this.getRandomNumber()} ${this.getPowerAdjective()} ${primaryKeyword} ${this.getListWord()}`,
+        category: 'numbered'
+      },
+      {
+        pattern: `${this.getRandomNumber()} Ways to ${this.getActionVerb()} Your ${primaryKeyword}`,
+        category: 'numbered'
+      },
+      
+      // Authority patterns
+      {
+        pattern: `The Ultimate Guide to ${primaryKeyword} ${secondaryKeywords}`.trim(),
+        category: 'authority'
+      },
+      {
+        pattern: `The Truth About ${primaryKeyword} ${this.getPowerAdjective()} Results`,
+        category: 'authority'
+      },
+      {
+        pattern: `The Definitive Guide to ${this.getActionVerb()} ${primaryKeyword}`,
+        category: 'authority'
+      },
+      
+      // First-person hook patterns
+      {
+        pattern: `I ${this.getFirstPersonAction()} ${primaryKeyword} for 30 Days—Here's What Happened`,
+        category: 'personal'
+      },
+      {
+        pattern: `I Tried ${primaryKeyword} ${secondaryKeywords} and the Results ${this.getPowerAdjective()} Me`.trim(),
+        category: 'personal'
+      }
     ]
     
-    const cleanTitle = title.toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '')
+    // Select a random pattern and format it properly
+    const selectedPattern = headlinePatterns[Math.floor(Math.random() * headlinePatterns.length)]
+    let headline = selectedPattern.pattern
+    
+    // Clean up and format to Title Case
+    headline = headline
+      .replace(/\s+/g, ' ')
+      .trim()
       .split(' ')
-      .filter(word => word.length > 3)
-      .slice(0, 3)
+      .map((word, index) => {
+        // Don't capitalize small connecting words (unless they're the first word)
+        if (index > 0 && ['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'nor', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'yet'].includes(word.toLowerCase())) {
+          return word.toLowerCase()
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      })
       .join(' ')
     
-    if (Math.random() > 0.7) {
-      const pattern = titlePatterns[Math.floor(Math.random() * titlePatterns.length)]
-      return pattern.replace('{topic}', cleanTitle)
+    // Ensure it's within 6-13 words
+    const wordCount = headline.split(' ').length
+    if (wordCount > 13) {
+      headline = headline.split(' ').slice(0, 13).join(' ')
+    } else if (wordCount < 6) {
+      headline = `The Complete Guide to ${headline}`
     }
     
-    return this.rewriteSentence(title)
+    return headline
+  }
+  
+  // Helper methods for generating dynamic headline components
+  private static getActionVerb(): string {
+    const verbs = [
+      'Master', 'Transform', 'Boost', 'Optimize', 'Maximize', 'Build', 'Crush', 'Unlock', 
+      'Supercharge', 'Enhance', 'Perfect', 'Dominate', 'Accelerate', 'Revolutionize'
+    ]
+    return verbs[Math.floor(Math.random() * verbs.length)]
+  }
+  
+  private static getPowerAdjective(): string {
+    const adjectives = [
+      'Ultimate', 'Proven', 'Surprising', 'Game-Changing', 'Essential', 'Advanced', 
+      'Secret', 'Powerful', 'Revolutionary', 'Expert', 'Professional', 'Cutting-Edge'
+    ]
+    return adjectives[Math.floor(Math.random() * adjectives.length)]
+  }
+  
+  private static getListWord(): string {
+    const listWords = [
+      'Tips', 'Strategies', 'Methods', 'Techniques', 'Steps', 'Ways', 'Secrets', 
+      'Rules', 'Hacks', 'Moves', 'Tactics', 'Principles'
+    ]
+    return listWords[Math.floor(Math.random() * listWords.length)]
+  }
+  
+  private static getRandomNumber(): string {
+    const numbers = ['5', '7', '10', '12', '15', '8', '6', '9']
+    return numbers[Math.floor(Math.random() * numbers.length)]
+  }
+  
+  private static getFirstPersonAction(): string {
+    const actions = [
+      'Tested', 'Tried', 'Used', 'Followed', 'Tracked', 'Experimented with', 
+      'Committed to', 'Stuck with', 'Dedicated Myself to'
+    ]
+    return actions[Math.floor(Math.random() * actions.length)]
   }
   
   private static reconstructContent(sentences: string[]): string {
