@@ -64,10 +64,14 @@ export async function POST(request: NextRequest) {
           console.log(`   ↳ Warnings: ${enhancedContent.warnings.join(', ')}`)
         }
 
+        // Generate new slug from enhanced title to match the rewritten content
+        const enhancedSlug = generateSlug(enhancedContent.title)
+        console.log(`   ↳ Generated slug: "${enhancedSlug}" from enhanced title`)
+
         // Convert the imported article format to match the database format
         const articleData = {
           title: enhancedContent.title,
-          slug: article.slug,
+          slug: enhancedSlug,
           content: enhancedContent.content,
           excerpt: enhancedContent.excerpt,
           category: article.category,
@@ -162,4 +166,15 @@ function extractTags(text: string): string[] {
   
   // Limit to 5 tags
   return tags.slice(0, 5)
+}
+
+// Helper function to generate URL-friendly slugs
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+    .substring(0, 60)
 } 
