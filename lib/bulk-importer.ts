@@ -190,6 +190,7 @@ export class BulkImporter {
     if (options.enhanceContent) {
       try {
         const enhanced = await ContentEnhancer.enhanceContent(title, content, {
+          useClaude: true,
           rewriteForOriginality: true,
           improveReadability: true,
           addHeadings: true,
@@ -197,7 +198,8 @@ export class BulkImporter {
           replaceImages: options.replaceImages,
           addAuthorityLinks: options.addAuthorityLinks,
           addInternalLinks: options.addInternalLinks,
-          articleSlug: slug
+          articleSlug: slug,
+          category: 'General'
         })
 
         title = enhanced.title

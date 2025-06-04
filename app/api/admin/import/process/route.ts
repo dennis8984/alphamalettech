@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
           article.title,
           article.content,
           {
+            useClaude: true,
             rewriteForOriginality: true,
             improveReadability: true,
             addHeadings: true,

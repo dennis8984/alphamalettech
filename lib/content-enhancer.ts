@@ -2,6 +2,7 @@ import { ImageService } from './image-service';
 import { AuthorityLinkDetector } from './authority-link-detector';
 import { InternalLinkOptimizer } from './internal-link-optimizer';
 import { ClaudeContentEnhancer } from './claude-content-enhancer';
+import { getAllArticles } from './articles-db';
 
 interface ContentEnhancementOptions {
   rewriteForOriginality?: boolean
@@ -154,6 +155,16 @@ export class ContentEnhancer {
         console.error('🚨 Internal linking failed:', error)
         warnings.push('Internal link optimization failed')
       }
+    }
+
+    // Step 7: Detect and separate teaser content (new functionality)
+    console.log('🔍 Detecting subject changes and converting teasers...')
+    try {
+      enhancedContent = await this.detectAndConvertTeasers(enhancedContent, enhancedTitle, options.category || 'health')
+      console.log('✅ Converted off-topic content to article teasers')
+    } catch (error) {
+      console.error('🚨 Teaser detection failed:', error)
+      warnings.push('Teaser detection failed')
     }
 
     // Calculate metrics
@@ -921,5 +932,246 @@ ${selectedActions.map(action => `    <li class="flex items-start"><span class="t
     
     // Default to health if no match found
     return 'health'
+  }
+
+  private static async detectAndConvertTeasers(content: string, title: string, category: string): Promise<string> {
+    try {
+      // Get all articles for teaser linking
+      const { data: articles } = await getAllArticles();
+      if (!articles) return content;
+
+      // Extract primary topic from main title
+      const primaryTopic = this.extractPrimaryKeyword(title);
+      
+      // Split content into sections by headings
+      const sections = this.splitContentIntoSections(content);
+      
+      // Analyze each section for topic coherence
+      const processedSections: string[] = [];
+      let hasSubjectChange = false;
+      
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i];
+        const sectionTopic = this.extractSectionTopic(section);
+        const topicRelevance = this.calculateTopicRelevance(primaryTopic, sectionTopic, category);
+        
+        // If relevance is low, this might be teaser content
+        if (topicRelevance < 0.3 && i > 2) { // Only check after first few sections
+          console.log(`🔍 Detected potential teaser content: "${sectionTopic}" (relevance: ${topicRelevance.toFixed(2)})`);
+          
+          // Try to convert to teaser
+          const teaserContent = await this.convertToTeaser(section, articles, category);
+          if (teaserContent) {
+            processedSections.push(teaserContent);
+            hasSubjectChange = true;
+            continue;
+          }
+        }
+        
+        // Keep original section
+        processedSections.push(section);
+      }
+      
+      if (hasSubjectChange) {
+        console.log('✅ Successfully converted off-topic sections to article teasers');
+      }
+      
+      return processedSections.join('\n\n');
+    } catch (error) {
+      console.error('Error in teaser detection:', error);
+      return content;
+    }
+  }
+
+  private static splitContentIntoSections(content: string): string[] {
+    // Split by H2 headings while preserving them
+    const sections = content.split(/(<h2[^>]*>.*?<\/h2>)/i);
+    const processedSections: string[] = [];
+    
+    for (let i = 0; i < sections.length; i += 2) {
+      const heading = sections[i + 1] || '';
+      const content = sections[i] || '';
+      
+      if (heading || content.trim()) {
+        processedSections.push((heading + content).trim());
+      }
+    }
+    
+    return processedSections.filter(section => section.length > 50); // Filter very short sections
+  }
+
+  private static extractSectionTopic(section: string): string {
+    // Extract text content and get key terms
+    const text = section.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const words = text.toLowerCase().split(' ')
+      .filter(word => word.length > 4)
+      .filter(word => !['that', 'this', 'with', 'from', 'your', 'they', 'have', 'will', 'been', 'said', 'when', 'where', 'what', 'would', 'could', 'should'].includes(word));
+    
+    // Count word frequency to find main topic
+    const wordCount = new Map<string, number>();
+    words.forEach(word => {
+      wordCount.set(word, (wordCount.get(word) || 0) + 1);
+    });
+    
+    // Get most frequent meaningful word
+    const sortedWords = Array.from(wordCount.entries())
+      .sort((a, b) => b[1] - a[1]);
+    
+    return sortedWords[0]?.[0] || 'general';
+  }
+
+  private static calculateTopicRelevance(primaryTopic: string, sectionTopic: string, category: string): number {
+    // Define topic relationships
+    const topicSynonyms = new Map([
+      ['high', ['tactics', 'techniques', 'strategies', 'methods', 'training', 'performance']],
+      ['fitness', ['exercise', 'workout', 'training', 'gym', 'strength', 'muscle']],
+      ['health', ['wellness', 'medical', 'nutrition', 'diet', 'lifestyle']],
+      ['nutrition', ['diet', 'food', 'eating', 'protein', 'vitamins', 'supplements']],
+      ['weight', ['loss', 'management', 'diet', 'calories', 'fat', 'body']],
+      ['coffee', ['caffeine', 'energy', 'drink', 'stimulant', 'beverage']],
+      ['cooking', ['food', 'recipe', 'meal', 'kitchen', 'ingredients', 'preparation']]
+    ]);
+
+    // Check direct match
+    if (primaryTopic === sectionTopic) return 1.0;
+    
+    // Check synonym relationships
+    const primarySynonyms = topicSynonyms.get(primaryTopic) || [];
+    const sectionSynonyms = topicSynonyms.get(sectionTopic) || [];
+    
+    if (primarySynonyms.includes(sectionTopic)) return 0.8;
+    if (sectionSynonyms.includes(primaryTopic)) return 0.8;
+    
+    // Check category relevance
+    const categoryTopics = {
+      'health': ['health', 'medical', 'wellness', 'nutrition', 'diet'],
+      'fitness': ['fitness', 'exercise', 'workout', 'training', 'muscle'],
+      'nutrition': ['nutrition', 'diet', 'food', 'protein', 'eating'],
+      'weight-loss': ['weight', 'loss', 'diet', 'calories', 'fat']
+    };
+    
+    const relevantTopics = categoryTopics[category] || [];
+    if (relevantTopics.includes(sectionTopic)) return 0.6;
+    
+    // Low relevance if completely unrelated (like cooking in a fitness article)
+    const unrelatedTopics = ['cooking', 'recipe', 'meal', 'ingredients', 'kitchen'];
+    if (category !== 'nutrition' && unrelatedTopics.includes(sectionTopic)) {
+      return 0.1;
+    }
+    
+    return 0.4; // Default moderate relevance
+  }
+
+  private static async convertToTeaser(section: string, articles: any[], category: string): Promise<string | null> {
+    try {
+      // Extract potential article titles from the section
+      const potentialTitles = this.extractPotentialTitles(section);
+      
+      if (potentialTitles.length === 0) return null;
+      
+      // Find matching articles for each potential title
+      const teasers: string[] = [];
+      
+      for (const potentialTitle of potentialTitles.slice(0, 3)) { // Limit to 3 teasers
+        const matchingArticle = this.findBestMatchingArticle(potentialTitle, articles, category);
+        
+        if (matchingArticle) {
+          const teaser = this.createArticleTeaser(matchingArticle, potentialTitle);
+          teasers.push(teaser);
+        }
+      }
+      
+      if (teasers.length > 0) {
+        return `<div class="grid grid-cols-1 md:grid-cols-${Math.min(teasers.length, 3)} gap-6 my-12">
+  <h3 class="col-span-full text-xl font-bold text-gray-900 mb-6">Related Articles</h3>
+  ${teasers.join('\n  ')}
+</div>`;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error converting to teaser:', error);
+      return null;
+    }
+  }
+
+  private static extractPotentialTitles(section: string): string[] {
+    const titles: string[] = [];
+    
+    // Look for patterns that suggest article titles
+    const titlePatterns = [
+      /How to ([^.!?]+)/gi,
+      /The (\w+(?:\s+\w+){1,5})/gi,
+      /(\d+\s+(?:Ways|Tips|Steps|Secrets|Rules)[^.!?]*)/gi,
+      /([A-Z][^.!?]{20,80})/g
+    ];
+    
+    titlePatterns.forEach(pattern => {
+      const matches = section.match(pattern);
+      if (matches) {
+        matches.forEach(match => {
+          const cleaned = match.replace(/<[^>]*>/g, '').trim();
+          if (cleaned.length > 10 && cleaned.length < 100) {
+            titles.push(cleaned);
+          }
+        });
+      }
+    });
+    
+    return [...new Set(titles)]; // Remove duplicates
+  }
+
+  private static findBestMatchingArticle(title: string, articles: any[], preferredCategory: string): any | null {
+    const titleWords = title.toLowerCase().split(' ').filter(word => word.length > 3);
+    
+    let bestMatch = null;
+    let bestScore = 0;
+    
+    for (const article of articles) {
+      const articleWords = article.title.toLowerCase().split(' ');
+      const matchingWords = titleWords.filter(word => 
+        articleWords.some(articleWord => articleWord.includes(word) || word.includes(articleWord))
+      );
+      
+      let score = matchingWords.length / titleWords.length;
+      
+      // Boost score for same category
+      if (article.category.toLowerCase() === preferredCategory.toLowerCase()) {
+        score += 0.2;
+      }
+      
+      // Boost score for published articles
+      if (article.status === 'published') {
+        score += 0.1;
+      }
+      
+      if (score > bestScore && score > 0.3) { // Minimum relevance threshold
+        bestScore = score;
+        bestMatch = article;
+      }
+    }
+    
+    return bestMatch;
+  }
+
+  private static createArticleTeaser(article: any, originalTitle: string): string {
+    const truncatedExcerpt = article.excerpt 
+      ? article.excerpt.substring(0, 120) + (article.excerpt.length > 120 ? '...' : '')
+      : 'Discover expert insights and actionable strategies...';
+    
+    return `<article class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+    <div class="p-6">
+      <h4 class="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+        <a href="/articles/${article.slug}" class="hover:text-red-600 transition-colors">${article.title}</a>
+      </h4>
+      <p class="text-gray-600 text-sm mb-4 line-clamp-3">${truncatedExcerpt}</p>
+      <div class="flex items-center justify-between">
+        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">${article.category}</span>
+        <a href="/articles/${article.slug}" class="text-red-600 text-sm font-medium hover:text-red-700 transition-colors">
+          Read More →
+        </a>
+      </div>
+    </div>
+  </article>`;
   }
 }

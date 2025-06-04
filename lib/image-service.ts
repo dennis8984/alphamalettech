@@ -101,7 +101,7 @@ export class ImageService {
       const selectedImage = this.selectImageByPosition(availableImages, context.imageIndex);
       context.usedImageIds.add(selectedImage.id);
       console.log(`✅ Found contextual image: ${selectedImage.alt_description || 'No description'}`);
-      return selectedImage.urls.regular;
+      return this.buildImageTag(selectedImage, context);
     }
 
     // Fallback to broader search if no unique images found
@@ -118,11 +118,103 @@ export class ImageService {
     if (availableFallbacks.length > 0) {
       const selectedImage = availableFallbacks[0];
       context.usedImageIds.add(selectedImage.id);
-      return selectedImage.urls.regular;
+      return this.buildImageTag(selectedImage, context);
     }
 
     // Ultimate fallback to category-based image
-    return this.getCategoryFallbackImage(context.category, context.imageIndex);
+    return this.getCategoryFallbackImage(context.category, context.imageIndex, context);
+  }
+
+  /**
+   * Build complete image tag with contextual alt text
+   */
+  private static buildImageTag(image: UnsplashImage, context: ImageContext): string {
+    const altText = this.generateContextualAltText(image, context);
+    return `<figure class="my-8">
+  <img src="${image.urls.regular}" alt="${altText}" class="w-full rounded-lg shadow-lg">
+  <figcaption class="text-center text-gray-600 text-sm mt-3 italic">${this.generateCaption(context)}</figcaption>
+</figure>`;
+  }
+
+  /**
+   * Generate unique contextual alt text
+   */
+  private static generateContextualAltText(image: UnsplashImage, context: ImageContext): string {
+    const { sectionHeading, surroundingText, category, imageIndex } = context;
+    
+    // Extract key concepts from surrounding text
+    const concepts = this.extractKeyConcepts(surroundingText, sectionHeading);
+    
+    // Build specific alt text based on concepts and position
+    let altText = '';
+    
+    if (concepts.includes('workout') || concepts.includes('exercise')) {
+      altText = `Professional fitness demonstration showing ${concepts.join(' and ')} techniques`;
+    } else if (concepts.includes('nutrition') || concepts.includes('diet')) {
+      altText = `Healthy nutrition and ${concepts.join(' ')} for optimal wellness`;
+    } else if (concepts.includes('research') || concepts.includes('study')) {
+      altText = `Scientific research and medical studies on ${concepts.join(' and ')}`;
+    } else if (concepts.includes('caffeine') || concepts.includes('coffee')) {
+      altText = `Professional coffee preparation and caffeine consumption methods`;
+    } else if (concepts.includes('health') || concepts.includes('medical')) {
+      altText = `Medical professional demonstrating ${concepts.join(' and ')} health practices`;
+    } else {
+      // Generic but specific to category and position
+      const positionTerms = ['demonstration', 'technique', 'results', 'comparison', 'study', 'training'];
+      const positionTerm = positionTerms[imageIndex % positionTerms.length];
+      altText = `Professional ${category} ${positionTerm} showing proper form and technique`;
+    }
+    
+    // Ensure uniqueness by adding position identifier
+    return `${altText} - Image ${imageIndex + 1}`;
+  }
+
+  /**
+   * Extract key concepts from text
+   */
+  private static extractKeyConcepts(text: string, heading?: string): string[] {
+    const combinedText = `${heading || ''} ${text}`.toLowerCase();
+    const concepts: string[] = [];
+    
+    const conceptMap = {
+      workout: ['workout', 'exercise', 'training', 'gym', 'fitness'],
+      nutrition: ['nutrition', 'diet', 'food', 'meal', 'eating'],
+      health: ['health', 'medical', 'wellness', 'doctor'],
+      research: ['research', 'study', 'science', 'laboratory'],
+      caffeine: ['caffeine', 'coffee', 'energy', 'stimulant'],
+      muscle: ['muscle', 'strength', 'building', 'bodybuilding'],
+      cardio: ['cardio', 'running', 'endurance', 'aerobic'],
+      recovery: ['recovery', 'rest', 'sleep', 'regeneration']
+    };
+    
+    Object.entries(conceptMap).forEach(([concept, keywords]) => {
+      if (keywords.some(keyword => combinedText.includes(keyword))) {
+        concepts.push(concept);
+      }
+    });
+    
+    return concepts.slice(0, 3); // Limit to 3 key concepts
+  }
+
+  /**
+   * Generate caption based on context
+   */
+  private static generateCaption(context: ImageContext): string {
+    const { sectionHeading, category } = context;
+    
+    if (sectionHeading) {
+      return `${sectionHeading} - Essential techniques for optimal results.`;
+    }
+    
+    const captions: Record<string, string> = {
+      health: 'Evidence-based health practices for optimal wellness.',
+      fitness: 'Professional fitness techniques for maximum results.',
+      nutrition: 'Nutritional strategies for peak performance.',
+      'weight-loss': 'Effective weight management and body composition.',
+      style: 'Modern lifestyle and wellness approaches.'
+    };
+    
+    return captions[category] || 'Professional demonstration of proper technique.';
   }
 
   /**
@@ -258,7 +350,7 @@ export class ImageService {
   /**
    * Get category-based fallback image
    */
-  private static getCategoryFallbackImage(category: string, imageIndex: number): string {
+  private static getCategoryFallbackImage(category: string, imageIndex: number, context: ImageContext): string {
     const fallbackUrls = [
       'https://images.pexels.com/photos/1547248/pexels-photo-1547248.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
       'https://images.pexels.com/photos/1552252/pexels-photo-1552252.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
@@ -269,7 +361,25 @@ export class ImageService {
       'https://images.pexels.com/photos/1229356/pexels-photo-1229356.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
     ];
 
-    return fallbackUrls[imageIndex % fallbackUrls.length];
+    return this.buildImageTag({
+      id: `fallback-${imageIndex}`,
+      urls: {
+        raw: fallbackUrls[imageIndex % fallbackUrls.length],
+        full: fallbackUrls[imageIndex % fallbackUrls.length],
+        regular: fallbackUrls[imageIndex % fallbackUrls.length],
+        small: fallbackUrls[imageIndex % fallbackUrls.length],
+        thumb: fallbackUrls[imageIndex % fallbackUrls.length]
+      },
+      alt_description: `${category} image`,
+      description: `Fallback image for ${category}`,
+      user: {
+        name: 'Stock Photo',
+        username: 'stock'
+      },
+      links: {
+        html: '#'
+      }
+    }, context);
   }
 
   /**
@@ -369,7 +479,7 @@ export class ImageService {
         console.error(`🚨 Failed to get contextual image ${i + 1}:`, error);
         
         // Fallback to category image
-        const fallbackUrl = this.getCategoryFallbackImage(category, i);
+        const fallbackUrl = this.getCategoryFallbackImage(category, i, context);
         updatedContent = updatedContent.replace('{IMAGE_URL}', fallbackUrl);
       }
       
