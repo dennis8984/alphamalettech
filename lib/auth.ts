@@ -4,6 +4,16 @@ import EmailProvider from "next-auth/providers/email"
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 
+// Admin email whitelist - only these emails can access admin
+const ADMIN_EMAILS = [
+  'admin@menshealth.com',
+  'editor@menshealth.com',
+  // Add your admin emails here
+  process.env.ADMIN_EMAIL_1,
+  process.env.ADMIN_EMAIL_2,
+  process.env.ADMIN_EMAIL_3,
+].filter(Boolean) as string[]
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -28,6 +38,34 @@ export const authOptions: NextAuthOptions = {
     error: '/admin/auth/error',
   },
   callbacks: {
+    async signIn({ user, account, profile, email }) {
+      const userEmail = user.email?.toLowerCase()
+      
+      // Check if user email is in admin whitelist
+      if (!userEmail || !ADMIN_EMAILS.includes(userEmail)) {
+        console.log(`🚨 Unauthorized admin access attempt: ${userEmail}`)
+        return false // Deny access
+      }
+      
+      // Update user role to admin if they're in whitelist
+      if (userEmail && ADMIN_EMAILS.includes(userEmail)) {
+        try {
+          await prisma.user.upsert({
+            where: { email: userEmail },
+            update: { role: 'admin' },
+            create: {
+              email: userEmail,
+              name: user.name || 'Admin User',
+              role: 'admin'
+            }
+          })
+        } catch (error) {
+          console.error('Error updating user role:', error)
+        }
+      }
+      
+      return true
+    },
     async session({ session, user }: { session: any; user: any }) {
       if (session.user) {
         session.user.id = user.id

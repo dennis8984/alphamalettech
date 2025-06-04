@@ -1,6 +1,7 @@
 import { ImageService } from './image-service';
 import { AuthorityLinkDetector } from './authority-link-detector';
 import { InternalLinkOptimizer } from './internal-link-optimizer';
+import { ClaudeContentEnhancer } from './claude-content-enhancer';
 
 interface ContentEnhancementOptions {
   rewriteForOriginality?: boolean
@@ -13,6 +14,7 @@ interface ContentEnhancementOptions {
   addInternalLinks?: boolean
   articleSlug?: string
   category?: string
+  useClaude?: boolean
 }
 
 interface EnhancedContent {
@@ -41,21 +43,64 @@ export class ContentEnhancer {
     let imageReplacements = 0
     let authorityLinksAdded = 0
     let internalLinksAdded = 0
+    let metaDescription: string | undefined
     
     console.log('🚀 Starting comprehensive content enhancement...')
     
     // Extract primary keyword from title
     const primaryKeyword = options.primaryKeyword || this.extractPrimaryKeyword(title)
     
-    // Step 1: Rewrite for originality (if enabled)
-    if (options.rewriteForOriginality) {
-      console.log('✍️ Rewriting content for originality...')
-      const rewrittenContent = await this.rewriteForOriginality(enhancedTitle, enhancedContent)
-      enhancedTitle = rewrittenContent.title
-      enhancedContent = rewrittenContent.content
+    // Use Claude AI if enabled and API key is available
+    if (options.useClaude && process.env.CLAUDE_API_KEY) {
+      console.log('🤖 Using Claude AI for content enhancement...')
+      try {
+        const claudeEnhancer = new ClaudeContentEnhancer()
+        const claudeResult = await claudeEnhancer.enhanceContent(title, content, {
+          rewriteForOriginality: options.rewriteForOriginality,
+          improveReadability: options.improveReadability,
+          addHeadings: options.addHeadings,
+          optimizeForSEO: options.optimizeForSEO,
+          primaryKeyword: primaryKeyword
+        })
+        
+        enhancedTitle = claudeResult.title
+        enhancedContent = claudeResult.content
+        metaDescription = claudeResult.metaDescription
+        warnings.push(...claudeResult.warnings)
+        
+        console.log('✅ Claude AI enhancement complete!')
+      } catch (error) {
+        console.error('🚨 Claude AI failed, falling back to manual enhancement:', error)
+        warnings.push(`Claude AI unavailable, using manual enhancement: ${error}`)
+      }
+    } else if (options.useClaude) {
+      warnings.push('Claude AI requested but CLAUDE_API_KEY not configured, using manual enhancement')
+    }
+    
+    // If not using Claude or Claude failed, use manual enhancement methods
+    if (!options.useClaude || warnings.some(w => w.includes('Claude AI'))) {
+      // Step 1: Rewrite for originality (if enabled and not done by Claude)
+      if (options.rewriteForOriginality && !enhancedContent.includes('<div class="bg-red-50')) {
+        console.log('✍️ Rewriting content for originality...')
+        const rewrittenContent = await this.rewriteForOriginality(enhancedTitle, enhancedContent)
+        enhancedTitle = rewrittenContent.title
+        enhancedContent = rewrittenContent.content
+      }
+
+      // Step 2: Improve readability and structure (if enabled and not done by Claude)
+      if (options.improveReadability && !enhancedContent.includes('class="lead')) {
+        enhancedContent = this.improveReadability(enhancedContent)
+      }
+
+      // Step 3: Add headings (if enabled and not done by Claude)
+      if (options.addHeadings && !enhancedContent.includes('<h2')) {
+        enhancedContent = this.addHeadings(enhancedContent, primaryKeyword)
+      }
     }
 
-    // Step 2: Replace image placeholders (if enabled)
+    // These steps always run after content rewriting
+    
+    // Step 4: Replace image placeholders (if enabled)
     if (options.replaceImages) {
       console.log('🖼️ Replacing image placeholders...')
       try {
@@ -79,7 +124,7 @@ export class ContentEnhancer {
       }
     }
 
-    // Step 3: Add authority links (if enabled)
+    // Step 5: Add authority links (if enabled)
     if (options.addAuthorityLinks) {
       console.log('🔗 Adding authority links...')
       try {
@@ -93,7 +138,7 @@ export class ContentEnhancer {
       }
     }
 
-    // Step 4: Add internal links (if enabled)
+    // Step 6: Add internal links (if enabled)
     if (options.addInternalLinks && options.articleSlug) {
       console.log('🔗 Adding internal links...')
       try {
@@ -111,23 +156,12 @@ export class ContentEnhancer {
       }
     }
 
-    // Step 5: Improve readability and structure (if enabled)
-    if (options.improveReadability) {
-      enhancedContent = this.improveReadability(enhancedContent)
-    }
-
-    // Step 6: Add headings (if enabled)  
-    if (options.addHeadings) {
-      enhancedContent = this.addHeadings(enhancedContent, primaryKeyword)
-    }
-
     // Calculate metrics
     const wordCount = this.getWordCount(enhancedContent)
     const readabilityScore = this.calculateReadabilityScore(enhancedContent)
     
-    // Generate meta description
-    let metaDescription: string | undefined
-    if (options.optimizeForSEO) {
+    // Generate meta description if not already generated by Claude
+    if (options.optimizeForSEO && !metaDescription) {
       metaDescription = this.generateMetaDescription(enhancedTitle, enhancedContent, primaryKeyword)
     }
 
