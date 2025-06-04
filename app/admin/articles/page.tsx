@@ -58,8 +58,8 @@ export default function ArticlesPage() {
 
   const filteredArticles = articles.filter(article =>
     article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    article.category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    article.author.name.toLowerCase().includes(searchQuery.toLowerCase())
+    article.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    article.author.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   // Handle individual article selection
@@ -162,16 +162,13 @@ export default function ArticlesPage() {
   }
 
   const getStatusBadge = (article: Article) => {
-    if (!article.published) {
+    if (article.status === 'draft') {
       return <Badge variant="secondary">Draft</Badge>
     }
-    if (article.featured) {
-      return <Badge className="bg-yellow-500">Featured</Badge>
+    if (article.status === 'published') {
+      return <Badge variant="default">Published</Badge>
     }
-    if (article.trending) {
-      return <Badge className="bg-green-500">Trending</Badge>
-    }
-    return <Badge variant="default">Published</Badge>
+    return <Badge variant="secondary">Unknown</Badge>
   }
 
   const handleViewArticle = (article: Article) => {
@@ -325,13 +322,13 @@ export default function ArticlesPage() {
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(article)}</TableCell>
-                      <TableCell>{article.author.name}</TableCell>
+                      <TableCell>{article.author}</TableCell>
                       <TableCell>
-                        {article.createdAt ? new Date(article.createdAt).toLocaleDateString() : '-'}
+                        {article.created_at ? new Date(article.created_at).toLocaleDateString() : '-'}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {article.published && (
+                          {article.status === 'published' && (
                             <Button 
                               variant="ghost" 
                               size="sm"
