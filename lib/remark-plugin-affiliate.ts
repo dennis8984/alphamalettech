@@ -301,23 +301,6 @@ function createTrackingUrl(
 export default remarkPluginAffiliate
 
 /**
- * Factory function for creating the plugin with predefined keywords
- */
-export function createAffiliatePlugin(keywords: KeywordLink[], articleId: string) {
-  const plugin = remarkPluginAffiliate({
-    keywords,
-    articleId,
-    maxLinksPerKeyword: true,
-    respectCaseSensitive: false,
-    excludeExistingLinks: true,
-    addNoFollowRel: true,
-    trackClicks: true
-  })
-  
-  return plugin
-}
-
-/**
  * Utility function to fetch keywords for a specific article/category
  */
 export async function getKeywordsForArticle(category?: string): Promise<KeywordLink[]> {
