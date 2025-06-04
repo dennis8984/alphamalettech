@@ -78,7 +78,7 @@ export default function ArticlesPage() {
     if (selectedArticles.size === filteredArticles.length) {
       setSelectedArticles(new Set()) // Deselect all
     } else {
-      setSelectedArticles(new Set(filteredArticles.map(a => a.id))) // Select all
+      setSelectedArticles(new Set(filteredArticles.map(a => a.id).filter((id): id is string => id !== undefined))) // Select all
     }
   }
 
@@ -90,7 +90,7 @@ export default function ArticlesPage() {
       })
 
       if (response.ok) {
-        setArticles(articles.filter(a => a.id !== articleId))
+        setArticles(articles.filter(a => a.id && a.id !== articleId))
         setSelectedArticles(prev => {
           const newSet = new Set(prev)
           newSet.delete(articleId)
@@ -142,7 +142,7 @@ export default function ArticlesPage() {
       const deletedIds = results.filter(id => id !== null) as string[]
 
       // Update local state
-      setArticles(articles.filter(a => !deletedIds.includes(a.id)))
+      setArticles(articles.filter(a => a.id && !deletedIds.includes(a.id)))
       setSelectedArticles(new Set())
 
       // Show results
@@ -341,16 +341,16 @@ export default function ArticlesPage() {
                           <Button 
                             variant="ghost" 
                             size="sm"
-                            onClick={() => handleEditArticle(article.id!)}
+                            onClick={() => article.id && handleEditArticle(article.id)}
                             title="Edit article"
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
                                 className="text-red-600 hover:text-red-700"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -366,7 +366,7 @@ export default function ArticlesPage() {
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() => handleDeleteArticle(article.id!)}
+                                  onClick={() => article.id && handleDeleteArticle(article.id)}
                                   className="bg-red-600 hover:bg-red-700"
                                 >
                                   Delete Article
