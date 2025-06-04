@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, Placement } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -236,7 +236,7 @@ async function main() {
         image: 'https://images.unsplash.com/photo-1544991875-5dc1b05f607d?w=728&h=90&fit=crop',
         targetUrl: 'https://affiliate.example.com/protein-powder?ref=menshub',
         sizes: ['728x90', '970x250'],
-        placement: 'HEADER',
+        placement: Placement.HEADER,
         weight: 100
       },
       {
@@ -244,7 +244,7 @@ async function main() {
         image: 'https://images.unsplash.com/photo-1571019613540-996a5c9b6c6e?w=300&h=250&fit=crop',
         targetUrl: 'https://amazon.com/workout-gear?tag=menshub-20',
         sizes: ['300x250'],
-        placement: 'SIDEBAR',
+        placement: Placement.SIDEBAR,
         weight: 90
       },
       {
@@ -252,7 +252,7 @@ async function main() {
         image: 'https://images.unsplash.com/photo-1584464491033-06628f3a6b7b?w=728&h=90&fit=crop',
         targetUrl: 'https://affiliate.example.com/test-boost?ref=menshub',
         sizes: ['728x90'],
-        placement: 'INLINE',
+        placement: Placement.INLINE,
         weight: 85
       },
       {
@@ -260,7 +260,7 @@ async function main() {
         image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=970&h=250&fit=crop',
         targetUrl: 'https://amazon.com/meal-prep?tag=menshub-20',
         sizes: ['970x250', '728x90'],
-        placement: 'FOOTER',
+        placement: Placement.FOOTER,
         weight: 80
       }
     ]
