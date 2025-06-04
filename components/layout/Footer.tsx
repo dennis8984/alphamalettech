@@ -124,6 +124,9 @@ const Footer = () => {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p>&copy; {new Date().getFullYear()} Men&apos;s Hub. All rights reserved.</p>
             <div className="mt-4 md:mt-0 space-x-4">
+              <Link href="/sitemap" className="hover:text-white transition-colors">
+                Sitemap
+              </Link>
               <Link href="#" className="hover:text-white transition-colors">
                 Privacy Policy
               </Link>
