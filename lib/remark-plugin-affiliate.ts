@@ -304,15 +304,17 @@ export default remarkPluginAffiliate
  * Factory function for creating the plugin with predefined keywords
  */
 export function createAffiliatePlugin(keywords: KeywordLink[], articleId: string) {
-  return remarkPluginAffiliate({
-    keywords,
-    articleId,
-    maxLinksPerKeyword: true,
-    respectCaseSensitive: false,
-    excludeExistingLinks: true,
-    addNoFollowRel: true,
-    trackClicks: true
-  })
+  return (tree: Root) => {
+    return remarkPluginAffiliate({
+      keywords,
+      articleId,
+      maxLinksPerKeyword: true,
+      respectCaseSensitive: false,
+      excludeExistingLinks: true,
+      addNoFollowRel: true,
+      trackClicks: true
+    })(tree)
+  }
 }
 
 /**
