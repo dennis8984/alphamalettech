@@ -61,7 +61,7 @@ export default function ArticlesPage() {
 
   const handleViewArticle = (article: Article) => {
     // Open article in new tab
-    window.open(`/${article.slug}`, '_blank')
+    window.open(`/articles/${article.slug}`, '_blank')
   }
 
   const handleEditArticle = (articleId: string) => {
