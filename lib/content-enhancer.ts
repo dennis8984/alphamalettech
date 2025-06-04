@@ -1,9 +1,18 @@
+import { ImageService } from './image-service';
+import { AuthorityLinkDetector } from './authority-link-detector';
+import { InternalLinkOptimizer } from './internal-link-optimizer';
+
 interface ContentEnhancementOptions {
   rewriteForOriginality?: boolean
   improveReadability?: boolean
   addHeadings?: boolean
   optimizeForSEO?: boolean
   primaryKeyword?: string
+  replaceImages?: boolean
+  addAuthorityLinks?: boolean
+  addInternalLinks?: boolean
+  articleSlug?: string
+  category?: string
 }
 
 interface EnhancedContent {
@@ -14,6 +23,9 @@ interface EnhancedContent {
   wordCount: number
   warnings: string[]
   metaDescription?: string
+  imageReplacements?: number
+  authorityLinksAdded?: number
+  internalLinksAdded?: number
 }
 
 export class ContentEnhancer {
@@ -26,36 +38,107 @@ export class ContentEnhancer {
     let enhancedTitle = title
     let enhancedContent = content
     const warnings: string[] = []
+    let imageReplacements = 0
+    let authorityLinksAdded = 0
+    let internalLinksAdded = 0
+    
+    console.log('🚀 Starting comprehensive content enhancement...')
     
     // Extract primary keyword from title
     const primaryKeyword = options.primaryKeyword || this.extractPrimaryKeyword(title)
     
-    enhancedContent = this.cleanAndFormatContent(enhancedContent)
-    
+    // Step 1: Rewrite for originality (if enabled)
     if (options.rewriteForOriginality) {
+      console.log('✍️ Rewriting content for originality...')
       const rewrittenContent = await this.rewriteForOriginality(enhancedTitle, enhancedContent)
       enhancedTitle = rewrittenContent.title
       enhancedContent = rewrittenContent.content
-    } else {
-      enhancedContent = this.applyMensHealthFormatting(enhancedContent, primaryKeyword)
     }
-    
+
+    // Step 2: Replace image placeholders (if enabled)
+    if (options.replaceImages) {
+      console.log('🖼️ Replacing image placeholders...')
+      try {
+        const originalPlaceholders = (enhancedContent.match(/\{IMAGE_URL\}/g) || []).length
+        enhancedContent = await ImageService.replaceImagePlaceholders(
+          enhancedContent, 
+          enhancedTitle, 
+          primaryKeyword
+        )
+        imageReplacements = originalPlaceholders
+        console.log(`✅ Replaced ${imageReplacements} images`)
+      } catch (error) {
+        console.error('🚨 Image replacement failed:', error)
+        warnings.push('Image replacement failed - using fallback images')
+      }
+    }
+
+    // Step 3: Add authority links (if enabled)
+    if (options.addAuthorityLinks) {
+      console.log('🔗 Adding authority links...')
+      try {
+        const authorityResult = await AuthorityLinkDetector.detectAndLinkAuthorities(enhancedContent)
+        enhancedContent = authorityResult.linkedText
+        authorityLinksAdded = authorityResult.linksAdded.length
+        console.log(`✅ Added ${authorityLinksAdded} authority links`)
+      } catch (error) {
+        console.error('🚨 Authority linking failed:', error)
+        warnings.push('Authority link detection failed')
+      }
+    }
+
+    // Step 4: Add internal links (if enabled)
+    if (options.addInternalLinks && options.articleSlug) {
+      console.log('🔗 Adding internal links...')
+      try {
+        const internalResult = await InternalLinkOptimizer.optimizeInternalLinks(
+          enhancedContent, 
+          options.articleSlug, 
+          2
+        )
+        enhancedContent = internalResult.linkedText
+        internalLinksAdded = internalResult.linksAdded.length
+        console.log(`✅ Added ${internalLinksAdded} internal links`)
+      } catch (error) {
+        console.error('🚨 Internal linking failed:', error)
+        warnings.push('Internal link optimization failed')
+      }
+    }
+
+    // Step 5: Improve readability and structure (if enabled)
+    if (options.improveReadability) {
+      enhancedContent = this.improveReadability(enhancedContent)
+    }
+
+    // Step 6: Add headings (if enabled)  
+    if (options.addHeadings) {
+      enhancedContent = this.addHeadings(enhancedContent, primaryKeyword)
+    }
+
+    // Calculate metrics
     const wordCount = this.getWordCount(enhancedContent)
     const readabilityScore = this.calculateReadabilityScore(enhancedContent)
-    const excerpt = this.generateExcerpt(enhancedContent)
-    const metaDescription = this.generateMetaDescription(enhancedTitle, primaryKeyword, excerpt)
     
-    if (wordCount < 500) warnings.push('Article is shorter than recommended 500 words for Men\'s Health standards')
-    if (readabilityScore < 70) warnings.push('Content may be difficult to read - aim for 70+ readability score')
-    
+    // Generate meta description
+    let metaDescription: string | undefined
+    if (options.optimizeForSEO) {
+      metaDescription = this.generateMetaDescription(enhancedTitle, enhancedContent, primaryKeyword)
+    }
+
+    console.log(`✅ Content enhancement complete!`)
+    console.log(`📊 Stats: ${wordCount} words, ${imageReplacements} images, ${authorityLinksAdded} authority links, ${internalLinksAdded} internal links`)
+
     return {
       title: enhancedTitle,
       content: enhancedContent,
-      excerpt,
+      excerpt: this.generateExcerpt(enhancedContent, 160),
       readabilityScore,
       wordCount,
       warnings,
-      metaDescription
+      metaDescription,
+      imageReplacements,
+      authorityLinksAdded,
+      internalLinksAdded
     }
   }
   
@@ -357,11 +440,17 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
     return enhanced
   }
   
-  private static generateMetaDescription(title: string, primaryKeyword: string, excerpt: string): string {
+  private static generateMetaDescription(title: string, content: string, primaryKeyword: string): string {
     const benefit = this.getBenefit()
     const template = `Master ${primaryKeyword} with expert-backed strategies. ${benefit} in just weeks. Science-based approach that actually works.`
     
-    return template.length <= 160 ? template : excerpt.substring(0, 157) + '...'
+    if (template.length <= 160) {
+      return template
+    }
+    
+    // Fallback to excerpt from content
+    const excerpt = this.generateExcerpt(content, 25)
+    return excerpt.length <= 160 ? excerpt : excerpt.substring(0, 157) + '...'
   }
   
   // Helper methods for content generation
@@ -445,10 +534,46 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
     return Math.round(score)
   }
   
-  private static generateExcerpt(content: string): string {
+  private static generateExcerpt(content: string, maxLength: number): string {
     const text = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-    const words = text.split(' ').slice(0, 30)
-    return words.join(' ') + (words.length >= 30 ? '...' : '')
+    const words = text.split(' ').slice(0, maxLength)
+    return words.join(' ') + (words.length >= maxLength ? '...' : '')
+  }
+  
+  private static improveReadability(content: string): string {
+    // Clean and format content for better readability
+    let improved = this.cleanAndFormatContent(content)
+    
+    // Ensure proper paragraph spacing
+    improved = improved.replace(/\n\s*\n/g, '\n\n')
+    
+    // Wrap orphaned text in paragraphs
+    improved = improved.replace(/^([^<\n]+)$/gm, '<p class="mb-6 text-gray-700 leading-relaxed">$1</p>')
+    
+    return improved
+  }
+  
+  private static addHeadings(content: string, primaryKeyword: string): string {
+    // If no headings exist, add strategic ones
+    if (!/<h[1-6]/i.test(content)) {
+      const paragraphs = content.split('\n\n').filter(p => p.trim().length > 0)
+      const headings = this.generateStrategicH2s(primaryKeyword)
+      
+      let result = ''
+      let headingIndex = 0
+      
+      paragraphs.forEach((paragraph, index) => {
+        if (index > 0 && index % 3 === 0 && headingIndex < headings.length) {
+          result += `\n\n<h2 class="text-2xl font-bold text-gray-900 mt-12 mb-6">${headings[headingIndex]}</h2>\n\n`
+          headingIndex++
+        }
+        result += paragraph + '\n\n'
+      })
+      
+      return result.trim()
+    }
+    
+    return content
   }
   
   private static rewriteSentence(sentence: string): string {

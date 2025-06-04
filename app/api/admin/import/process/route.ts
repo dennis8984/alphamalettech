@@ -46,8 +46,9 @@ export async function POST(request: NextRequest) {
       try {
         console.log(`🔄 Processing article: "${article.title}"`)
         
-        // Enhance content using ContentEnhancer
-        console.log('   ↳ Enhancing content for originality and readability...')
+        // Enhanced content processing
+        console.log(`📝 Processing: ${article.title}`)
+        
         const enhancedContent = await ContentEnhancer.enhanceContent(
           article.title,
           article.content,
@@ -55,7 +56,12 @@ export async function POST(request: NextRequest) {
             rewriteForOriginality: true,
             improveReadability: true,
             addHeadings: true,
-            optimizeForSEO: true
+            optimizeForSEO: true,
+            replaceImages: true,
+            addAuthorityLinks: true,
+            addInternalLinks: true,
+            articleSlug: article.slug,
+            category: article.category
           }
         )
         
