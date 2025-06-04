@@ -1,4 +1,4 @@
-import { articles, categories, getArticlesByCategory, initializeArticles } from '@/lib/data';
+import { articles, categories, getArticlesByCategory, initializeArticles, findArticleBySlug } from '@/lib/data';
 import { formatDate } from '@/lib/utils';
 import ArticleCard from '@/components/articles/ArticleCard';
 import { AdSlot } from '@/components/ui/ad-slot';
@@ -10,28 +10,45 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Newsletter from '@/components/layout/Newsletter';
 import SidebarNewsletter from '@/components/ui/sidebar-newsletter';
+import { getAllArticles } from '@/lib/articles-db';
+import { notFound } from 'next/navigation';
 
-// Generate static params for all articles and categories
+// Enable ISR with 60 second revalidation
+export const revalidate = 60;
+
+// Generate static params for existing articles (for performance)
 export async function generateStaticParams() {
-  console.log('[generateStaticParams] Generating params...'); // Added for cache busting
+  console.log('[generateStaticParams] Generating params...');
   
-  // Initialize articles to get the latest data
-  await initializeArticles();
-  
-  // Generate paths for all articles
-  const articlePaths = articles.map((article) => ({
-    slug: article.slug,
-  }));
+  try {
+    // Get articles directly from database for build time
+    const { data: dbArticles } = await getAllArticles();
+    
+    if (!dbArticles) {
+      console.log('[generateStaticParams] No articles found in database');
+      return [];
+    }
+    
+    // Generate paths for published articles only
+    const articlePaths = dbArticles
+      .filter(article => article.status === 'published')
+      .map((article) => ({
+        slug: article.slug,
+      }));
 
-  // Generate paths for all categories
-  const categoryPaths = categories.map((category) => ({
-    slug: category.slug,
-  }));
+    // Generate paths for categories
+    const categoryPaths = categories.map((category) => ({
+      slug: category.slug,
+    }));
 
-  // Combine both arrays
-  const allPaths = [...articlePaths, ...categoryPaths];
-  console.log(`[generateStaticParams] Generated ${allPaths.length} paths.`); // Added for cache busting
-  return allPaths;
+    const allPaths = [...articlePaths, ...categoryPaths];
+    console.log(`[generateStaticParams] Generated ${allPaths.length} paths (${articlePaths.length} articles, ${categoryPaths.length} categories)`);
+    
+    return allPaths;
+  } catch (error) {
+    console.error('[generateStaticParams] Error:', error);
+    return [];
+  }
 }
 
 interface ArticlePageProps {
@@ -52,25 +69,31 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
     };
   }
 
-  // Check if this is an article page
-  const article = articles.find(a => a.slug === slug);
-  if (article) {
-    return {
-      title: `${article.title} - Men's Hub`,
-      description: article.excerpt
-    };
+  // Check database for the article
+  try {
+    const { data: dbArticles } = await getAllArticles();
+    const article = dbArticles?.find(a => a.slug === slug && a.status === 'published');
+    
+    if (article) {
+      return {
+        title: `${article.title} - Men's Hub`,
+        description: article.excerpt || `Read about ${article.title} on Men's Hub`
+      };
+    }
+  } catch (error) {
+    console.error('Error generating metadata:', error);
   }
 
   return {
-    title: 'Not Found',
-    description: 'The requested page could not be found.'
+    title: 'Article - Men\'s Hub',
+    description: 'Read the latest articles on Men\'s Hub.'
   };
 }
 
 export default async function ArticlePage({ params }: ArticlePageProps) {
   const { slug } = params;
   
-  // Initialize articles to get the latest data
+  // Initialize articles cache
   await initializeArticles();
 
   // Check if this is a category page
@@ -121,30 +144,18 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     );
   }
 
-  // Check if this is an article page
-  const article = articles.find(a => a.slug === slug);
+  // Find article using the new helper function
+  const article = await findArticleBySlug(slug);
+  
+  // If not found, return 404
   if (!article) {
-    return (
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-3xl mx-auto text-center">
-          <h1 className="text-3xl font-bold mb-4">Page Not Found</h1>
-          <p className="text-gray-600 mb-6">
-            The page you are looking for could not be found.
-          </p>
-          <Link 
-            href="/"
-            className="inline-block bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded-md transition-colors"
-          >
-            Back to Home
-          </Link>
-        </div>
-      </div>
-    );
+    console.log(`[ArticlePage] Article "${slug}" not found`);
+    notFound();
   }
 
   // Get related articles from the same category
   const relatedArticles = articles
-    .filter(a => a.category === article.category && a.id !== article.id)
+    .filter(a => a.category === article!.category && a.id !== article!.id)
     .slice(0, 3);
 
   // Use the actual article content

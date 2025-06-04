@@ -13,7 +13,7 @@ export const categories: Category[] = [
 // Cache for articles to avoid multiple fetches
 let articlesCache: Article[] | null = null;
 let lastFetchTime = 0;
-const CACHE_DURATION = 10000; // Reduced to 10 seconds for testing
+const CACHE_DURATION = 30000; // Reduced to 30 seconds for frequent updates
 
 // Function to clear cache (useful after imports)
 export const clearArticlesCache = () => {
@@ -26,8 +26,10 @@ export const clearArticlesCache = () => {
 const getArticles = async (): Promise<Article[]> => {
   const now = Date.now();
   
-  // Return cached data if it's still fresh
-  if (articlesCache && (now - lastFetchTime) < CACHE_DURATION) {
+  // For new article detection, be more aggressive about cache refresh
+  const shouldRefresh = !articlesCache || (now - lastFetchTime) > CACHE_DURATION;
+  
+  if (!shouldRefresh && articlesCache) {
     console.log('📦 Using cached articles:', articlesCache.length);
     return articlesCache;
   }
@@ -39,7 +41,7 @@ const getArticles = async (): Promise<Article[]> => {
   
   if (error || !data) {
     console.error('❌ Failed to fetch articles:', error);
-    // Return empty array or cached data if available
+    // Return cached data if available, otherwise empty array
     return articlesCache || [];
   }
   
@@ -48,6 +50,12 @@ const getArticles = async (): Promise<Article[]> => {
     acc[article.status] = (acc[article.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>));
+  
+  // Log article slugs for debugging
+  const publishedSlugs = data
+    .filter(article => article.status === 'published')
+    .map(article => article.slug);
+  console.log('📝 Published article slugs:', publishedSlugs.slice(0, 10), publishedSlugs.length > 10 ? `... and ${publishedSlugs.length - 10} more` : '');
   
   // Transform the data to match the expected format
   const transformedArticles = data
@@ -88,7 +96,64 @@ export const initializeArticles = async () => {
   const fetchedArticles = await getArticles();
   articles.length = 0;
   articles.push(...fetchedArticles);
+  console.log(`🚀 Articles initialized: ${articles.length} articles loaded`);
   return fetchedArticles;
+};
+
+// Helper function to find an article by slug (with fresh database lookup if needed)
+export const findArticleBySlug = async (slug: string): Promise<Article | null> => {
+  // First check the cached articles
+  await initializeArticles();
+  let article = articles.find(a => a.slug === slug);
+  
+  if (article) {
+    console.log(`✅ Found article "${slug}" in cache`);
+    return article;
+  }
+  
+  // If not in cache, try a fresh database lookup
+  console.log(`🔍 Article "${slug}" not in cache, checking database directly...`);
+  
+  try {
+    const { data, error } = await getAllArticles();
+    
+    if (error || !data) {
+      console.error('❌ Database error:', error);
+      return null;
+    }
+    
+    const dbArticle = data.find(a => a.slug === slug && a.status === 'published');
+    
+    if (dbArticle) {
+      console.log(`✅ Found article "${slug}" in database`);
+      
+      // Transform to expected format
+      article = {
+        id: dbArticle.id || '',
+        title: dbArticle.title,
+        slug: dbArticle.slug,
+        excerpt: dbArticle.excerpt,
+        content: dbArticle.content || '',
+        image: dbArticle.featured_image || 'https://images.pexels.com/photos/1547248/pexels-photo-1547248.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+        category: dbArticle.category,
+        author: dbArticle.author,
+        date: dbArticle.published_at || dbArticle.created_at || new Date().toISOString(),
+        featured: false,
+        trending: false
+      };
+      
+      // Add to cache for subsequent requests
+      articles.push(article);
+      return article;
+    }
+    
+    console.log(`❌ Article "${slug}" not found in database`);
+    return null;
+    
+  } catch (error) {
+    console.error(`❌ Error looking up article "${slug}":`, error);
+    return null;
+  }
 };
 
 export const getFeaturedArticles = (): Article[] => {
