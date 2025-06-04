@@ -78,13 +78,13 @@ export const remarkPluginAffiliate: Plugin<[AffiliatePluginOptions], Root> = (op
         const keywordRegex = new RegExp(`\\b(${escapeRegex(keyword.keyword)})\\b`, flags)
 
         // Find matches in the current text
-        const matches = Array.from(modifiedText.matchAll(keywordRegex))
+        const matches = Array.from(modifiedText.matchAll(keywordRegex)) as RegExpMatchArray[]
         
         if (matches.length === 0) continue
 
         // Process matches in reverse order to maintain string positions
         for (let i = matches.length - 1; i >= 0; i--) {
-          const match = matches[i]
+          const match = matches[i] as RegExpMatchArray
           const remainingHits = keyword.maxHitsPerPage - currentCount
           
           if (maxLinksPerKeyword && remainingHits <= 0) break
@@ -108,9 +108,10 @@ export const remarkPluginAffiliate: Plugin<[AffiliatePluginOptions], Root> = (op
           
           // Store link data for later processing
           if (!(tree as any).data) (tree as any).data = {}
-          if (!(tree as any).data.affiliateLinks) (tree as any).data.affiliateLinks = new Map()
+          if (!(tree as any).data.affiliateLinks) (tree as any).data.affiliateLinks = new Map<string, any>()
           
-          (tree as any).data.affiliateLinks.set(linkId, {
+          const affiliateLinksMap = (tree as any).data.affiliateLinks as Map<string, any>
+          affiliateLinksMap.set(linkId, {
             keyword,
             matchedText: match[0],
             articleId,
@@ -133,7 +134,7 @@ export const remarkPluginAffiliate: Plugin<[AffiliatePluginOptions], Root> = (op
     visit(tree, 'text', (node: Text, index: number, parent: any) => {
       if (!node.value || !(tree as any).data?.affiliateLinks) return
 
-      const linkMarkers = Array.from(node.value.matchAll(/__AFFILIATE_LINK_([^_]+)_(\d+)__/g))
+      const linkMarkers = Array.from(node.value.matchAll(/__AFFILIATE_LINK_([^_]+)_(\d+)__/g)) as RegExpMatchArray[]
       
       if (linkMarkers.length === 0) return
 
@@ -142,8 +143,9 @@ export const remarkPluginAffiliate: Plugin<[AffiliatePluginOptions], Root> = (op
       let lastEnd = 0
 
       for (const marker of linkMarkers) {
-        const linkId = marker[0]
-        const linkData = (tree as any).data.affiliateLinks.get(linkId)
+        const linkId = marker[0] as string
+        const affiliateLinksMap = (tree as any).data.affiliateLinks as Map<string, any>
+        const linkData = affiliateLinksMap.get(linkId)
         
         if (!linkData) continue
 
