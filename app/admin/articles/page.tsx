@@ -85,11 +85,9 @@ export default function ArticlesPage() {
   // Handle single article deletion
   const handleDeleteArticle = async (articleId: string) => {
     try {
-      const response = await fetch(`/api/admin/articles/${articleId}`, {
-        method: 'DELETE',
-      })
+      const { success, error } = await deleteArticle(articleId)
 
-      if (response.ok) {
+      if (success) {
         setArticles(articles.filter(a => a.id && a.id !== articleId))
         setSelectedArticles(prev => {
           const newSet = new Set(prev)
@@ -98,7 +96,7 @@ export default function ArticlesPage() {
         })
         toast.success('Article deleted successfully')
       } else {
-        toast.error('Failed to delete article')
+        toast.error(`Failed to delete article: ${error}`)
       }
     } catch (error) {
       toast.error('Error deleting article')
@@ -119,20 +117,20 @@ export default function ArticlesPage() {
     let failCount = 0
 
     try {
-      // Delete articles in parallel for better performance
+      // Delete articles in parallel using Supabase deleteArticle function
       const deletePromises = selectedIds.map(async (articleId) => {
         try {
-          const response = await fetch(`/api/admin/articles/${articleId}`, {
-            method: 'DELETE',
-          })
-          if (response.ok) {
+          const { success, error } = await deleteArticle(articleId)
+          if (success) {
             successCount++
             return articleId
           } else {
+            console.error(`Failed to delete article ${articleId}:`, error)
             failCount++
             return null
           }
         } catch (error) {
+          console.error(`Error deleting article ${articleId}:`, error)
           failCount++
           return null
         }
