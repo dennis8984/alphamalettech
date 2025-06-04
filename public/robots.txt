@@ -1,0 +1,97 @@
+# Robots.txt for Men's Hub
+# Allow Google Ads crawling
+User-agent: Mediapartners-Google
+Disallow:
+
+# Allow social media crawlers for sharing
+User-agent: Facebot
+Disallow:
+
+User-agent: Twitterbot
+Disallow:
+
+# Block AI training crawlers from the entire site
+User-agent: CCBot
+Disallow: /
+
+User-agent: OAI-SearchBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+# Allow Google search crawlers
+User-agent: Googlebot
+User-agent: Google-InspectionTool
+Disallow: /*moapt-data.js
+
+# Rules for all other crawlers
+User-agent: *
+
+# Block admin and authentication areas
+Disallow: /admin/
+Disallow: /api/admin/
+Disallow: /auth/
+Disallow: /oauth/
+
+# Block API endpoints (except public ones)
+Disallow: /api/
+Allow: /api/articles/
+Allow: /api/newsletter/
+
+# Block development and preview areas
+Disallow: /preview/
+Disallow: /dev/
+Disallow: /_next/
+Disallow: /static/
+
+# Block search and internal pages
+Disallow: /search
+Disallow: /transporter/
+
+# Block temporary and cache directories
+Disallow: /temp/
+Disallow: /cache/
+Disallow: /uploads/
+
+# Block database and config files
+Disallow: /*.sql
+Disallow: /*.env
+Disallow: /*.config
+Disallow: /*.json$
+
+# Allow important content paths
+Allow: /articles/
+Allow: /fitness/
+Allow: /nutrition/
+Allow: /health/
+Allow: /style/
+Allow: /weight-loss/
+Allow: /entertainment/
+
+# Allow media and images
+Allow: /images/
+Allow: /media/
+Allow: /assets/
+
+# Allow sitemap and feed
+Allow: /sitemap.xml
+Allow: /sitemap_index.xml
+Allow: /feed.xml
+Allow: /rss.xml
+
+# Sitemap locations
+Sitemap: https://www.menshb.com/sitemap.xml
+Sitemap: https://www.menshb.com/sitemap_index.xml
+
+# Crawl delay for non-Google bots (be nice to servers)
+Crawl-delay: 1 
