@@ -159,7 +159,10 @@ export default function NewAdPage() {
     setAd(prev => ({
       ...prev,
       popunder_settings: {
-        ...prev.popunder_settings,
+        trigger_after_views: prev.popunder_settings?.trigger_after_views || 3,
+        frequency_days: prev.popunder_settings?.frequency_days || 7,
+        user_interaction_required: prev.popunder_settings?.user_interaction_required || false,
+        delay_seconds: prev.popunder_settings?.delay_seconds || 2,
         [field]: value
       }
     }))
