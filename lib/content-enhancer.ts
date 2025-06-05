@@ -533,7 +533,20 @@ ${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span clas
     
     // Add more dynamic headings based on content
     contextualHeadings.push(`Advanced ${lsiSynonyms[1] || primaryKeyword} Techniques for Maximum Impact`)
-    contextualHeadings.push(`How to Maximize Your ${primaryKeyword} Results in Record Time`)
+    
+    // Generate contextual timing-based headings
+    const timingHeadings: Record<string, string> = {
+      'fitness': `How to Accelerate Your ${primaryKeyword} Progress Safely and Effectively`,
+      'nutrition': `How to Optimize Your ${primaryKeyword} Results Through Consistency`,
+      'health': `How to Maximize Your ${primaryKeyword} Benefits Over Time`,
+      'weight': `How to Achieve Sustainable ${primaryKeyword} Success`,
+      'muscle': `How to Optimize Your ${primaryKeyword} Development Timeline`,
+      'strength': `How to Maximize Your ${primaryKeyword} Gains Efficiently`
+    }
+    
+    const keyword = primaryKeyword.toLowerCase()
+    const timingHeading = timingHeadings[keyword] || `How to Optimize Your ${primaryKeyword} Results Effectively`
+    contextualHeadings.push(timingHeading)
     
     if (context.expertMentions.length > 0) {
       contextualHeadings.push(`The Future of ${lsiSynonyms[2] || primaryKeyword} Research and Innovation`)
@@ -570,12 +583,34 @@ ${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span clas
   }
   
   private static generateContextualBlockquote(primaryKeyword: string, context: any): string {
-    const experts = [
-      { name: "Dr. Sarah Johnson", credential: "Exercise Physiologist, Harvard Medical School" },
-      { name: "Michael Chen", credential: "Certified Strength and Conditioning Specialist" },
-      { name: "Dr. Amanda Rodriguez", credential: "Sports Nutritionist, Stanford University" },
-      { name: "James Thompson", credential: "Performance Specialist, Olympic Training Center" },
-      { name: "Dr. Kevin Martinez", credential: "Sports Medicine Physician, Mayo Clinic" }
+    // Generate contextual experts based on primary keyword
+    const expertsByKeyword: Record<string, Array<{name: string, credential: string}>> = {
+      'fitness': [
+        { name: "Dr. Michael Roberts", credential: "Exercise Physiologist, Sports Science Institute" },
+        { name: "Sarah Chen", credential: "Certified Strength and Conditioning Specialist" },
+        { name: "Dr. Amanda Walsh", credential: "Sports Performance Specialist" }
+      ],
+      'nutrition': [
+        { name: "Dr. Jennifer Martinez", credential: "Sports Nutritionist, Performance Nutrition Lab" },
+        { name: "Dr. David Kim", credential: "Registered Dietitian, Clinical Nutrition" },
+        { name: "Lisa Thompson", credential: "Nutrition Researcher, Health Sciences" }
+      ],
+      'health': [
+        { name: "Dr. Robert Chen", credential: "Health Sciences Researcher" },
+        { name: "Dr. Maria Rodriguez", credential: "Wellness Specialist, Preventive Medicine" },
+        { name: "Dr. James Wilson", credential: "Public Health Expert" }
+      ],
+      'weight': [
+        { name: "Dr. Susan Davis", credential: "Weight Management Specialist" },
+        { name: "Dr. Kevin Park", credential: "Metabolic Health Researcher" },
+        { name: "Dr. Rachel Green", credential: "Obesity Medicine Physician" }
+      ]
+    }
+    
+    const keyword = primaryKeyword.toLowerCase()
+    const experts = expertsByKeyword[keyword] || expertsByKeyword['health'] || [
+      { name: "Dr. Alex Johnson", credential: "Health & Performance Specialist" },
+      { name: "Dr. Taylor Smith", credential: "Research Scientist" }
     ]
     
     const expert = experts[Math.floor(Math.random() * experts.length)]
@@ -635,11 +670,24 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
     let calloutContent = ''
     
     if (context.mainBenefits.length > 0) {
-      calloutContent = `Ready to experience ${context.mainBenefits[0]}? The science shows this one change makes all the difference.`
+      calloutContent = `Ready to experience ${context.mainBenefits[0]}? This approach has helped countless people achieve their ${primaryKeyword} goals.`
     } else if (context.keyMethods.length > 0) {
-      calloutContent = `Master ${context.keyMethods[0]} and watch your results transform in just weeks.`
+      calloutContent = `Focus on ${context.keyMethods[0]} and you'll see meaningful ${primaryKeyword} improvements over time.`
+    } else if (context.importantFacts.length > 0) {
+      calloutContent = `Remember: ${context.importantFacts[0]}. This knowledge gives you a real advantage.`
     } else {
-      calloutContent = `The key to ${primaryKeyword} success is persistence—breakthroughs happen when you stay consistent.`
+      // Generate contextual fallback based on primary keyword
+      const keywordCallouts: Record<string, string> = {
+        'fitness': 'Consistency with your fitness routine creates lasting strength and endurance improvements.',
+        'nutrition': 'Small, sustainable nutrition changes lead to significant long-term health benefits.',
+        'health': 'Prioritizing your health today sets the foundation for a vibrant, energetic future.',
+        'weight': 'Sustainable weight management comes from building healthy habits, not quick fixes.',
+        'muscle': 'Building lean muscle takes time and consistency, but the results are worth the effort.',
+        'strength': 'Strength gains happen gradually—trust the process and stay committed to your training.'
+      }
+      
+      const keyword = primaryKeyword.toLowerCase()
+      calloutContent = keywordCallouts[keyword] || `The key to ${primaryKeyword} success is persistence—meaningful changes happen when you stay consistent.`
     }
     
     const calloutTitles = ["Expert Insight", "Pro Tip", "Game Changer", "Quick Tip"]
@@ -676,23 +724,43 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
       .replace(/\b(they|them|their)\b/gi, 'your')
       .replace(/\b(is done|can be done|should be done)\b/gi, 'you should do')
       .replace(/\b(it's important|it is important)\b/gi, 'you need')
-      .replace(/\b(research shows|studies show|science shows)\b/gi, 'research proves that you')
+      .replace(/\b(research shows|studies show|science shows)\b/gi, 'research demonstrates that')
       .replace(/\b(may help|might help|could help)\b/gi, 'will help you')
       .replace(/\b(can improve|may improve)\b/gi, 'will improve your')
     
-    // Add power words for more impact
+    // Add contextual power words for more impact
     if (Math.random() > 0.7) {
-      const powerWords = ['proven', 'essential', 'crucial', 'game-changing', 'revolutionary', 'breakthrough', 'cutting-edge']
+      const contextualPowerWords: Record<string, string[]> = {
+        'fitness': ['effective', 'proven', 'essential', 'advanced'],
+        'nutrition': ['vital', 'essential', 'proven', 'science-based'],
+        'health': ['crucial', 'essential', 'proven', 'evidence-based'],
+        'weight': ['effective', 'proven', 'sustainable', 'results-driven'],
+        'muscle': ['advanced', 'proven', 'effective', 'professional'],
+        'strength': ['proven', 'effective', 'advanced', 'professional']
+      }
+      
+      // Extract the primary keyword from the sentence context
+      const sentenceWords = enhanced.toLowerCase().split(' ')
+      let keywordContext = 'health' // default
+      
+      // Find the most relevant keyword context in the sentence
+      Object.keys(contextualPowerWords).forEach(keyword => {
+        if (sentenceWords.some(word => word.includes(keyword))) {
+          keywordContext = keyword
+        }
+      })
+      
+      const powerWords = contextualPowerWords[keywordContext] || ['effective', 'proven', 'essential']
       const powerWord = powerWords[Math.floor(Math.random() * powerWords.length)]
       enhanced = enhanced.replace(/\b(important|good|effective|helpful)\b/gi, powerWord)
     }
     
-    // Add urgency and specificity
+    // Add contextual urgency and specificity
     enhanced = enhanced
-      .replace(/\bsoon\b/gi, 'within days')
-      .replace(/\bquickly\b/gi, 'in record time')
-      .replace(/\bmany\b/gi, 'countless')
-      .replace(/\bsome\b/gi, 'specific')
+      .replace(/\bsoon\b/gi, 'consistently')
+      .replace(/\bquickly\b/gi, 'efficiently')
+      .replace(/\bmany\b/gi, 'numerous')
+      .replace(/\bsome\b/gi, 'certain')
     
     return enhanced
   }
@@ -973,17 +1041,53 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
       }
     }
     
-    const transitions = [
-      'Furthermore, ',
-      'Additionally, ',
-      'Moreover, ',
-      'In addition, ',
-      'It\'s worth noting that ',
-      'Research shows that ',
-      'Studies indicate that '
-    ]
+    // Use contextual transitions based on sentence content
+    const contextualTransitions: Record<string, string[]> = {
+      'fitness': [
+        'During training, ',
+        'For optimal results, ',
+        'When exercising, ',
+        'Research demonstrates that ',
+        'Training studies show that '
+      ],
+      'nutrition': [
+        'Nutritionally speaking, ',
+        'According to nutrition research, ',
+        'For optimal nutrition, ',
+        'Dietary studies show that ',
+        'From a nutritional standpoint, '
+      ],
+      'health': [
+        'From a health perspective, ',
+        'Health research indicates that ',
+        'For better health outcomes, ',
+        'Medical studies show that ',
+        'Health experts note that '
+      ],
+      'default': [
+        'Furthermore, ',
+        'Additionally, ',
+        'Moreover, ',
+        'In addition, ',
+        'Research indicates that ',
+        'Studies demonstrate that '
+      ]
+    }
     
-    if (Math.random() > 0.7 && !sentence.match(/^(Furthermore|Additionally|Moreover|In addition|It's worth|Research|Studies)/)) {
+    if (Math.random() > 0.7 && !sentence.match(/^(Furthermore|Additionally|Moreover|In addition|Research|Studies|During|For|When|According|From|Health|Medical|Nutritionally|Dietary|Training)/)) {
+      // Determine context from sentence content
+      const sentenceWords = sentence.toLowerCase().split(' ')
+      let context = 'default'
+      
+      if (sentenceWords.some(word => ['exercise', 'workout', 'training', 'fitness', 'muscle'].includes(word))) {
+        context = 'fitness'
+      } else if (sentenceWords.some(word => ['nutrition', 'diet', 'food', 'eating', 'protein'].includes(word))) {
+        context = 'nutrition'
+      } else if (sentenceWords.some(word => ['health', 'medical', 'wellness', 'disease'].includes(word))) {
+        context = 'health'
+      }
+      
+      const transitions = contextualTransitions[context]
       const transition = transitions[Math.floor(Math.random() * transitions.length)]
       sentence = transition + sentence.charAt(0).toLowerCase() + sentence.slice(1)
     }
@@ -1425,13 +1529,26 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
   }
 
   private static generateSEOOptimizedH2s(primaryKeyword: string, lsiSynonyms: string[]): string[] {
+    // Generate contextual timing heading based on keyword
+    const timingHeadings: Record<string, string> = {
+      'fitness': `How to Accelerate Your ${primaryKeyword} Progress Safely`,
+      'nutrition': `How to Optimize Your ${primaryKeyword} Results Consistently`,
+      'health': `How to Maximize Your ${primaryKeyword} Benefits Long-term`,
+      'weight': `How to Achieve Sustainable ${primaryKeyword} Success`,
+      'muscle': `How to Optimize Your ${primaryKeyword} Development`,
+      'strength': `How to Maximize Your ${primaryKeyword} Gains Effectively`
+    }
+    
+    const keyword = primaryKeyword.toLowerCase()
+    const timingHeading = timingHeadings[keyword] || `How to Optimize Your ${primaryKeyword} Results Effectively`
+    
     return [
       `Why ${primaryKeyword} Works Better Than You Think`, // Primary keyword
       `The Science Behind ${lsiSynonyms[0] || primaryKeyword} Success`, // LSI synonym
       `Expert-Approved ${primaryKeyword} Strategies That Actually Work`,
       `Common ${primaryKeyword} Mistakes That Are Sabotaging Your Results`,
       `Advanced ${lsiSynonyms[1] || primaryKeyword} Techniques for Maximum Impact`,
-      `How to Maximize Your ${primaryKeyword} Results in Record Time`,
+      timingHeading,
       `The Future of ${lsiSynonyms[2] || primaryKeyword} Research and Innovation`,
       `Building Long-Term ${primaryKeyword} Success That Lasts`
     ]
