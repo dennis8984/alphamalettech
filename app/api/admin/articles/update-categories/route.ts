@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase-client'
 import { clearArticlesCache } from '@/lib/data'
 
 export async function POST(request: NextRequest) {
