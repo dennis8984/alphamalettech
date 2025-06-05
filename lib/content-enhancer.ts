@@ -52,7 +52,7 @@ export class ContentEnhancer {
     const primaryKeyword = options.primaryKeyword || this.extractPrimaryKeyword(title)
     
     // Use Claude AI if enabled and API key is available
-    if (options.useClaude && process.env.CLAUDE_API_KEY) {
+    if (options.useClaude) {
       console.log('🤖 Using Claude AI for content enhancement...')
       try {
         const claudeEnhancer = new ClaudeContentEnhancer()
@@ -242,20 +242,23 @@ export class ContentEnhancer {
   }
   
   private static generateMensHealthStructure(sentences: string[], primaryKeyword: string): string {
-    // Apply the proven Men's Health editorial structure
-    console.log('🎯 Applying impactful Men\'s Health editorial structure...')
+    // Apply the proven Men's Health editorial structure with DYNAMIC content
+    console.log('🎯 Applying contextual Men\'s Health editorial structure...')
+    
+    // Extract key concepts from the actual article content
+    const articleContext = this.extractArticleContext(sentences)
     
     // Generate LSI synonyms for the primary keyword
     const lsiSynonyms = this.generateLSISynonyms(primaryKeyword)
     
-    // Create the hook lede (2 sentences, first may be ALL-CAPS)
-    const hookLede = this.createImpactfulLede(sentences)
+    // Create the hook lede using ACTUAL article content
+    const hookLede = this.createContextualLede(sentences, primaryKeyword, articleContext)
     
-    // Generate Quick Takeaways box (3-5 bullet points)
-    const quickTakeaways = this.createQuickTakeawaysBox(primaryKeyword)
+    // Generate Quick Takeaways box using REAL article insights
+    const quickTakeaways = this.createContextualTakeaways(sentences, primaryKeyword, articleContext)
     
-    // Create body sections with H2s every 150-250 words
-    const bodySections = this.createMensHealthBodySections(sentences, primaryKeyword, lsiSynonyms)
+    // Create body sections with contextual H2s
+    const bodySections = this.createContextualBodySections(sentences, primaryKeyword, lsiSynonyms, articleContext)
     
     return `${hookLede}
 
@@ -264,45 +267,190 @@ ${quickTakeaways}
 ${bodySections}`
   }
   
-  private static createImpactfulLede(sentences: string[]): string {
-    // ALL-CAPS attention grabbers for first sentence
-    const allCapsHooks = [
-      "YOUR FITNESS GAME IS ABOUT TO CHANGE.",
-      "THIS CHANGES EVERYTHING YOU KNOW ABOUT HEALTH.",
-      "YOU'VE BEEN DOING IT WRONG—HERE'S WHY.",
-      "THE GAME HAS CHANGED, AND SO SHOULD YOU.",
-      "THIS ONE DISCOVERY WILL SHOCK YOU.",
-      "EVERYTHING YOU BELIEVE IS WRONG.",
-      "THE SECRET THE PROS DON'T WANT YOU TO KNOW."
+  private static extractArticleContext(sentences: string[]): {
+    mainBenefits: string[],
+    keyMethods: string[],
+    importantFacts: string[],
+    actionableItems: string[],
+    expertMentions: string[]
+  } {
+    console.log('🔍 Extracting context from article content...')
+    
+    const allText = sentences.join(' ').toLowerCase()
+    
+    // Extract benefits mentioned in the article
+    const benefitPatterns = [
+      /(?:help|helps|can|will|may)\s+(?:you\s+)?([^.,!?]{10,50})/gi,
+      /(?:benefit|benefits|advantage|advantages)\s+(?:of|include|are)\s+([^.,!?]{10,50})/gi,
+      /(?:improve|improves|boost|boosts|enhance|enhances)\s+([^.,!?]{10,50})/gi
     ]
     
-    // Use ALL-CAPS hook 60% of the time, regular sentence 40%
-    const firstSentence = Math.random() > 0.4 ? 
-      allCapsHooks[Math.floor(Math.random() * allCapsHooks.length)] : 
-      this.enhanceSentenceForImpact(sentences[0] || "Your approach to health is about to transform completely.")
+    const mainBenefits: string[] = []
+    benefitPatterns.forEach(pattern => {
+      const matches = allText.match(pattern)
+      if (matches) {
+        matches.forEach(match => {
+          const benefit = match.replace(/^(?:help|helps|can|will|may|benefit|benefits|advantage|advantages|improve|improves|boost|boosts|enhance|enhances)\s+(?:of|include|are|you\s+)?/gi, '').trim()
+          if (benefit.length > 5 && benefit.length < 100) {
+            mainBenefits.push(benefit)
+          }
+        })
+      }
+    })
     
+    // Extract methods/techniques mentioned
+    const methodPatterns = [
+      /(?:method|technique|strategy|approach|way|step)\s+(?:to|for|is|involves)\s+([^.,!?]{10,50})/gi,
+      /(?:by|through)\s+([a-z\s]{10,50})/gi,
+      /(?:should|must|need to|have to)\s+([^.,!?]{10,50})/gi
+    ]
+    
+    const keyMethods: string[] = []
+    methodPatterns.forEach(pattern => {
+      const matches = allText.match(pattern)
+      if (matches) {
+        matches.forEach(match => {
+          const method = match.replace(/^(?:method|technique|strategy|approach|way|step)\s+(?:to|for|is|involves|by|through|should|must|need to|have to)\s+/gi, '').trim()
+          if (method.length > 5 && method.length < 100) {
+            keyMethods.push(method)
+          }
+        })
+      }
+    })
+    
+    // Extract important facts/statistics
+    const factPatterns = [
+      /(?:research|study|studies|scientists|experts)\s+(?:shows?|found|discovered|suggests?)\s+([^.,!?]{10,80})/gi,
+      /(?:according to|data shows|evidence suggests)\s+([^.,!?]{10,80})/gi,
+      /(\d+(?:\.\d+)?%?\s+(?:of|percent|increase|decrease|more|less|times)[^.,!?]{5,50})/gi
+    ]
+    
+    const importantFacts: string[] = []
+    factPatterns.forEach(pattern => {
+      const matches = allText.match(pattern)
+      if (matches) {
+        matches.forEach(match => {
+          const fact = match.replace(/^(?:research|study|studies|scientists|experts)\s+(?:shows?|found|discovered|suggests?|according to|data shows|evidence suggests)\s+/gi, '').trim()
+          if (fact.length > 5 && fact.length < 150) {
+            importantFacts.push(fact)
+          }
+        })
+      }
+    })
+    
+    // Extract actionable items
+    const actionPatterns = [
+      /(?:start|begin|try|use|avoid|focus on|make sure|ensure)\s+([^.,!?]{10,60})/gi,
+      /(?:tip|recommendation|advice)\s*:?\s+([^.,!?]{10,60})/gi,
+      /(?:you should|you must|you need to|you can)\s+([^.,!?]{10,60})/gi
+    ]
+    
+    const actionableItems: string[] = []
+    actionPatterns.forEach(pattern => {
+      const matches = allText.match(pattern)
+      if (matches) {
+        matches.forEach(match => {
+          const action = match.replace(/^(?:start|begin|try|use|avoid|focus on|make sure|ensure|tip|recommendation|advice|you should|you must|you need to|you can)\s*:?\s+/gi, '').trim()
+          if (action.length > 5 && action.length < 100) {
+            actionableItems.push(action)
+          }
+        })
+      }
+    })
+    
+    // Extract expert mentions
+    const expertPatterns = [
+      /(?:dr\.?\s+\w+|\w+\s+phd|\w+\s+md|expert|specialist|researcher|scientist|nutritionist|trainer)\s+([^.,!?]{10,80})/gi
+    ]
+    
+    const expertMentions: string[] = []
+    expertPatterns.forEach(pattern => {
+      const matches = allText.match(pattern)
+      if (matches) {
+        matches.forEach(match => {
+          if (match.length > 10 && match.length < 120) {
+            expertMentions.push(match.trim())
+          }
+        })
+      }
+    })
+    
+    console.log(`📊 Extracted context: ${mainBenefits.length} benefits, ${keyMethods.length} methods, ${importantFacts.length} facts, ${actionableItems.length} actions`)
+    
+    return {
+      mainBenefits: [...new Set(mainBenefits)].slice(0, 5),
+      keyMethods: [...new Set(keyMethods)].slice(0, 5), 
+      importantFacts: [...new Set(importantFacts)].slice(0, 5),
+      actionableItems: [...new Set(actionableItems)].slice(0, 7),
+      expertMentions: [...new Set(expertMentions)].slice(0, 3)
+    }
+  }
+  
+  private static createContextualLede(sentences: string[], primaryKeyword: string, context: any): string {
+    // Create impactful lede using ACTUAL article content
+    const firstSentenceContent = sentences[0]?.replace(/<[^>]*>/g, '').trim() || ''
+    const secondSentenceContent = sentences[1]?.replace(/<[^>]*>/g, '').trim() || ''
+    
+    // Generate dynamic hook based on article content
+    const dynamicHooks = [
+      `THE SECRET TO ${primaryKeyword.toUpperCase()} SUCCESS IS FINALLY REVEALED.`,
+      `EVERYTHING YOU KNOW ABOUT ${primaryKeyword.toUpperCase()} IS ABOUT TO CHANGE.`,
+      `THIS ${primaryKeyword.toUpperCase()} BREAKTHROUGH WILL TRANSFORM YOUR RESULTS.`,
+      `THE GAME-CHANGING ${primaryKeyword.toUpperCase()} APPROACH EXPERTS DON'T WANT YOU TO KNOW.`
+    ]
+    
+    // Use dynamic hook 40% of the time, enhanced first sentence 60%
+    const firstSentence = Math.random() > 0.6 ? 
+      dynamicHooks[Math.floor(Math.random() * dynamicHooks.length)] : 
+      this.enhanceSentenceForImpact(firstSentenceContent || `Your approach to ${primaryKeyword} is about to transform completely.`)
+    
+    // Use enhanced second sentence or fallback
     const secondSentence = this.enhanceSentenceForImpact(
-      sentences[1] || "Here's everything you need to know to get results that actually last and change your life."
+      secondSentenceContent || 
+      (context.mainBenefits[0] ? `${context.mainBenefits[0]} in ways science is just beginning to understand.` : 
+       `Here's everything you need to know to get results that actually last.`)
     )
     
     return `<p class="lead text-xl text-gray-700 mb-8 leading-relaxed font-medium">${firstSentence} ${secondSentence}</p>`
   }
   
-  private static createQuickTakeawaysBox(primaryKeyword: string): string {
-    const takeaways = [
-      `${primaryKeyword} can transform your health in ways science is just beginning to understand`,
-      `The right approach makes the difference between mediocre results and life-changing transformation`,
-      `Expert-backed strategies deliver measurable results faster than trial-and-error methods`,
-      `Small, consistent changes compound into massive improvements over just 30 days`,
-      `Most people quit right before the breakthrough—consistency is your secret weapon`,
-      `The latest research reveals why ${primaryKeyword} works better than anyone expected`,
-      `Professional athletes use these exact techniques to maximize their ${primaryKeyword} results`
-    ]
+  private static createContextualTakeaways(sentences: string[], primaryKeyword: string, context: any): string {
+    // Generate takeaways from ACTUAL article content
+    const contextualTakeaways: string[] = []
     
-    // Select 3-5 takeaways randomly
-    const selectedTakeaways = takeaways
-      .sort(() => Math.random() - 0.5)
-      .slice(0, Math.floor(Math.random() * 3) + 3) // 3-5 items
+    // Add benefits from the article
+    context.mainBenefits.forEach((benefit: string) => {
+      contextualTakeaways.push(`${primaryKeyword} ${benefit}`)
+    })
+    
+    // Add methods from the article  
+    context.keyMethods.forEach((method: string) => {
+      contextualTakeaways.push(`The right approach to ${method} makes all the difference`)
+    })
+    
+    // Add facts from the article
+    context.importantFacts.forEach((fact: string) => {
+      contextualTakeaways.push(`Research shows ${fact}`)
+    })
+    
+    // Add some dynamic generic ones if we don't have enough content
+    if (contextualTakeaways.length < 3) {
+      const fallbackTakeaways = [
+        `Expert-backed ${primaryKeyword} strategies deliver measurable results faster than trial-and-error methods`,
+        `Small, consistent changes compound into massive improvements over just 30 days`,
+        `The right approach makes the difference between mediocre results and life-changing transformation`,
+        `Most people quit right before the breakthrough—consistency is your secret weapon`
+      ]
+      
+      fallbackTakeaways.forEach(takeaway => {
+        if (contextualTakeaways.length < 5) {
+          contextualTakeaways.push(takeaway)
+        }
+      })
+    }
+    
+    // Select 3-5 takeaways
+    const selectedTakeaways = contextualTakeaways.slice(0, Math.min(contextualTakeaways.length, 5))
     
     return `<div class="bg-red-50 border-l-4 border-red-600 p-6 mb-8 rounded-r-lg">
   <h3 class="text-lg font-bold text-red-900 mb-4">Quick Takeaways</h3>
@@ -312,12 +460,12 @@ ${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span clas
 </div>`
   }
   
-  private static createMensHealthBodySections(sentences: string[], primaryKeyword: string, lsiSynonyms: string[]): string {
+  private static createContextualBodySections(sentences: string[], primaryKeyword: string, lsiSynonyms: string[], context: any): string {
     const sections: string[] = []
     const targetWordsPerSection = 200 // 150-250 word range
     
-    // Generate strategic H2 headings that include primary keyword and LSI synonyms
-    const h2Headings = this.generateSEOOptimizedH2s(primaryKeyword, lsiSynonyms)
+    // Generate contextual H2 headings based on actual content
+    const h2Headings = this.generateContextualH2s(primaryKeyword, lsiSynonyms, context)
     
     let currentSection: string[] = []
     let wordCount = 0
@@ -332,7 +480,7 @@ ${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span clas
       if (wordCount >= targetWordsPerSection || index === sentences.length - 1) {
         if (currentSection.length > 0) {
           const heading = h2Headings[headingIndex % h2Headings.length]
-          const sectionContent = this.formatMensHealthSection(currentSection, headingIndex, primaryKeyword)
+          const sectionContent = this.formatContextualSection(currentSection, headingIndex, primaryKeyword, context)
           sections.push(`<h2 class="text-2xl font-bold text-gray-900 mt-12 mb-6 leading-tight">${heading}</h2>\n\n${sectionContent}`)
           headingIndex++
         }
@@ -344,34 +492,54 @@ ${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span clas
     return sections.join('\n\n')
   }
   
-  private static generateSEOOptimizedH2s(primaryKeyword: string, lsiSynonyms: string[]): string[] {
-    return [
-      `Why ${primaryKeyword} Works Better Than You Think`, // Primary keyword
-      `The Science Behind ${lsiSynonyms[0] || primaryKeyword} Success`, // LSI synonym
-      `Expert-Approved ${primaryKeyword} Strategies That Actually Work`,
-      `Common ${primaryKeyword} Mistakes That Are Sabotaging Your Results`,
-      `Advanced ${lsiSynonyms[1] || primaryKeyword} Techniques for Maximum Impact`,
-      `How to Maximize Your ${primaryKeyword} Results in Record Time`,
-      `The Future of ${lsiSynonyms[2] || primaryKeyword} Research and Innovation`,
-      `Building Long-Term ${primaryKeyword} Success That Lasts`
-    ]
+  private static generateContextualH2s(primaryKeyword: string, lsiSynonyms: string[], context: any): string[] {
+    const contextualHeadings: string[] = []
+    
+    // Generate headings based on actual article content
+    if (context.mainBenefits.length > 0) {
+      contextualHeadings.push(`Why ${primaryKeyword} Works Better Than You Think`)
+    }
+    
+    if (context.importantFacts.length > 0) {
+      contextualHeadings.push(`The Science Behind ${lsiSynonyms[0] || primaryKeyword} Success`)
+    }
+    
+    if (context.keyMethods.length > 0) {
+      contextualHeadings.push(`Expert-Approved ${primaryKeyword} Strategies That Actually Work`)
+    }
+    
+    if (context.actionableItems.length > 0) {
+      contextualHeadings.push(`Common ${primaryKeyword} Mistakes That Are Sabotaging Your Results`)
+    }
+    
+    // Add more dynamic headings based on content
+    contextualHeadings.push(`Advanced ${lsiSynonyms[1] || primaryKeyword} Techniques for Maximum Impact`)
+    contextualHeadings.push(`How to Maximize Your ${primaryKeyword} Results in Record Time`)
+    
+    if (context.expertMentions.length > 0) {
+      contextualHeadings.push(`The Future of ${lsiSynonyms[2] || primaryKeyword} Research and Innovation`)
+    }
+    
+    contextualHeadings.push(`Building Long-Term ${primaryKeyword} Success That Lasts`)
+    
+    return contextualHeadings
   }
   
-  private static formatMensHealthSection(sentences: string[], sectionIndex: number, primaryKeyword: string): string {
+  private static formatContextualSection(sentences: string[], sectionIndex: number, primaryKeyword: string, context: any): string {
     // Break into short paragraphs (1-3 sentences each)
     const paragraphs = this.createImpactfulParagraphs(sentences)
-    let content = paragraphs.map(para => `<p class="mb-6 text-gray-700 leading-relaxed">${para}</p>`).join('\n\n')
+    let content = paragraphs.map((para: string) => `<p class="mb-6 text-gray-700 leading-relaxed">${para}</p>`).join('\n\n')
     
-    // Add strategic content elements based on section position
-    if (sectionIndex === 1) {
-      // Second section: Add expert quote in blockquote format
-      content += `\n\n${this.generateExpertBlockquote(primaryKeyword)}`
-    } else if (sectionIndex === 2) {
-      // Third section: Add numbered or bulleted actionable list
-      content += `\n\n${this.generateActionableList(primaryKeyword)}`
+    // Add strategic content elements based on section position and available context
+    if (sectionIndex === 1 && (context.expertMentions.length > 0 || context.importantFacts.length > 0)) {
+      // Second section: Add expert quote using actual content
+      content += `\n\n${this.generateContextualBlockquote(primaryKeyword, context)}`
+    } else if (sectionIndex === 2 && context.actionableItems.length > 0) {
+      // Third section: Add actionable list from actual content
+      content += `\n\n${this.generateContextualActionList(primaryKeyword, context)}`
     } else if (sectionIndex === 3) {
-      // Fourth section: Add CTA call-out
-      content += `\n\n${this.generateImpactfulCTACallout()}`
+      // Fourth section: Add contextual CTA call-out
+      content += `\n\n${this.generateContextualCTACallout(context)}`
     }
     
     // Add image placeholder strategically (not every section)
@@ -382,28 +550,7 @@ ${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span clas
     return content
   }
   
-  private static createImpactfulParagraphs(sentences: string[]): string[] {
-    const paragraphs: string[] = []
-    let currentParagraph: string[] = []
-    
-    sentences.forEach((sentence, index) => {
-      currentParagraph.push(sentence)
-      
-      // Create paragraph every 1-3 sentences for better readability
-      const shouldEndParagraph = 
-        currentParagraph.length >= Math.floor(Math.random() * 3) + 1 || 
-        index === sentences.length - 1
-      
-      if (shouldEndParagraph) {
-        paragraphs.push(currentParagraph.join(' '))
-        currentParagraph = []
-      }
-    })
-    
-    return paragraphs
-  }
-  
-  private static generateExpertBlockquote(primaryKeyword: string): string {
+  private static generateContextualBlockquote(primaryKeyword: string, context: any): string {
     const experts = [
       { name: "Dr. Sarah Johnson", credential: "Exercise Physiologist, Harvard Medical School" },
       { name: "Michael Chen", credential: "Certified Strength and Conditioning Specialist" },
@@ -414,15 +561,18 @@ ${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span clas
     
     const expert = experts[Math.floor(Math.random() * experts.length)]
     
-    const impactfulQuotes = [
-      `The key to ${primaryKeyword} success isn't just consistency—it's progressive overload combined with intelligent recovery protocols.`,
-      `What separates elite performers from weekend warriors is their systematic approach to ${primaryKeyword} optimization.`,
-      `The biggest mistake I see is people neglecting the neurological adaptations that make ${primaryKeyword} training truly effective.`,
-      `Every high-performing client I work with understands that ${primaryKeyword} is a skill that requires deliberate practice, not just effort.`,
-      `The latest research confirms what we've suspected: ${primaryKeyword} affects your entire physiological system in ways we're still discovering.`
-    ]
-    
-    const quote = impactfulQuotes[Math.floor(Math.random() * impactfulQuotes.length)]
+    // Use actual content for the quote if available
+    let quote = ''
+    if (context.importantFacts.length > 0) {
+      quote = `The latest research confirms what we've suspected: ${context.importantFacts[0]}`
+    } else if (context.mainBenefits.length > 0) {
+      quote = `What separates elite performers from weekend warriors is understanding that ${context.mainBenefits[0]}`
+    } else if (context.keyMethods.length > 0) {
+      quote = `The biggest mistake I see is people neglecting ${context.keyMethods[0]} that make ${primaryKeyword} training truly effective.`
+    } else {
+      // Fallback to dynamic quote
+      quote = `The latest research confirms what we've suspected: ${primaryKeyword} affects your entire physiological system in ways we're still discovering.`
+    }
     
     return `<blockquote class="border-l-4 border-red-600 pl-6 my-8 bg-gray-50 py-6 rounded-r-lg">
   <p class="text-lg italic text-gray-700 mb-3 leading-relaxed">"${quote}"</p>
@@ -430,70 +580,55 @@ ${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span clas
 </blockquote>`
   }
   
-  private static generateActionableList(primaryKeyword: string): string {
-    const actionableSteps = [
-      `Start with proper form assessment—technique trumps intensity every single time`,
-      `Track your progress using objective metrics, not just how you feel`,
-      `Focus on compound movements that deliver maximum return on investment`,
-      `Allow adequate recovery time—your gains happen during rest, not during work`,
-      `Gradually increase intensity using the 10% rule to avoid plateaus`,
-      `Stay consistent for a minimum of 8-12 weeks to see meaningful adaptations`,
-      `Listen to your body's feedback and adjust your approach accordingly`,
-      `Work with qualified professionals when plateau-breaking is necessary`
-    ]
+  private static generateContextualActionList(primaryKeyword: string, context: any): string {
+    // Use actual actionable items from the article
+    let actionableSteps = [...context.actionableItems]
     
-    const selectedActions = actionableSteps
-      .sort(() => Math.random() - 0.5)
-      .slice(0, Math.floor(Math.random() * 3) + 5) // 5-7 items
+    // Add some dynamic ones if we don't have enough
+    if (actionableSteps.length < 5) {
+      const fallbackActions = [
+        `Track your progress using objective metrics, not just how you feel`,
+        `Stay consistent for a minimum of 8-12 weeks to see meaningful adaptations`,
+        `Listen to your body's feedback and adjust your approach accordingly`,
+        `Work with qualified professionals when plateau-breaking is necessary`
+      ]
+      
+      fallbackActions.forEach(action => {
+        if (actionableSteps.length < 7) {
+          actionableSteps.push(action)
+        }
+      })
+    }
     
-    const listType = Math.random() > 0.5 ? 'numbered' : 'bulleted'
+    // Take 5-7 items
+    const selectedActions = actionableSteps.slice(0, Math.min(actionableSteps.length, 7))
     
-    if (listType === 'numbered') {
-      return `<div class="bg-gray-100 p-6 rounded-lg my-8">
+    return `<div class="bg-gray-100 p-6 rounded-lg my-8">
   <h3 class="text-lg font-bold text-gray-900 mb-4">${primaryKeyword} Action Steps:</h3>
   <ol class="space-y-3 text-gray-700">
 ${selectedActions.map((action, index) => `    <li class="flex items-start"><span class="font-bold text-red-600 mr-3 text-lg">${index + 1}.</span><span class="leading-relaxed">${action}</span></li>`).join('\n')}
   </ol>
 </div>`
-    } else {
-      return `<div class="bg-blue-50 p-6 rounded-lg my-8">
-  <h3 class="text-lg font-bold text-blue-900 mb-4">Essential ${primaryKeyword} Principles:</h3>
-  <ul class="space-y-3 text-blue-800">
-${selectedActions.map(action => `    <li class="flex items-start"><span class="text-blue-600 font-bold mr-3">•</span><span class="leading-relaxed">${action}</span></li>`).join('\n')}
-  </ul>
-</div>`
-    }
   }
   
-  private static generateImpactfulCTACallout(): string {
-    const callouts = [
-      {
-        title: "Quick Tip",
-        content: "The best time to start is now—small actions today compound into massive results tomorrow."
-      },
-      {
-        title: "READ MORE",
-        content: "Ready to take your performance to the next level? The science shows this one change makes all the difference."
-      },
-      {
-        title: "Pro Tip",
-        content: "Elite performers focus on consistency over perfection—progress beats paralysis every time."
-      },
-      {
-        title: "Expert Insight", 
-        content: "Most people quit right before the breakthrough happens—push through the plateau."
-      },
-      {
-        title: "Game Changer",
-        content: "This single adjustment has helped thousands of men transform their results in just weeks."
-      }
-    ]
+  private static generateContextualCTACallout(context: any): string {
+    // Generate callout based on article content
+    let calloutContent = ''
     
-    const callout = callouts[Math.floor(Math.random() * callouts.length)]
+    if (context.mainBenefits.length > 0) {
+      calloutContent = `Ready to experience ${context.mainBenefits[0]}? The science shows this one change makes all the difference.`
+    } else if (context.keyMethods.length > 0) {
+      calloutContent = `Master ${context.keyMethods[0]} and watch your results transform in just weeks.`
+    } else {
+      calloutContent = `Most people quit right before the breakthrough happens—push through the plateau.`
+    }
+    
+    const calloutTitles = ["Expert Insight", "Pro Tip", "Game Changer", "Quick Tip"]
+    const title = calloutTitles[Math.floor(Math.random() * calloutTitles.length)]
     
     return `<div class="bg-red-600 text-white p-6 rounded-lg my-8">
-  <h3 class="text-lg font-bold mb-3">${callout.title}</h3>
-  <p class="leading-relaxed">${callout.content}</p>
+  <h3 class="text-lg font-bold mb-3">${title}</h3>
+  <p class="leading-relaxed">${calloutContent}</p>
 </div>`
   }
   
@@ -1173,5 +1308,39 @@ ${selectedActions.map(action => `    <li class="flex items-start"><span class="t
       </div>
     </div>
   </article>`;
+  }
+
+  private static createImpactfulParagraphs(sentences: string[]): string[] {
+    const paragraphs: string[] = []
+    let currentParagraph: string[] = []
+    
+    sentences.forEach((sentence, index) => {
+      currentParagraph.push(sentence)
+      
+      // Create paragraph every 1-3 sentences for better readability
+      const shouldEndParagraph = 
+        currentParagraph.length >= Math.floor(Math.random() * 3) + 1 || 
+        index === sentences.length - 1
+      
+      if (shouldEndParagraph) {
+        paragraphs.push(currentParagraph.join(' '))
+        currentParagraph = []
+      }
+    })
+    
+    return paragraphs
+  }
+
+  private static generateSEOOptimizedH2s(primaryKeyword: string, lsiSynonyms: string[]): string[] {
+    return [
+      `Why ${primaryKeyword} Works Better Than You Think`, // Primary keyword
+      `The Science Behind ${lsiSynonyms[0] || primaryKeyword} Success`, // LSI synonym
+      `Expert-Approved ${primaryKeyword} Strategies That Actually Work`,
+      `Common ${primaryKeyword} Mistakes That Are Sabotaging Your Results`,
+      `Advanced ${lsiSynonyms[1] || primaryKeyword} Techniques for Maximum Impact`,
+      `How to Maximize Your ${primaryKeyword} Results in Record Time`,
+      `The Future of ${lsiSynonyms[2] || primaryKeyword} Research and Innovation`,
+      `Building Long-Term ${primaryKeyword} Success That Lasts`
+    ]
   }
 }
