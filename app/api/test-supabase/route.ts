@@ -6,9 +6,9 @@ export async function GET() {
     console.log('🔍 Testing Supabase connection...')
     
     // Test 1: Check if we can connect to Supabase
-    const { data: connectionTest, error: connectionError } = await supabase
+    const { count: articleCount, error: connectionError } = await supabase
       .from('articles')
-      .select('count', { count: 'exact', head: true })
+      .select('*', { count: 'exact', head: true })
 
     if (connectionError) {
       console.error('❌ Supabase connection failed:', connectionError)
@@ -82,7 +82,7 @@ export async function GET() {
         insert_test: 'passed',
         cleanup: 'passed'
       },
-      article_count: connectionTest?.count || 0
+      article_count: articleCount || 0
     })
 
   } catch (error) {
