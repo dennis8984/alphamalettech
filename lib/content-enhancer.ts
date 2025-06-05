@@ -391,13 +391,32 @@ ${bodySections}`
     const firstSentenceContent = sentences[0]?.replace(/<[^>]*>/g, '').trim() || ''
     const secondSentenceContent = sentences[1]?.replace(/<[^>]*>/g, '').trim() || ''
     
-    // Generate dynamic hook based on article content
-    const dynamicHooks = [
-      `THE SECRET TO ${primaryKeyword.toUpperCase()} SUCCESS IS FINALLY REVEALED.`,
-      `EVERYTHING YOU KNOW ABOUT ${primaryKeyword.toUpperCase()} IS ABOUT TO CHANGE.`,
-      `THIS ${primaryKeyword.toUpperCase()} BREAKTHROUGH WILL TRANSFORM YOUR RESULTS.`,
-      `THE GAME-CHANGING ${primaryKeyword.toUpperCase()} APPROACH EXPERTS DON'T WANT YOU TO KNOW.`
-    ]
+    // Generate dynamic hook based on article content and context
+    const dynamicHooks = []
+    
+    // Create hooks based on actual article benefits
+    if (context.mainBenefits.length > 0) {
+      dynamicHooks.push(`DISCOVER HOW ${primaryKeyword.toUpperCase()} CAN ${context.mainBenefits[0].toUpperCase()}.`)
+    }
+    
+    // Create hooks based on actual article methods
+    if (context.keyMethods.length > 0) {
+      dynamicHooks.push(`THE ${primaryKeyword.toUpperCase()} METHOD THAT ${context.keyMethods[0].toUpperCase()}.`)
+    }
+    
+    // Create hooks based on actual article facts
+    if (context.importantFacts.length > 0) {
+      dynamicHooks.push(`NEW RESEARCH REVEALS ${context.importantFacts[0].toUpperCase()}.`)
+    }
+    
+    // Fallback hooks if no context available
+    if (dynamicHooks.length === 0) {
+      dynamicHooks.push(
+        `THE BREAKTHROUGH ${primaryKeyword.toUpperCase()} APPROACH YOU'VE BEEN WAITING FOR.`,
+        `EVERYTHING CHANGES WHEN YOU MASTER ${primaryKeyword.toUpperCase()}.`,
+        `THE ${primaryKeyword.toUpperCase()} STRATEGY THAT ACTUALLY WORKS.`
+      )
+    }
     
     // Use dynamic hook 40% of the time, enhanced first sentence 60%
     const firstSentence = Math.random() > 0.6 ? 
@@ -433,13 +452,13 @@ ${bodySections}`
       contextualTakeaways.push(`Research shows ${fact}`)
     })
     
-    // Add some dynamic generic ones if we don't have enough content
+    // Add some dynamic fallbacks based on keyword if we don't have enough content
     if (contextualTakeaways.length < 3) {
       const fallbackTakeaways = [
-        `Expert-backed ${primaryKeyword} strategies deliver measurable results faster than trial-and-error methods`,
-        `Small, consistent changes compound into massive improvements over just 30 days`,
-        `The right approach makes the difference between mediocre results and life-changing transformation`,
-        `Most people quit right before the breakthrough—consistency is your secret weapon`
+        `${primaryKeyword} strategies backed by experts deliver faster results than trial-and-error approaches`,
+        `Consistent application of ${primaryKeyword} principles creates lasting improvements`,
+        `The right ${primaryKeyword} approach makes the difference between average and exceptional results`,
+        `Success with ${primaryKeyword} requires persistence through challenging phases`
       ]
       
       fallbackTakeaways.forEach(takeaway => {
@@ -539,7 +558,7 @@ ${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span clas
       content += `\n\n${this.generateContextualActionList(primaryKeyword, context)}`
     } else if (sectionIndex === 3) {
       // Fourth section: Add contextual CTA call-out
-      content += `\n\n${this.generateContextualCTACallout(context)}`
+      content += `\n\n${this.generateContextualCTACallout(context, primaryKeyword)}`
     }
     
     // Add image placeholder strategically (not every section)
@@ -584,13 +603,13 @@ ${selectedTakeaways.map(takeaway => `    <li class="flex items-start"><span clas
     // Use actual actionable items from the article
     let actionableSteps = [...context.actionableItems]
     
-    // Add some dynamic ones if we don't have enough
+    // Add contextual fallbacks if we don't have enough
     if (actionableSteps.length < 5) {
       const fallbackActions = [
-        `Track your progress using objective metrics, not just how you feel`,
-        `Stay consistent for a minimum of 8-12 weeks to see meaningful adaptations`,
-        `Listen to your body's feedback and adjust your approach accordingly`,
-        `Work with qualified professionals when plateau-breaking is necessary`
+        `Track your ${primaryKeyword} progress using objective metrics`,
+        `Stay consistent with your ${primaryKeyword} approach for optimal results`,
+        `Listen to your body's feedback and adjust your ${primaryKeyword} strategy accordingly`,
+        `Work with qualified ${primaryKeyword} professionals when guidance is needed`
       ]
       
       fallbackActions.forEach(action => {
@@ -611,7 +630,7 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
 </div>`
   }
   
-  private static generateContextualCTACallout(context: any): string {
+  private static generateContextualCTACallout(context: any, primaryKeyword: string): string {
     // Generate callout based on article content
     let calloutContent = ''
     
@@ -620,7 +639,7 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
     } else if (context.keyMethods.length > 0) {
       calloutContent = `Master ${context.keyMethods[0]} and watch your results transform in just weeks.`
     } else {
-      calloutContent = `Most people quit right before the breakthrough happens—push through the plateau.`
+      calloutContent = `The key to ${primaryKeyword} success is persistence—breakthroughs happen when you stay consistent.`
     }
     
     const calloutTitles = ["Expert Insight", "Pro Tip", "Game Changer", "Quick Tip"]
@@ -646,7 +665,7 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
     
     return `<figure class="my-8">
   <img src="{IMAGE_URL}" alt="Professional ${primaryKeyword} ${imageType} showing proper form and technique" class="w-full rounded-lg shadow-lg">
-  <figcaption class="text-center text-gray-600 text-sm mt-3 italic">Proper ${primaryKeyword} technique is essential for maximizing results and preventing injury.</figcaption>
+  <figcaption class="text-center text-gray-600 text-sm mt-3 italic">Effective ${primaryKeyword} techniques are key to achieving your goals safely and efficiently.</figcaption>
 </figure>`
   }
   
@@ -700,9 +719,20 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
     return lsiMap[keyword] || ['training', 'performance', 'optimization']
   }
   
-  private static generateMetaDescription(title: string, content: string, primaryKeyword: string): string {
-    const benefit = this.getBenefit()
-    const template = `Master ${primaryKeyword} with expert-backed strategies. ${benefit} in just weeks. Science-based approach that actually works.`
+  private static generateMetaDescription(title: string, content: string, primaryKeyword: string, articleContext?: any): string {
+    // Use actual article benefits and methods if available
+    if (articleContext?.mainBenefits?.length > 0) {
+      const benefit = articleContext.mainBenefits[0]
+      const template = `Discover how ${primaryKeyword} can ${benefit}. Expert-backed strategies that deliver real results.`
+      
+      if (template.length <= 160) {
+        return template
+      }
+    }
+    
+    // Generate contextual description based on keyword
+    const benefit = this.getBenefit(primaryKeyword, articleContext)
+    const template = `Learn effective ${primaryKeyword} strategies to ${benefit}. Evidence-based approach for lasting results.`
     
     if (template.length <= 160) {
       return template
@@ -714,12 +744,28 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
   }
   
   // Helper methods for content generation
-  private static getBenefit(): string {
-    const benefits = [
-      'Transform your physique', 'Boost your confidence', 'Improve your health', 
-      'Increase your strength', 'Enhance your performance', 'Build lean muscle',
-      'Burn more fat', 'Feel more energetic'
-    ]
+  private static getBenefit(primaryKeyword: string, articleContext?: any): string {
+    // Use actual benefits from article context if available
+    if (articleContext?.mainBenefits?.length > 0) {
+      return articleContext.mainBenefits[0]
+    }
+    
+    // Generate contextual benefits based on primary keyword
+    const keywordBenefits: Record<string, string[]> = {
+      'fitness': ['improve your strength', 'build lean muscle', 'enhance your performance'],
+      'nutrition': ['optimize your nutrition', 'improve your energy levels', 'support your health goals'],
+      'health': ['boost your vitality', 'improve your wellbeing', 'enhance your health'],
+      'weight': ['achieve your weight goals', 'improve your body composition', 'boost your metabolism'],
+      'exercise': ['strengthen your body', 'improve your fitness level', 'enhance your endurance'],
+      'muscle': ['build stronger muscles', 'increase your muscle mass', 'improve your strength'],
+      'protein': ['optimize your protein intake', 'support muscle growth', 'improve recovery'],
+      'diet': ['improve your eating habits', 'optimize your nutrition', 'support your health goals'],
+      'sleep': ['improve your sleep quality', 'enhance your recovery', 'boost your energy'],
+      'stress': ['reduce your stress levels', 'improve your mental health', 'enhance your wellbeing']
+    }
+    
+    const keyword = primaryKeyword.toLowerCase()
+    const benefits = keywordBenefits[keyword] || ['improve your results', 'enhance your performance', 'achieve your goals']
     return benefits[Math.floor(Math.random() * benefits.length)]
   }
   
@@ -746,27 +792,74 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
   }
   
   // Helper methods for Men's Health content generation
-  private static getActionVerb(): string {
-    const verbs = [
-      'Master', 'Transform', 'Boost', 'Optimize', 'Maximize', 'Build', 'Crush', 'Unlock', 
-      'Supercharge', 'Enhance', 'Perfect', 'Dominate', 'Accelerate', 'Revolutionize'
-    ]
+  private static getActionVerb(primaryKeyword: string, articleContext?: any): string {
+    // Use verbs based on actual article methods if available
+    if (articleContext?.keyMethods?.length > 0) {
+      const method = articleContext.keyMethods[0].toLowerCase()
+      if (method.includes('build') || method.includes('develop')) return 'Build'
+      if (method.includes('improve') || method.includes('enhance')) return 'Enhance'
+      if (method.includes('increase') || method.includes('boost')) return 'Boost'
+      if (method.includes('optimize') || method.includes('maximize')) return 'Optimize'
+    }
+    
+    // Use contextual verbs based on primary keyword
+    const keywordVerbs: Record<string, string[]> = {
+      'fitness': ['Build', 'Strengthen', 'Enhance', 'Develop'],
+      'nutrition': ['Optimize', 'Improve', 'Balance', 'Support'], 
+      'health': ['Boost', 'Improve', 'Enhance', 'Support'],
+      'weight': ['Lose', 'Manage', 'Control', 'Optimize'],
+      'muscle': ['Build', 'Develop', 'Strengthen', 'Grow'],
+      'strength': ['Build', 'Increase', 'Develop', 'Maximize'],
+      'energy': ['Boost', 'Increase', 'Enhance', 'Maximize'],
+      'sleep': ['Improve', 'Optimize', 'Enhance', 'Restore']
+    }
+    
+    const keyword = primaryKeyword.toLowerCase()
+    const verbs = keywordVerbs[keyword] || ['Improve', 'Enhance', 'Optimize', 'Master']
     return verbs[Math.floor(Math.random() * verbs.length)]
   }
   
-  private static getPowerAdjective(): string {
-    const adjectives = [
-      'Ultimate', 'Proven', 'Surprising', 'Game-Changing', 'Essential', 'Advanced', 
-      'Secret', 'Powerful', 'Revolutionary', 'Expert', 'Professional', 'Cutting-Edge'
-    ]
+  private static getPowerAdjective(primaryKeyword: string, articleContext?: any): string {
+    // Use adjectives based on actual article context if available
+    if (articleContext?.importantFacts?.length > 0) {
+      return 'Proven'
+    }
+    if (articleContext?.expertMentions?.length > 0) {
+      return 'Expert'
+    }
+    
+    // Use contextual adjectives based on primary keyword
+    const keywordAdjectives: Record<string, string[]> = {
+      'fitness': ['Ultimate', 'Advanced', 'Professional', 'Expert'],
+      'nutrition': ['Essential', 'Science-Based', 'Expert', 'Proven'], 
+      'health': ['Essential', 'Proven', 'Expert', 'Science-Based'],
+      'weight': ['Effective', 'Proven', 'Advanced', 'Expert'],
+      'muscle': ['Advanced', 'Professional', 'Expert', 'Proven'],
+      'strength': ['Ultimate', 'Advanced', 'Professional', 'Expert'],
+      'energy': ['Powerful', 'Effective', 'Proven', 'Advanced'],
+      'sleep': ['Essential', 'Proven', 'Expert', 'Effective']
+    }
+    
+    const keyword = primaryKeyword.toLowerCase()
+    const adjectives = keywordAdjectives[keyword] || ['Essential', 'Proven', 'Expert', 'Effective']
     return adjectives[Math.floor(Math.random() * adjectives.length)]
   }
   
-  private static getListWord(): string {
-    const listWords = [
-      'Tips', 'Strategies', 'Methods', 'Techniques', 'Steps', 'Ways', 'Secrets', 
-      'Rules', 'Hacks', 'Moves', 'Tactics', 'Principles'
-    ]
+  private static getListWord(primaryKeyword: string): string {
+    // Use contextual list words based on primary keyword
+    const keywordListWords: Record<string, string[]> = {
+      'fitness': ['Exercises', 'Workouts', 'Techniques', 'Methods'],
+      'nutrition': ['Foods', 'Strategies', 'Guidelines', 'Principles'], 
+      'health': ['Tips', 'Strategies', 'Guidelines', 'Principles'],
+      'weight': ['Strategies', 'Methods', 'Techniques', 'Steps'],
+      'muscle': ['Exercises', 'Techniques', 'Methods', 'Strategies'],
+      'strength': ['Exercises', 'Techniques', 'Methods', 'Workouts'],
+      'energy': ['Tips', 'Strategies', 'Methods', 'Techniques'],
+      'sleep': ['Tips', 'Strategies', 'Techniques', 'Methods']
+    }
+    
+    const keyword = primaryKeyword.toLowerCase()
+    const listWords = keywordListWords[keyword] || ['Tips', 'Strategies', 'Methods', 'Techniques']
     return listWords[Math.floor(Math.random() * listWords.length)]
   }
   
@@ -917,31 +1010,31 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
     const headlinePatterns = [
       // How-to patterns (instructional)
       {
-        pattern: `How to ${this.getActionVerb()} ${primaryKeyword} ${secondaryKeywords}`.trim(),
+        pattern: `How to ${this.getActionVerb(primaryKeyword)} ${primaryKeyword} ${secondaryKeywords}`.trim(),
         category: 'instructional'
       },
       {
-        pattern: `How to ${this.getActionVerb()} Your ${primaryKeyword} in 30 Days`,
+        pattern: `How to ${this.getActionVerb(primaryKeyword)} Your ${primaryKeyword} in 30 Days`,
         category: 'instructional'
       },
       
       // Curiosity patterns
       {
-        pattern: `Why ${primaryKeyword} ${this.getPowerAdjective()} Your Health`,
+        pattern: `Why ${primaryKeyword} ${this.getPowerAdjective(primaryKeyword)} Your Health`,
         category: 'curiosity'
       },
       {
-        pattern: `What Happens When You ${this.getActionVerb()} ${primaryKeyword}`,
+        pattern: `What Happens When You ${this.getActionVerb(primaryKeyword)} ${primaryKeyword}`,
         category: 'curiosity'
       },
       
       // Numbered list patterns
       {
-        pattern: `${this.getRandomNumber()} ${this.getPowerAdjective()} ${primaryKeyword} ${this.getListWord()}`,
+        pattern: `${this.getRandomNumber()} ${this.getPowerAdjective(primaryKeyword)} ${primaryKeyword} ${this.getListWord(primaryKeyword)}`,
         category: 'numbered'
       },
       {
-        pattern: `${this.getRandomNumber()} Ways to ${this.getActionVerb()} Your ${primaryKeyword}`,
+        pattern: `${this.getRandomNumber()} Ways to ${this.getActionVerb(primaryKeyword)} Your ${primaryKeyword}`,
         category: 'numbered'
       },
       
@@ -951,11 +1044,11 @@ ${selectedActions.map((action, index) => `    <li class="flex items-start"><span
         category: 'authority'
       },
       {
-        pattern: `The Truth About ${primaryKeyword} ${this.getPowerAdjective()} Results`,
+        pattern: `The Truth About ${primaryKeyword} ${this.getPowerAdjective(primaryKeyword)} Results`,
         category: 'authority'
       },
       {
-        pattern: `The Definitive Guide to ${this.getActionVerb()} ${primaryKeyword}`,
+        pattern: `The Definitive Guide to ${this.getActionVerb(primaryKeyword)} ${primaryKeyword}`,
         category: 'authority'
       }
     ]
