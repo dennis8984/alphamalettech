@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
 import { ArrowLeft, Save, Upload, Image } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -39,7 +41,14 @@ export default function NewAdPage() {
     status: 'active',
     target_url: '',
     image_url: '',
-    weight: 100
+    weight: 100,
+    // Pop-under specific settings
+    popunder_settings: {
+      trigger_after_views: 3,
+      frequency_days: 7,
+      user_interaction_required: false,
+      delay_seconds: 2
+    }
   })
 
   const [saving, setSaving] = useState(false)
@@ -72,7 +81,20 @@ export default function NewAdPage() {
 
       console.log('📊 Creating new ad...', ad.name)
       
-      const { data, error } = await createAd(ad)
+      const adData = {
+        name: ad.name,
+        placement: ad.placement as Ad['placement'],
+        size: ad.placement === 'pop-under' ? 'fullscreen' : ad.size,
+        target_url: ad.target_url,
+        image_url: ad.image_url || undefined,
+        weight: ad.weight,
+        status: ad.status,
+        ...(ad.placement === 'pop-under' && {
+          popunder_settings: ad.popunder_settings
+        })
+      }
+      
+      const { data, error } = await createAd(adData)
 
       if (error) {
         console.error('❌ Create failed:', error)
@@ -131,6 +153,16 @@ export default function NewAdPage() {
     } finally {
       setUploading(false)
     }
+  }
+
+  const handlePopunderSettingChange = (field: string, value: any) => {
+    setAd(prev => ({
+      ...prev,
+      popunder_settings: {
+        ...prev.popunder_settings,
+        [field]: value
+      }
+    }))
   }
 
   return (

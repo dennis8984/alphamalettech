@@ -66,11 +66,12 @@ export default function AdsPage() {
       'mid-article': 'bg-orange-500',
       footer: 'bg-gray-500',
       'mobile-leaderboard': 'bg-indigo-500',
-      'bottom-banner': 'bg-pink-500'
+      'bottom-banner': 'bg-pink-500',
+      'pop-under': 'bg-red-500'
     }
     return (
       <Badge variant="outline" className={`${colors[placement as keyof typeof colors] || 'bg-gray-500'} text-white`}>
-        {placement.charAt(0).toUpperCase() + placement.slice(1).replace('-', ' ')}
+        {placement === 'pop-under' ? 'Pop-Under' : placement.charAt(0).toUpperCase() + placement.slice(1).replace('-', ' ')}
       </Badge>
     )
   }
@@ -248,11 +249,22 @@ export default function AdsPage() {
                         <div>
                           <div className="font-semibold">{ad.name}</div>
                           <div className="text-sm text-muted-foreground">{ad.target_url}</div>
+                          {ad.placement === 'pop-under' && ad.popunder_settings && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              <div>Triggers after {ad.popunder_settings.trigger_after_views} page views</div>
+                              <div>Shows every {ad.popunder_settings.frequency_days} days</div>
+                              {ad.popunder_settings.delay_seconds > 0 && (
+                                <div>Delay: {ad.popunder_settings.delay_seconds}s</div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>{getPlacementBadge(ad.placement)}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{ad.size}</Badge>
+                        <Badge variant="outline">
+                          {ad.placement === 'pop-under' ? 'Fullscreen' : ad.size}
+                        </Badge>
                       </TableCell>
                       <TableCell>{getStatusBadge(ad.status)}</TableCell>
                       <TableCell>{ad.impressions.toLocaleString()}</TableCell>

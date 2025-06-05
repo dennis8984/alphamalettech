@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getAdsByPlacement, trackAdImpression, trackAdClick, type Ad } from '@/lib/ads-db'
+import { getAdsByPlacement, trackAdImpression, trackAdClick, shouldShowPopUnder, type Ad } from '@/lib/ads-db'
 
 interface AdSlotProps {
   placement: 'header' | 'sidebar' | 'mid-article' | 'footer' | 'mobile-leaderboard' | 'bottom-banner'
@@ -138,22 +138,21 @@ export function AdSlot({ placement, className = '' }: AdSlotProps) {
 export function usePageViewTracking() {
   useEffect(() => {
     // Track page view
-    const trackPageView = () => {
-      const currentViews = parseInt(localStorage.getItem('pageViews') || '0', 10)
+    const trackPageView = async () => {
+      const currentViews = parseInt(localStorage.getItem('pageViewCount') || '0', 10)
       const newViews = currentViews + 1
-      localStorage.setItem('pageViews', newViews.toString())
+      localStorage.setItem('pageViewCount', newViews.toString())
       
       console.log('📄 Page view tracked:', newViews)
       
-      // Trigger pop-under after 3+ page views
-      if (newViews >= 3) {
-        const hasShownPopunder = localStorage.getItem('popunderShown')
-        if (!hasShownPopunder) {
-          // Show pop-under (implement this based on your requirements)
-          setTimeout(() => {
-            showPopunder()
-          }, 2000) // Delay 2 seconds
-        }
+      // Check if we should show pop-under using database settings
+      const { shouldShow, settings } = await shouldShowPopUnder()
+      
+      if (shouldShow && settings) {
+        const delay = settings.popunder_settings?.delay_seconds || 2
+        setTimeout(() => {
+          showPopunder(settings)
+        }, delay * 1000)
       }
     }
 
@@ -161,18 +160,18 @@ export function usePageViewTracking() {
   }, [])
 }
 
-// Pop-under functionality
-function showPopunder() {
+// Pop-under functionality with database-driven settings
+function showPopunder(ad: Ad) {
   try {
-    // Mark as shown
-    localStorage.setItem('popunderShown', 'true')
+    // Mark as shown with timestamp
+    localStorage.setItem('popunderLastShown', new Date().toISOString())
     
-    // Pop-under URL - replace with your affiliate URL
-    const popunderUrl = 'https://example.com/special-offer'
+    // Track impression
+    trackAdImpression(ad.id!)
     
     // Open pop-under window
     const popup = window.open(
-      popunderUrl,
+      ad.target_url,
       '_blank',
       'width=800,height=600,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no'
     )
@@ -180,7 +179,12 @@ function showPopunder() {
     // Focus back to main window (makes it a pop-under)
     if (popup) {
       window.focus()
-      console.log('🎯 Pop-under displayed after 3+ page views')
+      console.log('🎯 Pop-under displayed:', ad.name)
+      
+      // Track click when user interacts with pop-under
+      popup.addEventListener('focus', () => {
+        trackAdClick(ad.id!)
+      })
     }
   } catch (err) {
     console.error('💥 Pop-under error:', err)

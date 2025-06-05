@@ -4,7 +4,7 @@
 export interface Ad {
   id?: string
   name: string
-  placement: 'header' | 'sidebar' | 'inline' | 'footer' | 'mobile-leaderboard' | 'mid-article' | 'bottom-banner'
+  placement: 'header' | 'sidebar' | 'inline' | 'footer' | 'mobile-leaderboard' | 'mid-article' | 'bottom-banner' | 'pop-under'
   size: string
   status: 'active' | 'paused' | 'expired'
   target_url: string
@@ -13,6 +13,13 @@ export interface Ad {
   impressions: number
   clicks: number
   ctr: number
+  // Pop-under specific settings
+  popunder_settings?: {
+    trigger_after_views: number
+    frequency_days: number
+    user_interaction_required: boolean
+    delay_seconds: number
+  }
   created_at?: string
   updated_at?: string
 }
@@ -77,6 +84,26 @@ let mockAds: Ad[] = [
     clicks: 675,
     ctr: 3.6,
     created_at: '2024-01-12T00:00:00Z',
+    updated_at: '2024-01-15T00:00:00Z'
+  },
+  {
+    id: '5',
+    name: 'Special Offer Pop-Under',
+    placement: 'pop-under',
+    size: 'fullscreen',
+    status: 'active',
+    target_url: 'https://example.com/special-offer',
+    weight: 100,
+    impressions: 2340,
+    clicks: 187,
+    ctr: 8.0,
+    popunder_settings: {
+      trigger_after_views: 3,
+      frequency_days: 7,
+      user_interaction_required: false,
+      delay_seconds: 2
+    },
+    created_at: '2024-01-15T00:00:00Z',
     updated_at: '2024-01-15T00:00:00Z'
   }
 ]
@@ -239,5 +266,57 @@ export const trackAdClick = async (id: string): Promise<{ success: boolean, erro
     
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to track click' }
+  }
+}
+
+// Get active pop-under settings
+export const getPopUnderSettings = async (): Promise<{ data: Ad | null, error: string | null }> => {
+  try {
+    const popUnderAd = mockAds.find(ad => 
+      ad.placement === 'pop-under' && ad.status === 'active'
+    )
+    
+    return { data: popUnderAd || null, error: null }
+    
+  } catch (err) {
+    return { data: null, error: err instanceof Error ? err.message : 'Failed to get pop-under settings' }
+  }
+}
+
+// Helper to check if user should see pop-under
+export const shouldShowPopUnder = async (): Promise<{ shouldShow: boolean, settings: Ad | null }> => {
+  try {
+    const { data: popUnderAd } = await getPopUnderSettings()
+    
+    if (!popUnderAd || !popUnderAd.popunder_settings) {
+      return { shouldShow: false, settings: null }
+    }
+    
+    // Check localStorage for frequency control
+    const lastShown = localStorage.getItem('popunderLastShown')
+    const viewCount = parseInt(localStorage.getItem('pageViewCount') || '0')
+    
+    const settings = popUnderAd.popunder_settings
+    
+    // Check view count requirement
+    if (viewCount < settings.trigger_after_views) {
+      return { shouldShow: false, settings: popUnderAd }
+    }
+    
+    // Check frequency (days between shows)
+    if (lastShown) {
+      const lastShownDate = new Date(lastShown)
+      const daysSinceLastShown = (Date.now() - lastShownDate.getTime()) / (1000 * 60 * 60 * 24)
+      
+      if (daysSinceLastShown < settings.frequency_days) {
+        return { shouldShow: false, settings: popUnderAd }
+      }
+    }
+    
+    return { shouldShow: true, settings: popUnderAd }
+    
+  } catch (err) {
+    console.error('Error checking pop-under conditions:', err)
+    return { shouldShow: false, settings: null }
   }
 } 
