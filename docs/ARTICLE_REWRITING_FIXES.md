@@ -75,7 +75,7 @@ alt="Professional demonstration featuring high, tactics, training, strategies - 
 ```bash
 # 1. Get your API key from https://console.anthropic.com
 # 2. Update .env.local with your actual key:
-CLAUDE_API_KEY="sk-ant-api03-YOUR_ACTUAL_API_KEY_HERE"
+CLAUDE_API_KEY="sk-ant-api03-YOUR_ACTUAL_CLAUDE_API_KEY"
 ```
 
 ### 2. **Unsplash API Key (Already Configured)**
