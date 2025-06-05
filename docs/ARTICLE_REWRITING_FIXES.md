@@ -37,9 +37,19 @@ This document explains the three major fixes implemented to resolve issues with 
 // Before: Generic alt text
 alt="Professional fitness demonstration"
 
-// After: Contextual alt text
-alt="Professional fitness demonstration showing workout and exercise techniques - Image 1"
+// After: Truly dynamic alt text from actual article keywords
+alt="Training session focused on caffeine, performance, tactics, energy - Visual 1"
+alt="Scientific research focused on caffeine, effects, consumption, health - Visual 2" 
+alt="Professional demonstration featuring high, tactics, training, strategies - Visual 3"
 ```
+
+**Dynamic Alt Text Features**:
+- ✅ **Actual keyword extraction** from article title, headings, and surrounding content
+- ✅ **Natural language processing** with stop word removal and frequency analysis  
+- ✅ **Action context detection** (Training session, Scientific research, Food preparation, etc.)
+- ✅ **Content relevance scoring** with title/heading keyword boosting
+- ✅ **Image description integration** combining content keywords with Unsplash image metadata
+- ✅ **Unique alt text per image** preventing any duplicate descriptions across articles
 
 ### 3. **Mixed Content Subjects (Cooking in Fitness Articles)**
 **Problem**: Articles contained unrelated content (e.g., cooking recipes in fitness articles) that was treated as main content instead of being converted to teasers.

@@ -137,63 +137,166 @@ export class ImageService {
   }
 
   /**
-   * Generate unique contextual alt text
+   * Generate unique contextual alt text based on actual article content
    */
   private static generateContextualAltText(image: UnsplashImage, context: ImageContext): string {
-    const { sectionHeading, surroundingText, category, imageIndex } = context;
+    const { sectionHeading, surroundingText, articleTitle, imageIndex } = context;
     
-    // Extract key concepts from surrounding text
-    const concepts = this.extractKeyConcepts(surroundingText, sectionHeading);
+    // Extract actual keywords from the content
+    const contentKeywords = this.extractActualKeywords(surroundingText, sectionHeading, articleTitle);
     
-    // Build specific alt text based on concepts and position
+    // Use Unsplash image description if available and relevant
+    const imageDescription = image.alt_description || image.description || '';
+    const imageKeywords = this.extractActualKeywords(imageDescription, '', '');
+    
+    // Combine content keywords with image keywords for relevance
+    const combinedKeywords = [...contentKeywords, ...imageKeywords]
+      .filter((keyword, index, arr) => arr.indexOf(keyword) === index) // Remove duplicates
+      .slice(0, 4); // Limit to 4 most relevant keywords
+    
+    // Build dynamic alt text using actual extracted keywords
     let altText = '';
     
-    if (concepts.includes('workout') || concepts.includes('exercise')) {
-      altText = `Professional fitness demonstration showing ${concepts.join(' and ')} techniques`;
-    } else if (concepts.includes('nutrition') || concepts.includes('diet')) {
-      altText = `Healthy nutrition and ${concepts.join(' ')} for optimal wellness`;
-    } else if (concepts.includes('research') || concepts.includes('study')) {
-      altText = `Scientific research and medical studies on ${concepts.join(' and ')}`;
-    } else if (concepts.includes('caffeine') || concepts.includes('coffee')) {
-      altText = `Professional coffee preparation and caffeine consumption methods`;
-    } else if (concepts.includes('health') || concepts.includes('medical')) {
-      altText = `Medical professional demonstrating ${concepts.join(' and ')} health practices`;
+    if (combinedKeywords.length > 0) {
+      // Use actual keywords from content
+      const keywordPhrase = combinedKeywords.join(', ');
+      
+      // Determine action context from content
+      const actionContext = this.determineActionContext(surroundingText, sectionHeading);
+      
+      if (actionContext) {
+        altText = `${actionContext} focused on ${keywordPhrase}`;
+      } else {
+        altText = `Professional demonstration featuring ${keywordPhrase}`;
+      }
     } else {
-      // Generic but specific to category and position
-      const positionTerms = ['demonstration', 'technique', 'results', 'comparison', 'study', 'training'];
-      const positionTerm = positionTerms[imageIndex % positionTerms.length];
-      altText = `Professional ${category} ${positionTerm} showing proper form and technique`;
+      // Fallback when no specific keywords found
+      const fallbackKeywords = this.extractBasicKeywords(articleTitle);
+      altText = `Professional demonstration related to ${fallbackKeywords.join(' and ')}`;
     }
     
-    // Ensure uniqueness by adding position identifier
-    return `${altText} - Image ${imageIndex + 1}`;
+    // Add specificity and uniqueness
+    return `${altText} - Visual ${imageIndex + 1}`;
   }
 
   /**
-   * Extract key concepts from text
+   * Extract actual meaningful keywords from content using natural language processing
    */
-  private static extractKeyConcepts(text: string, heading?: string): string[] {
-    const combinedText = `${heading || ''} ${text}`.toLowerCase();
-    const concepts: string[] = [];
+  private static extractActualKeywords(text: string, heading?: string, title?: string): string[] {
+    if (!text && !heading && !title) return [];
     
-    const conceptMap = {
-      workout: ['workout', 'exercise', 'training', 'gym', 'fitness'],
-      nutrition: ['nutrition', 'diet', 'food', 'meal', 'eating'],
-      health: ['health', 'medical', 'wellness', 'doctor'],
-      research: ['research', 'study', 'science', 'laboratory'],
-      caffeine: ['caffeine', 'coffee', 'energy', 'stimulant'],
-      muscle: ['muscle', 'strength', 'building', 'bodybuilding'],
-      cardio: ['cardio', 'running', 'endurance', 'aerobic'],
-      recovery: ['recovery', 'rest', 'sleep', 'regeneration']
-    };
+    // Combine all text sources
+    const combinedText = `${title || ''} ${heading || ''} ${text}`.toLowerCase();
     
-    Object.entries(conceptMap).forEach(([concept, keywords]) => {
-      if (keywords.some(keyword => combinedText.includes(keyword))) {
-        concepts.push(concept);
-      }
+    // Remove HTML tags and special characters
+    const cleanText = combinedText
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Split into words and filter
+    const words = cleanText.split(' ');
+    
+    // Remove common stop words and short words
+    const stopWords = new Set([
+      'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 
+      'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 
+      'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must',
+      'can', 'this', 'that', 'these', 'those', 'you', 'your', 'they', 'their', 'them',
+      'he', 'she', 'it', 'we', 'us', 'our', 'his', 'her', 'its', 'from', 'up', 'about',
+      'into', 'over', 'after', 'before', 'during', 'through', 'between', 'under', 'above',
+      'not', 'no', 'yes', 'all', 'any', 'each', 'every', 'some', 'many', 'much', 'more',
+      'most', 'few', 'less', 'little', 'one', 'two', 'three', 'first', 'second', 'third',
+      'get', 'got', 'getting', 'make', 'making', 'made', 'take', 'taking', 'took', 'give',
+      'giving', 'gave', 'come', 'coming', 'came', 'go', 'going', 'went', 'see', 'seeing',
+      'saw', 'know', 'knowing', 'knew', 'think', 'thinking', 'thought', 'feel', 'feeling',
+      'felt', 'look', 'looking', 'looked', 'find', 'finding', 'found', 'work', 'working',
+      'worked', 'way', 'ways', 'time', 'times', 'day', 'days', 'year', 'years', 'good',
+      'better', 'best', 'bad', 'worse', 'worst', 'new', 'old', 'great', 'small', 'large',
+      'big', 'long', 'short', 'high', 'low', 'right', 'left', 'here', 'there', 'now',
+      'then', 'when', 'where', 'why', 'how', 'what', 'who', 'which', 'whose', 'whom'
+    ]);
+    
+    const meaningfulWords = words.filter(word => 
+      word.length > 3 && 
+      !stopWords.has(word) && 
+      !/^\d+$/.test(word) // Remove numbers
+    );
+    
+    // Count word frequency to identify most important terms
+    const wordFreq = new Map<string, number>();
+    meaningfulWords.forEach(word => {
+      wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
     });
     
-    return concepts.slice(0, 3); // Limit to 3 key concepts
+    // Sort by frequency and relevance
+    const sortedWords = Array.from(wordFreq.entries())
+      .sort((a, b) => {
+        // Boost words that appear in heading or title
+        const aBoost = ((heading?.toLowerCase().includes(a[0]) ? 2 : 0) + 
+                       (title?.toLowerCase().includes(a[0]) ? 3 : 0));
+        const bBoost = ((heading?.toLowerCase().includes(b[0]) ? 2 : 0) + 
+                       (title?.toLowerCase().includes(b[0]) ? 3 : 0));
+        
+        return (b[1] + bBoost) - (a[1] + aBoost);
+      })
+      .slice(0, 8) // Take top 8 most relevant words
+      .map(([word]) => word);
+    
+    return sortedWords;
+  }
+
+  /**
+   * Determine action context from content to create more specific alt text
+   */
+  private static determineActionContext(text: string, heading?: string): string {
+    const combinedText = `${heading || ''} ${text}`.toLowerCase();
+    
+    // Look for action patterns in the content
+    const actionPatterns = [
+      { pattern: /demonstrat|showing|display|exhibit/, action: 'Professional demonstration' },
+      { pattern: /train|exercise|workout|fitness/, action: 'Training session' },
+      { pattern: /research|study|analy|test/, action: 'Scientific research' },
+      { pattern: /cook|prepar|recipe|meal/, action: 'Food preparation' },
+      { pattern: /medic|health|treat|therap/, action: 'Medical procedure' },
+      { pattern: /teach|learn|educat|instruct/, action: 'Educational demonstration' },
+      { pattern: /perform|compet|sport|athlet/, action: 'Athletic performance' },
+      { pattern: /lifestyle|daily|routine|habit/, action: 'Lifestyle practice' }
+    ];
+    
+    for (const { pattern, action } of actionPatterns) {
+      if (pattern.test(combinedText)) {
+        return action;
+      }
+    }
+    
+    return ''; // No specific action context found
+  }
+
+  /**
+   * Extract basic keywords from title as fallback
+   */
+  private static extractBasicKeywords(title: string): string[] {
+    if (!title) return ['general topic'];
+    
+    // Extract meaningful words from title
+    const titleWords = title.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(' ')
+      .filter(word => word.length > 3)
+      .filter(word => !['with', 'from', 'that', 'this', 'your', 'complete', 'guide', 'essential'].includes(word))
+      .slice(0, 3);
+    
+    return titleWords.length > 0 ? titleWords : ['health and wellness'];
+  }
+
+  /**
+   * Extract key concepts from text (simplified version for backward compatibility)
+   */
+  private static extractKeyConcepts(text: string, heading?: string): string[] {
+    // Use the new keyword extraction method
+    return this.extractActualKeywords(text, heading).slice(0, 3);
   }
 
   /**
