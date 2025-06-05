@@ -192,28 +192,70 @@ export default function ImportPage() {
     setImportProgress(0)
 
     try {
-      const response = await fetch('/api/admin/import/process', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          articles: selectedArticlesList
-        })
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Import failed')
+      // Process articles in batches to prevent timeouts
+      const batchSize = selectedArticlesList.length > 10 ? 2 : 3 // Smaller batches for larger imports
+      const totalBatches = Math.ceil(selectedArticlesList.length / batchSize)
+      
+      let allResults: any = {
+        total: selectedArticlesList.length,
+        imported: 0,
+        failed: 0,
+        timedOut: 0,
+        details: []
       }
 
-      setImportResults(result.results)
+      console.log(`Starting batch import: ${selectedArticlesList.length} articles in ${totalBatches} batches`)
+
+      // Process each batch
+      for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+        console.log(`Processing batch ${batchIndex + 1}/${totalBatches}`)
+        
+        const response = await fetch('/api/admin/import/process', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            articles: selectedArticlesList,
+            batchSize: batchSize,
+            batchIndex: batchIndex
+          })
+        })
+
+        const batchResult = await response.json()
+
+        if (!response.ok) {
+          console.error(`Batch ${batchIndex + 1} failed:`, batchResult)
+          throw new Error(batchResult.error || `Batch ${batchIndex + 1} failed`)
+        }
+
+        // Accumulate results
+        allResults.imported += batchResult.results.imported
+        allResults.failed += batchResult.results.failed
+        allResults.timedOut += batchResult.results.timedOut
+        allResults.details.push(...batchResult.results.details)
+
+        // Update progress
+        const progress = ((batchIndex + 1) / totalBatches) * 100
+        setImportProgress(progress)
+
+        console.log(`✅ Batch ${batchIndex + 1}/${totalBatches} complete: ${batchResult.results.imported} imported, ${batchResult.results.failed} failed, ${batchResult.results.timedOut} timed out`)
+
+        // Small delay between batches to prevent overwhelming the server
+        if (batchIndex < totalBatches - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+      }
+
+      setImportResults(allResults)
       setImportProgress(100)
       setImportStep('complete')
+      
+      console.log(`🎉 Import complete! Total: ${allResults.imported} imported, ${allResults.failed} failed, ${allResults.timedOut} timed out`)
+
     } catch (error) {
       console.error('Import error:', error)
-      alert('Import failed. Please try again.')
+      alert(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again with a smaller batch.`)
       setImportStep('preview')
     }
   }

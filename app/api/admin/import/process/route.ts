@@ -20,36 +20,86 @@ interface ImportArticle {
 interface ImportResult {
   articleId: string
   title: string
-  status: 'success' | 'error'
+  status: 'success' | 'error' | 'timeout'
   error?: string
   wordCount?: number
   readabilityScore?: number
   warnings?: string[]
 }
 
+interface BatchResponse {
+  success: boolean
+  batch: number
+  totalBatches: number
+  results: {
+    total: number
+    processed: number
+    imported: number
+    failed: number
+    timedOut: number
+    details: ImportResult[]
+  }
+  isComplete: boolean
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { articles } = await request.json()
+    const { articles, batchSize = 3, batchIndex = 0 } = await request.json()
     
     if (!articles || !Array.isArray(articles)) {
       return NextResponse.json({ error: 'Invalid request data' }, { status: 400 })
     }
 
-    console.log(`Processing ${articles.length} articles for import with ContentEnhancer...`)
+    // Calculate batch parameters
+    const totalArticles = articles.length
+    const actualBatchSize = Math.min(batchSize, totalArticles)
+    const totalBatches = Math.ceil(totalArticles / actualBatchSize)
+    const startIndex = batchIndex * actualBatchSize
+    const endIndex = Math.min(startIndex + actualBatchSize, totalArticles)
+    const currentBatch = articles.slice(startIndex, endIndex)
+
+    console.log(`🔄 Processing batch ${batchIndex + 1}/${totalBatches} (${currentBatch.length} articles)`)
+    console.log(`📊 Articles ${startIndex + 1}-${endIndex} of ${totalArticles}`)
     
     const results: ImportResult[] = []
     let successCount = 0
     let errorCount = 0
+    let timeoutCount = 0
 
-    // Process each article
-    for (const article of articles) {
+    // Set a timeout for the entire batch (8 seconds to stay under Vercel's 10s limit)
+    const BATCH_TIMEOUT = 8000
+    const batchStartTime = Date.now()
+
+    // Process each article in the current batch
+    for (const article of currentBatch) {
+      // Check if we're approaching timeout
+      const elapsedTime = Date.now() - batchStartTime
+      if (elapsedTime > BATCH_TIMEOUT - 1000) { // Leave 1s buffer
+        console.log(`⏰ Batch approaching timeout, stopping processing`)
+        results.push({
+          articleId: article.id,
+          title: article.title,
+          status: 'timeout',
+          error: 'Batch timeout - please retry with smaller batch size'
+        })
+        timeoutCount++
+        continue
+      }
+
       try {
         console.log(`🔄 Processing article: "${article.title}"`)
         
-        // Enhanced content processing
+        const articleStartTime = Date.now()
+        
+        // Enhanced content processing with timeout protection
         console.log(`📝 Processing: ${article.title}`)
         
-        const enhancedContent = await ContentEnhancer.enhanceContent(
+        // Create a timeout promise for individual article processing
+        const articleTimeout = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Article processing timeout')), 5000) // 5s per article
+        })
+
+        const enhancementPromise = ContentEnhancer.enhanceContent(
           article.title,
           article.content,
           {
@@ -65,8 +115,13 @@ export async function POST(request: NextRequest) {
             category: article.category
           }
         )
+
+        // Race between enhancement and timeout
+        const enhancedContent = await Promise.race([enhancementPromise, articleTimeout])
         
-        console.log(`   ↳ Enhanced: ${enhancedContent.wordCount} words, ${enhancedContent.readabilityScore}% readability`)
+        const processingTime = Date.now() - articleStartTime
+        console.log(`   ↳ Enhanced in ${processingTime}ms: ${enhancedContent.wordCount} words, ${enhancedContent.readabilityScore}% readability`)
+        
         if (enhancedContent.warnings.length > 0) {
           console.log(`   ↳ Warnings: ${enhancedContent.warnings.join(', ')}`)
         }
@@ -113,37 +168,53 @@ export async function POST(request: NextRequest) {
           successCount++
         }
       } catch (err) {
-        console.error(`Error processing article "${article.title}":`, err)
+        const isTimeout = err instanceof Error && err.message.includes('timeout')
+        console.error(`${isTimeout ? '⏰' : '🚨'} ${isTimeout ? 'Timeout' : 'Error'} processing article "${article.title}":`, err)
+        
         results.push({
           articleId: article.id,
           title: article.title,
-          status: 'error',
+          status: isTimeout ? 'timeout' : 'error',
           error: err instanceof Error ? err.message : 'Unknown error'
         })
-        errorCount++
+        
+        if (isTimeout) {
+          timeoutCount++
+        } else {
+          errorCount++
+        }
       }
       
-      // Add a small delay to avoid overwhelming the database
+      // Small delay between articles to prevent overwhelming the system
       await new Promise(resolve => setTimeout(resolve, 100))
     }
 
-    console.log(`Import complete: ${successCount} successful, ${errorCount} failed`)
+    const isComplete = (batchIndex + 1) >= totalBatches
+    
+    console.log(`Batch ${batchIndex + 1}/${totalBatches} complete: ${successCount} successful, ${errorCount} failed, ${timeoutCount} timed out`)
 
-    // Clear the articles cache so new articles show up immediately on public pages
+    // Clear the articles cache when we successfully import articles
     if (successCount > 0) {
       clearArticlesCache()
       console.log('🔄 Cache cleared - new articles will show on public site immediately')
     }
 
-    return NextResponse.json({
+    const response: BatchResponse = {
       success: true,
+      batch: batchIndex + 1,
+      totalBatches: totalBatches,
       results: {
-        total: articles.length,
+        total: totalArticles,
+        processed: endIndex,
         imported: successCount,
         failed: errorCount,
+        timedOut: timeoutCount,
         details: results
-      }
-    })
+      },
+      isComplete
+    }
+
+    return NextResponse.json(response)
 
   } catch (error) {
     console.error('Import processing error:', error)
