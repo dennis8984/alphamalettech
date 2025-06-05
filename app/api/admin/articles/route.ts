@@ -55,8 +55,9 @@ export async function POST(request: NextRequest) {
     // Get default author if not provided
     let authorId = validatedData.authorId
     if (!authorId) {
-      const defaultAuthor = await prisma.author.findFirst({
-        orderBy: { created_at: 'asc' }
+      const defaultAuthor = await prisma.user.findFirst({
+        where: { role: 'admin' },
+        orderBy: { createdAt: 'asc' }
       })
       if (defaultAuthor) {
         authorId = defaultAuthor.id
@@ -81,15 +82,11 @@ export async function POST(request: NextRequest) {
         slug: validatedData.slug,
         content: validatedData.content,
         excerpt: validatedData.excerpt || validatedData.content.substring(0, 160) + '...',
-        status: validatedData.published ? 'published' : 'draft',
         published: validatedData.published,
         featured: validatedData.featured,
         trending: validatedData.trending,
-        author_id: authorId,
-        category_id: categoryId,
-        reading_time: Math.ceil(validatedData.content.split(' ').length / 200), // 200 WPM
-        meta_title: validatedData.title,
-        meta_description: validatedData.excerpt || validatedData.content.substring(0, 160),
+        authorId: authorId!,
+        categoryId: categoryId!,
       },
       include: {
         author: true,
@@ -117,8 +114,8 @@ export async function POST(request: NextRequest) {
         // Link article to tag
         await prisma.articleTag.create({
           data: {
-            article_id: article.id,
-            tag_id: tag.id
+            articleId: article.id,
+            tagId: tag.id
           }
         })
       }
@@ -132,7 +129,6 @@ export async function POST(request: NextRequest) {
         id: article.id,
         title: article.title,
         slug: article.slug,
-        status: article.status,
         published: article.published,
         author: article.author?.name,
         category: article.category?.name,
@@ -179,7 +175,7 @@ export async function GET(request: NextRequest) {
     const where: any = {}
     
     if (status) {
-      where.status = status
+      where.published = status === 'published'
     }
     
     if (category) {
@@ -202,7 +198,7 @@ export async function GET(request: NextRequest) {
           category: true,
           tags: { include: { tag: true } }
         },
-        orderBy: { created_at: 'desc' },
+        orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -215,16 +211,14 @@ export async function GET(request: NextRequest) {
         title: article.title,
         slug: article.slug,
         excerpt: article.excerpt,
-        status: article.status,
         published: article.published,
         featured: article.featured,
         trending: article.trending,
         author: article.author?.name,
         category: article.category?.name,
         tags: article.tags.map((at: any) => at.tag.name),
-        reading_time: article.reading_time,
-        created_at: article.created_at,
-        updated_at: article.updated_at,
+        createdAt: article.createdAt,
+        updatedAt: article.updatedAt,
       })),
       pagination: {
         page,
