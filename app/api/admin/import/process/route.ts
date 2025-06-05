@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createArticle } from '@/lib/articles-db'
 import { clearArticlesCache } from '@/lib/data'
 import { ContentEnhancer } from '@/lib/content-enhancer'
-import { prisma } from '@/lib/prisma'
 
 interface ImportArticle {
   id: string
@@ -130,66 +130,35 @@ export async function POST(request: NextRequest) {
         const enhancedSlug = generateSlug(enhancedContent.title)
         console.log(`   ↳ Generated slug: "${enhancedSlug}" from enhanced title`)
 
-        // Get default author and category
-        const defaultAuthor = await prisma.user.findFirst({
-          where: { role: 'admin' },
-          orderBy: { createdAt: 'asc' }
-        })
-        
-        const defaultCategory = await prisma.category.findFirst({
-          where: { name: 'Health' }
-        })
+        // Convert the imported article format to match the database format
+        const articleData = {
+          title: enhancedContent.title,
+          slug: enhancedSlug,
+          content: enhancedContent.content,
+          excerpt: enhancedContent.excerpt,
+          category: article.category,
+          status: 'published' as const,
+          featured_image: article.image,
+          tags: extractTags(enhancedContent.title + ' ' + enhancedContent.content),
+          author: article.author || 'Imported Author'
+        }
 
-        if (!defaultAuthor || !defaultCategory) {
-          console.error('Missing default author or category for import')
+        // Create the article in the database
+        const { data, error } = await createArticle(articleData)
+        
+        if (error || !data) {
+          console.error(`Failed to import article "${article.title}":`, error)
           results.push({
             articleId: article.id,
             title: article.title,
             status: 'error',
-            error: 'Missing default author or category'
+            error: error || 'Failed to create article'
           })
           errorCount++
-          continue
-        }
-
-        // Check for slug uniqueness and adjust if needed
-        let finalSlug = enhancedSlug
-        const existingArticle = await prisma.article.findUnique({
-          where: { slug: finalSlug }
-        })
-        
-        if (existingArticle) {
-          // Generate unique slug by appending number
-          let counter = 1
-          let newSlug = `${finalSlug}-${counter}`
-          
-          while (await prisma.article.findUnique({ where: { slug: newSlug } })) {
-            counter++
-            newSlug = `${finalSlug}-${counter}`
-          }
-          
-          finalSlug = newSlug
-        }
-
-        // Create the article using Prisma directly
-        try {
-          const createdArticle = await prisma.article.create({
-            data: {
-              title: enhancedContent.title,
-              slug: finalSlug,
-              content: enhancedContent.content,
-              excerpt: enhancedContent.excerpt,
-              published: true,
-              featured: false,
-              trending: false,
-              authorId: defaultAuthor.id,
-              categoryId: defaultCategory.id,
-            }
-          })
-
+        } else {
           console.log(`✅ Successfully imported: "${enhancedContent.title}"`)
           results.push({
-            articleId: createdArticle.id,
+            articleId: data.id!,
             title: enhancedContent.title,
             status: 'success',
             wordCount: enhancedContent.wordCount,
@@ -197,15 +166,6 @@ export async function POST(request: NextRequest) {
             warnings: enhancedContent.warnings
           })
           successCount++
-        } catch (dbError) {
-          console.error(`Database error for "${article.title}":`, dbError)
-          results.push({
-            articleId: article.id,
-            title: article.title,
-            status: 'error',
-            error: dbError instanceof Error ? dbError.message : 'Database error'
-          })
-          errorCount++
         }
       } catch (err) {
         const isTimeout = err instanceof Error && err.message.includes('timeout')
