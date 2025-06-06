@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Upload, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getAllAds, deleteAd, type Ad } from '@/lib/ads-db'
@@ -16,12 +17,15 @@ export default function AdsPage() {
   const [ads, setAds] = useState<Ad[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [popunderEnabled, setPopunderEnabled] = useState(false)
+  const [savingSettings, setSavingSettings] = useState(false)
 
-  // Load ads
+  // Load ads and popunder settings
   useEffect(() => {
-    const loadAds = async () => {
-      console.log('📊 Loading ads...')
+    const loadData = async () => {
+      console.log('📊 Loading ads and settings...')
       
+      // Load ads
       const { data, error } = await getAllAds()
       
       if (error) {
@@ -34,12 +38,51 @@ export default function AdsPage() {
         setAds(data)
         console.log('✅ Ads loaded:', data.length)
       }
+
+      // Load popunder settings
+      try {
+        const response = await fetch('/api/admin/popunder-settings')
+        if (response.ok) {
+          const settingsData = await response.json()
+          setPopunderEnabled(settingsData.enabled || false)
+          console.log('✅ Popunder settings loaded:', settingsData.enabled)
+        }
+      } catch (error) {
+        console.error('❌ Failed to load popunder settings:', error)
+      }
       
       setLoading(false)
     }
 
-    loadAds()
+    loadData()
   }, [])
+
+  // Handle popunder toggle
+  const handlePopunderToggle = async (enabled: boolean) => {
+    setSavingSettings(true)
+    
+    try {
+      const response = await fetch('/api/admin/popunder-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ enabled }),
+      })
+
+      if (response.ok) {
+        setPopunderEnabled(enabled)
+        console.log('✅ Popunder settings saved:', enabled)
+      } else {
+        throw new Error('Failed to save settings')
+      }
+    } catch (error) {
+      console.error('❌ Failed to save popunder settings:', error)
+      alert('Failed to save popunder settings')
+    }
+    
+    setSavingSettings(false)
+  }
 
   const filteredAds = ads.filter(ad =>
     ad.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -152,6 +195,55 @@ export default function AdsPage() {
           </p>
         </div>
       </div>
+
+      {/* Popunder Settings */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5" />
+            Popunder Ad Settings
+          </CardTitle>
+          <CardDescription>
+            Control when popunder ads are displayed to visitors
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h4 className="text-sm font-medium">Enable Popunder Ads</h4>
+              <p className="text-sm text-muted-foreground">
+                {popunderEnabled 
+                  ? "Popunder ads are currently enabled and will show to visitors" 
+                  : "Popunder ads are currently disabled"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {savingSettings && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+              )}
+              <Switch
+                checked={popunderEnabled}
+                onCheckedChange={handlePopunderToggle}
+                disabled={savingSettings}
+              />
+            </div>
+          </div>
+          {popunderEnabled && (
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-800">
+                ✅ Popunder ads are active. They will display based on the settings configured in your popunder ad campaigns.
+              </p>
+            </div>
+          )}
+          {!popunderEnabled && (
+            <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+              <p className="text-sm text-gray-600">
+                🚫 Popunder ads are disabled. No popunder ads will show regardless of campaign settings.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Actions Bar */}
       <Card className="mb-6">
