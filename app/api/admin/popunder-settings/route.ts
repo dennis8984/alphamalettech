@@ -1,39 +1,37 @@
 import { NextResponse } from 'next/server';
-import { writeFile, readFile } from 'fs/promises';
-import { join } from 'path';
-
-const SETTINGS_FILE = join(process.cwd(), 'data', 'popunder-settings.json');
-
-// Ensure data directory exists and create default settings
-async function ensureSettingsFile() {
-  try {
-    await readFile(SETTINGS_FILE, 'utf8');
-  } catch (error) {
-    // File doesn't exist, create it with default settings
-    const defaultSettings = { enabled: false };
-    try {
-      await writeFile(SETTINGS_FILE, JSON.stringify(defaultSettings, null, 2));
-    } catch (writeError) {
-      console.error('Failed to create settings file:', writeError);
-    }
-  }
-}
+import { supabase } from '@/lib/supabase-client';
 
 export async function GET() {
   try {
-    await ensureSettingsFile();
+    console.log('📖 Fetching popunder settings...');
     
-    const data = await readFile(SETTINGS_FILE, 'utf8');
-    const settings = JSON.parse(data);
+    // Try to get the setting from Supabase
+    const { data, error } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'popunder_enabled')
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = "not found"
+      console.error('❌ Supabase error:', error);
+      // Return default if there's an error
+      return NextResponse.json({ 
+        enabled: false,
+        success: true 
+      });
+    }
+
+    const enabled = data?.value === 'true' || false;
+    console.log('✅ Popunder settings loaded:', enabled);
 
     return NextResponse.json({ 
-      enabled: settings.enabled || false,
+      enabled,
       success: true 
     });
 
   } catch (error) {
-    console.error('Popunder settings GET error:', error);
-    // Return default if file read fails
+    console.error('❌ Popunder settings GET error:', error);
+    // Return default if anything fails
     return NextResponse.json({ 
       enabled: false,
       success: true 
@@ -49,16 +47,49 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid enabled value' }, { status: 400 });
     }
 
-    await ensureSettingsFile();
-    
-    const settings = {
-      enabled,
-      updatedAt: new Date().toISOString()
-    };
+    console.log('💾 Saving popunder settings:', enabled);
 
-    await writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+    // First, try to create the site_settings table if it doesn't exist
+    // This is a simple approach - you may want to create the table manually in Supabase
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS site_settings (
+        id SERIAL PRIMARY KEY,
+        key VARCHAR(255) UNIQUE NOT NULL,
+        value TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+    `;
 
-    console.log('✅ Popunder settings saved to file:', enabled);
+    // Execute raw SQL to create table (will be ignored if table exists)
+    try {
+      await supabase.rpc('exec_sql', { sql: createTableQuery });
+    } catch (tableError) {
+      console.log('Table creation skipped (may already exist):', tableError);
+    }
+
+    // Upsert the popunder setting
+    const { error } = await supabase
+      .from('site_settings')
+      .upsert(
+        {
+          key: 'popunder_enabled',
+          value: enabled.toString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          onConflict: 'key'
+        }
+      );
+
+    if (error) {
+      console.error('❌ Error saving popunder settings:', error);
+      return NextResponse.json({ 
+        error: `Failed to save settings: ${error.message}` 
+      }, { status: 500 });
+    }
+
+    console.log('✅ Popunder settings saved successfully:', enabled);
 
     return NextResponse.json({ 
       enabled,
@@ -67,7 +98,9 @@ export async function POST(request: Request) {
     });
 
   } catch (error) {
-    console.error('Popunder settings POST error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('❌ Popunder settings POST error:', error);
+    return NextResponse.json({ 
+      error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown error'}` 
+    }, { status: 500 });
   }
 } 
