@@ -22,6 +22,10 @@ interface SearchResults {
   query: string;
 }
 
+interface SearchError {
+  error: string;
+}
+
 export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Article[]>([]);
@@ -37,13 +41,15 @@ export default function SearchPage() {
     
     try {
       const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
-      const data: SearchResults = await response.json();
+      const data = await response.json();
       
       if (response.ok) {
-        setResults(data.results);
+        const searchResults = data as SearchResults;
+        setResults(searchResults.results);
         setHasSearched(true);
       } else {
-        setError(data.error || 'Search failed');
+        const errorResponse = data as SearchError;
+        setError(errorResponse.error || 'Search failed');
       }
     } catch (err) {
       setError('Failed to search articles');
