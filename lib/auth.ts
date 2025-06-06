@@ -8,10 +8,7 @@ import { prisma } from "@/lib/prisma"
 const ADMIN_EMAILS = [
   'admin@menshealth.com',
   'editor@menshealth.com',
-  'admin@menshb.com',
-  'dennis8984@gmail.com', // GitHub username suggests this might be your email
-  'dennis.8984@gmail.com',
-  'admin@alphamalettech.com',
+  'menshb@hqoffshore.com', // Primary admin email
   // Add your admin emails here
   process.env.ADMIN_EMAIL_1,
   process.env.ADMIN_EMAIL_2,
