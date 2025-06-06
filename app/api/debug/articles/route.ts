@@ -31,6 +31,23 @@ export async function GET() {
       })
     }
     
+    // Get all unique category values (exact case)
+    const allCategories = [...new Set(articles.map(a => a.category))]
+    
+    // Check for case variations of expected categories
+    const expectedCategories = ['fitness', 'nutrition', 'health', 'style', 'weight-loss', 'entertainment']
+    const categoryMatches = expectedCategories.map(expected => {
+      const exactMatch = articles.filter(a => a.category === expected).length
+      const caseInsensitiveMatch = articles.filter(a => a.category.toLowerCase() === expected).length
+      
+      return {
+        expected,
+        exactMatch,
+        caseInsensitiveMatch,
+        variations: allCategories.filter(cat => cat.toLowerCase() === expected)
+      }
+    })
+    
     // Analyze the articles
     const analysis = {
       total: articles.length,
@@ -42,10 +59,13 @@ export async function GET() {
         acc[article.category] = (acc[article.category] || 0) + 1
         return acc
       }, {} as Record<string, number>),
+      allUniqueCategories: allCategories,
+      categoryMatches,
       nutritionArticles: articles.filter(a => a.category === 'nutrition').length,
+      nutritionArticlesCaseInsensitive: articles.filter(a => a.category.toLowerCase() === 'nutrition').length,
       publishedNutritionArticles: articles.filter(a => a.category === 'nutrition' && a.status === 'published').length,
-      recentTitles: articles.slice(0, 10).map(a => ({
-        title: a.title,
+      recentTitles: articles.slice(0, 15).map(a => ({
+        title: a.title.substring(0, 60),
         category: a.category,
         status: a.status,
         created: a.created_at
