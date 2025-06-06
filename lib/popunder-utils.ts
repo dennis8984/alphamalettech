@@ -1,5 +1,3 @@
-import React, { useState, useEffect } from 'react';
-
 // Utility function to check if popunder ads are enabled
 export async function isPopunderEnabled(): Promise<boolean> {
   try {
@@ -15,45 +13,21 @@ export async function isPopunderEnabled(): Promise<boolean> {
   }
 }
 
-// Client-side hook for React components
-export function usePopunderEnabled() {
-  const [enabled, setEnabled] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const checkEnabled = async () => {
-      const isEnabled = await isPopunderEnabled();
-      setEnabled(isEnabled);
-      setLoading(false);
-    };
-
-    checkEnabled();
-  }, []);
-
-  return { enabled, loading };
-}
-
 // Example usage for popunder ads
 export function shouldShowPopunder(): Promise<boolean> {
   return isPopunderEnabled();
 }
 
-// Helper to create a conditional popunder component
-export function withPopunderCheck<T>(
-  PopunderComponent: React.ComponentType<T>,
-  fallback?: React.ComponentType
-) {
-  return function ConditionalPopunder(props: T) {
-    const { enabled, loading } = usePopunderEnabled();
-
-    if (loading) {
-      return null; // or a loading component
+// Simple function to check if popunder should show (for use in components)
+export async function checkPopunderStatus(): Promise<{ enabled: boolean; error?: string }> {
+  try {
+    const response = await fetch('/api/admin/popunder-settings');
+    if (response.ok) {
+      const data = await response.json();
+      return { enabled: data.enabled || false };
     }
-
-    if (!enabled) {
-      return fallback ? React.createElement(fallback) : null;
-    }
-
-    return React.createElement(PopunderComponent, props);
-  };
+    return { enabled: false, error: 'Failed to fetch settings' };
+  } catch (error) {
+    return { enabled: false, error: 'Network error' };
+  }
 } 

@@ -23,6 +23,8 @@ export default function ConditionalPopunder({
         if (response.ok) {
           const data = await response.json();
           setEnabled(data.enabled || false);
+        } else {
+          setEnabled(false);
         }
       } catch (error) {
         console.error('Failed to check popunder settings:', error);
