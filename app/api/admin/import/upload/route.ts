@@ -38,6 +38,21 @@ export async function POST(request: NextRequest) {
 
     console.log('Processing file:', file.name, 'Size:', file.size, 'Type:', file.type)
 
+    // Check file size limits (Vercel has a 4.5MB body size limit)
+    const maxSizeBytes = 4 * 1024 * 1024 // 4MB to be safe
+    if (file.size > maxSizeBytes) {
+      const fileSizeMB = (file.size / 1024 / 1024).toFixed(1)
+      return NextResponse.json({ 
+        error: `File too large (${fileSizeMB}MB). Maximum size is 4MB.`,
+        suggestions: [
+          'Split your articles into smaller ZIP files (20-30 articles each)',
+          'Use CSV format instead of ZIP for better compression',
+          'Upload articles individually using the article editor',
+          'Compress images before adding to ZIP file'
+        ]
+      }, { status: 413 })
+    }
+
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
