@@ -55,21 +55,26 @@ const Header = () => {
 
           {/* Desktop Action Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            <button
+            <Link
+              href="/search"
               className="text-gray-700 hover:text-red-600 transition-colors"
               aria-label="Search"
             >
               <Search size={20} />
-            </button>
-            <button
+            </Link>
+            <Link
+              href="/auth/signin"
               className="text-gray-700 hover:text-red-600 transition-colors"
               aria-label="Account"
             >
               <User size={20} />
-            </button>
-            <button className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-sm transition-colors">
+            </Link>
+            <Link 
+              href="/subscribe"
+              className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-sm transition-colors"
+            >
               Subscribe
-            </button>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
