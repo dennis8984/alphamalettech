@@ -12,11 +12,28 @@ export async function GET(request: Request) {
 
     console.log('Searching for:', query);
 
-    // Search across title, content, excerpt, and category
+    // First try to get all articles to see if basic query works
+    const { data: allArticles, error: allError } = await supabase
+      .from('articles')
+      .select('id, title, slug, excerpt, category, created_at, image_url')
+      .limit(5);
+
+    console.log('All articles test:', { count: allArticles?.length, error: allError });
+
+    if (allError) {
+      console.error('Basic query failed:', allError);
+      return NextResponse.json({ 
+        error: 'Database connection failed', 
+        details: allError.message 
+      }, { status: 500 });
+    }
+
+    // If basic query works, try search
+    const searchTerm = `%${query}%`;
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('id, title, slug, excerpt, category, published_at, created_at, image_url')
-      .or(`title.ilike.%${query}%, content.ilike.%${query}%, excerpt.ilike.%${query}%, category.ilike.%${query}%`)
+      .select('id, title, slug, excerpt, category, created_at, image_url')
+      .or(`title.ilike.${searchTerm}, excerpt.ilike.${searchTerm}, category.ilike.${searchTerm}`)
       .order('created_at', { ascending: false })
       .limit(20);
 
@@ -24,7 +41,10 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error('Search error:', error);
-      return NextResponse.json({ error: 'Failed to search articles' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'Search query failed', 
+        details: error.message 
+      }, { status: 500 });
     }
 
     // Add search relevance scoring (simple keyword matching)
