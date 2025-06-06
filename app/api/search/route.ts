@@ -10,28 +10,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Search query is required' }, { status: 400 });
     }
 
+    console.log('Searching for:', query);
+
     // Search across title, content, excerpt, and category
     const { data: articles, error } = await supabase
       .from('articles')
-      .select(`
-        id,
-        title,
-        slug,
-        excerpt,
-        category,
-        published_at,
-        created_at,
-        image_url
-      `)
-      .or(`
-        title.ilike.%${query}%,
-        content.ilike.%${query}%,
-        excerpt.ilike.%${query}%,
-        category.ilike.%${query}%
-      `)
-      .eq('status', 'published')
-      .order('published_at', { ascending: false })
+      .select('id, title, slug, excerpt, category, published_at, created_at, image_url')
+      .or(`title.ilike.%${query}%, content.ilike.%${query}%, excerpt.ilike.%${query}%, category.ilike.%${query}%`)
+      .order('created_at', { ascending: false })
       .limit(20);
+
+    console.log('Search results:', { articles: articles?.length, error });
 
     if (error) {
       console.error('Search error:', error);
