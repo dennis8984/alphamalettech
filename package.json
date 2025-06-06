@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx scripts/seed.ts",
+    "fix-categories": "tsx scripts/fix-article-categories.ts",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev"
   },

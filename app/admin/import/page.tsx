@@ -60,7 +60,7 @@ export default function ImportPage() {
     { key: 'title', label: 'Title', required: true, description: 'Article headline' },
     { key: 'content', label: 'Content', required: true, description: 'Main article text' },
     { key: 'excerpt', label: 'Excerpt', required: false, description: 'Short summary (optional)' },
-    { key: 'category', label: 'Category', required: false, description: 'Article category' },
+    { key: 'category', label: 'Category', required: false, description: 'Article category (fitness, nutrition, health, style, weight-loss, entertainment)' },
     { key: 'author', label: 'Author', required: false, description: 'Author name' },
     { key: 'image', label: 'Image URL', required: false, description: 'Featured image' },
     { key: 'date', label: 'Date', required: false, description: 'Publish date' }
@@ -138,7 +138,9 @@ export default function ImportPage() {
             autoMappings.content = header
           } else if (lowerHeader.includes('excerpt') || lowerHeader.includes('summary')) {
             autoMappings.excerpt = header
-          } else if (lowerHeader.includes('category') || lowerHeader.includes('tag')) {
+          } else if (lowerHeader.includes('category') || lowerHeader.includes('tag') || 
+                     lowerHeader.includes('section') || lowerHeader.includes('type') ||
+                     lowerHeader === 'cat' || lowerHeader === 'genre') {
             autoMappings.category = header
           } else if (lowerHeader.includes('author') || lowerHeader.includes('writer')) {
             autoMappings.author = header
@@ -546,7 +548,8 @@ export default function ImportPage() {
               <h4 className="font-semibold text-blue-900 mb-2">📋 Supported Formats</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-blue-800 mb-3">
                 <div>
-                  <strong>CSV Files:</strong> Headers: title, content, excerpt, category, author, image, date
+                  <strong>CSV Files:</strong> Headers: title, content, excerpt, category, author, image, date<br/>
+                  <em>Category values:</em> nutrition, fitness, health, style, weight-loss, entertainment
                 </div>
                 <div>
                   <strong>XML Files:</strong> Standard RSS/XML format with article/item elements

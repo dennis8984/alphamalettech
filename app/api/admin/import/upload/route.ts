@@ -353,24 +353,63 @@ function mapCsvRowToArticle(row: Record<string, string>, index: number, mappings
   
   // Use mappings if provided, otherwise fall back to flexible field mapping
   const getValue = (field: string, fallbacks?: string[]): string => {
-    if (mappings && mappings[field] && row[mappings[field]]) {
-      return row[mappings[field]]
+    // Debug logging for category field
+    if (field === 'category') {
+      console.log(`\n=== CATEGORY DEBUG for row ${index + 1} ===`)
+      console.log('Mappings:', mappings)
+      console.log('Row keys:', Object.keys(row))
+      console.log('Row values preview:', Object.fromEntries(Object.entries(row).slice(0, 5)))
     }
-    // If no mapping, try the standard field names
-    if (row[field]) return row[field]
-    // Try fallbacks
+    
+    if (mappings && mappings[field] && row[mappings[field]]) {
+      const value = row[mappings[field]]
+      if (field === 'category') console.log(`Found via mapping: "${value}"`)
+      return value
+    }
+    
+    // If no mapping, try the standard field names (case insensitive)
+    const rowKeys = Object.keys(row)
+    const exactMatch = rowKeys.find(key => key.toLowerCase() === field.toLowerCase())
+    if (exactMatch && row[exactMatch]) {
+      const value = row[exactMatch]
+      if (field === 'category') console.log(`Found via exact match "${exactMatch}": "${value}"`)
+      return value
+    }
+    
+    // Try fallbacks (case insensitive)
     if (fallbacks) {
       for (const fallback of fallbacks) {
-        if (row[fallback]) return row[fallback]
+        const fallbackMatch = rowKeys.find(key => key.toLowerCase() === fallback.toLowerCase())
+        if (fallbackMatch && row[fallbackMatch]) {
+          const value = row[fallbackMatch]
+          if (field === 'category') console.log(`Found via fallback "${fallbackMatch}": "${value}"`)
+          return value
+        }
       }
     }
+    
+    if (field === 'category') console.log('No category found, will use detectCategory')
     return ''
   }
   
   const title = getValue('title', ['Title', 'headline', 'Headline']) || `Imported Article ${index + 1}`
   const content = getValue('content', ['Content', 'body', 'Body', 'description', 'Description']) || ''
   const excerpt = getValue('excerpt', ['Excerpt', 'summary', 'Summary']) || content.substring(0, 200) + '...'
-  const category = getValue('category', ['Category', 'tag', 'Tag']) || detectCategory(title + ' ' + content)
+  
+  // Enhanced category processing
+  const rawCategory = getValue('category', ['Category', 'tag', 'Tag', 'section', 'type'])
+  let category = rawCategory ? rawCategory.toLowerCase().trim() : ''
+  
+  console.log(`Row ${index + 1} - Raw category: "${rawCategory}" -> Processed: "${category}"`)
+  
+  // If no category found or invalid, use auto-detection
+  if (!category || !ALLOWED_CATEGORIES.includes(category)) {
+    category = detectCategory(title + ' ' + content)
+    console.log(`Row ${index + 1} - Using auto-detected category: "${category}"`)
+  } else {
+    console.log(`Row ${index + 1} - Using CSV category: "${category}"`)
+  }
+  
   const author = getValue('author', ['Author', 'writer', 'Writer']) || 'Imported Author'
   const image = getValue('image', ['Image', 'thumbnail', 'Thumbnail', 'image_url', 'imageUrl']) || DEFAULT_IMAGE
   const date = getValue('date', ['Date', 'publishDate', 'publish_date', 'published_at']) || new Date().toISOString().split('T')[0]
@@ -389,7 +428,7 @@ function mapCsvRowToArticle(row: Record<string, string>, index: number, mappings
     excerpt,
     content,
     image,
-    category: ALLOWED_CATEGORIES.includes(category.toLowerCase()) ? category.toLowerCase() : 'health',
+    category, // Already processed and validated above
     author,
     date,
     featured: false,
@@ -462,19 +501,48 @@ function generateId(): string {
 function detectCategory(text: string): string {
   const lowerText = text.toLowerCase()
   
-  if (lowerText.includes('workout') || lowerText.includes('exercise') || lowerText.includes('training') || lowerText.includes('muscle')) {
+  // Fitness - check first to catch workout-related nutrition
+  if (lowerText.includes('workout') || lowerText.includes('exercise') || lowerText.includes('training') || 
+      lowerText.includes('muscle building') || lowerText.includes('strength') || lowerText.includes('cardio') || 
+      lowerText.includes('gym') || lowerText.includes('fitness')) {
     return 'fitness'
   }
-  if (lowerText.includes('protein') || lowerText.includes('diet') || lowerText.includes('nutrition') || lowerText.includes('food')) {
+  
+  // Nutrition - comprehensive check for nutrition/diet content
+  if (lowerText.includes('protein') || lowerText.includes('diet') || lowerText.includes('nutrition') || 
+      lowerText.includes('food') || lowerText.includes('carbs') || lowerText.includes('carbohydrates') ||
+      lowerText.includes('supplements') || lowerText.includes('vitamins') || lowerText.includes('calories') ||
+      lowerText.includes('macros') || lowerText.includes('keto') || lowerText.includes('fiber') ||
+      lowerText.includes('meal') || lowerText.includes('eating') || lowerText.includes('nutrients') ||
+      lowerText.includes('amino acid') || lowerText.includes('fasting') || lowerText.includes('mediterranean') ||
+      lowerText.includes('vegan') || lowerText.includes('paleo') || lowerText.includes('organic') ||
+      lowerText.includes('superfood') || lowerText.includes('antioxidant') || lowerText.includes('probiotics') ||
+      lowerText.includes('omega') || lowerText.includes('mineral') || lowerText.includes('calcium') ||
+      lowerText.includes('iron') || lowerText.includes('zinc') || lowerText.includes('magnesium') ||
+      lowerText.includes('snack') || lowerText.includes('recipe') || lowerText.includes('ingredient') ||
+      lowerText.includes('cook') || lowerText.includes('sugar') || lowerText.includes('sodium') ||
+      lowerText.includes('fat') && (lowerText.includes('saturated') || lowerText.includes('trans') || lowerText.includes('healthy fats'))) {
     return 'nutrition'
   }
-  if (lowerText.includes('weight') || lowerText.includes('fat') || lowerText.includes('lose') || lowerText.includes('slim')) {
+  
+  // Weight loss - specific weight loss terms
+  if (lowerText.includes('weight loss') || lowerText.includes('lose weight') || lowerText.includes('fat loss') ||
+      lowerText.includes('burn fat') || lowerText.includes('slim') || lowerText.includes('obesity') ||
+      lowerText.includes('calorie deficit') || lowerText.includes('metabolism')) {
     return 'weight-loss'
   }
-  if (lowerText.includes('style') || lowerText.includes('fashion') || lowerText.includes('clothing') || lowerText.includes('shoes')) {
+  
+  // Style
+  if (lowerText.includes('style') || lowerText.includes('fashion') || lowerText.includes('clothing') || 
+      lowerText.includes('shoes') || lowerText.includes('grooming') || lowerText.includes('hair') ||
+      lowerText.includes('beard') || lowerText.includes('skincare')) {
     return 'style'
   }
-  if (lowerText.includes('movie') || lowerText.includes('show') || lowerText.includes('entertainment') || lowerText.includes('streaming')) {
+  
+  // Entertainment
+  if (lowerText.includes('movie') || lowerText.includes('show') || lowerText.includes('entertainment') || 
+      lowerText.includes('streaming') || lowerText.includes('tv') || lowerText.includes('film') ||
+      lowerText.includes('series') || lowerText.includes('gaming') || lowerText.includes('music')) {
     return 'entertainment'
   }
   

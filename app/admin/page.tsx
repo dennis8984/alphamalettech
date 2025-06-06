@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getCurrentUser, signOut } from '@/lib/supabase-auth'
 import { 
   Card, 
   CardContent, 
@@ -25,32 +25,29 @@ import {
 export const dynamic = 'force-dynamic'
 
 export default function AdminDashboard() {
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: session, status } = useSession()
   const router = useRouter()
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { user, error } = await getCurrentUser()
-      
-      if (error || !user) {
-        router.push('/admin/auth/signin')
-        return
-      }
-      
-      setUser(user)
-      setLoading(false)
+    if (status === 'loading') return // Still loading
+    
+    if (!session) {
+      router.push('/admin/auth/signin')
+      return
     }
-
-    checkUser()
-  }, [router])
+    
+    // Check if user has admin role
+    if (session.user?.role !== 'admin') {
+      router.push('/admin/auth/error?error=AccessDenied')
+      return
+    }
+  }, [session, status, router])
 
   const handleSignOut = async () => {
-    await signOut()
-    router.push('/admin/auth/signin')
+    await signOut({ callbackUrl: '/admin/auth/signin' })
   }
 
-  if (loading) {
+  if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -61,7 +58,7 @@ export default function AdminDashboard() {
     )
   }
 
-  if (!user) {
+  if (!session || session.user?.role !== 'admin') {
     return null // Will redirect
   }
 
@@ -77,7 +74,7 @@ export default function AdminDashboard() {
                 HUB Admin
               </h1>
               <p className="text-sm text-gray-600">
-                Welcome back, {user.user_metadata?.name || user.email}
+                Welcome back, {session.user?.name || session.user?.email}
               </p>
             </div>
             <div className="flex items-center space-x-4">
