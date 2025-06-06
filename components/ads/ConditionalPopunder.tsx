@@ -19,7 +19,7 @@ export default function ConditionalPopunder({
   useEffect(() => {
     const checkSettings = async () => {
       try {
-        const response = await fetch('/api/admin/popunder-settings');
+        const response = await fetch('/api/admin/popunder-settings/simple');
         if (response.ok) {
           const data = await response.json();
           setEnabled(data.enabled || false);

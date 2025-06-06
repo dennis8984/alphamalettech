@@ -41,7 +41,7 @@ export default function AdsPage() {
 
       // Load popunder settings
       try {
-        const response = await fetch('/api/admin/popunder-settings')
+        const response = await fetch('/api/admin/popunder-settings/simple')
         if (response.ok) {
           const settingsData = await response.json()
           setPopunderEnabled(settingsData.enabled || false)
@@ -62,7 +62,7 @@ export default function AdsPage() {
     setSavingSettings(true)
     
     try {
-      const response = await fetch('/api/admin/popunder-settings', {
+      const response = await fetch('/api/admin/popunder-settings/simple', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -71,14 +71,16 @@ export default function AdsPage() {
       })
 
       if (response.ok) {
+        const result = await response.json()
         setPopunderEnabled(enabled)
-        console.log('✅ Popunder settings saved:', enabled)
+        console.log('✅ Popunder settings saved:', result)
       } else {
-        throw new Error('Failed to save settings')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save settings')
       }
     } catch (error) {
       console.error('❌ Failed to save popunder settings:', error)
-      alert('Failed to save popunder settings')
+      alert(`Failed to save popunder settings: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
     
     setSavingSettings(false)
