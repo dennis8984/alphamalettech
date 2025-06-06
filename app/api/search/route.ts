@@ -71,8 +71,7 @@ export async function GET(request: Request) {
       if (b.relevanceScore !== a.relevanceScore) {
         return b.relevanceScore - a.relevanceScore;
       }
-      return new Date(b.published_at || b.created_at).getTime() - 
-             new Date(a.published_at || a.created_at).getTime();
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
     return NextResponse.json({
