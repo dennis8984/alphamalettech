@@ -44,22 +44,19 @@ interface BatchResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    const { articles, batchSize = 3, batchIndex = 0 } = await request.json()
+    const { articles, batchSize = 3, batchIndex = 0, totalArticles } = await request.json()
     
     if (!articles || !Array.isArray(articles)) {
       return NextResponse.json({ error: 'Invalid request data' }, { status: 400 })
     }
 
-    // Calculate batch parameters
-    const totalArticles = articles.length
-    const actualBatchSize = Math.min(batchSize, totalArticles)
-    const totalBatches = Math.ceil(totalArticles / actualBatchSize)
-    const startIndex = batchIndex * actualBatchSize
-    const endIndex = Math.min(startIndex + actualBatchSize, totalArticles)
-    const currentBatch = articles.slice(startIndex, endIndex)
+    // Frontend now sends only the articles for this batch
+    const currentBatch = articles
+    const actualTotalArticles = totalArticles || articles.length
+    const totalBatches = Math.ceil(actualTotalArticles / batchSize)
 
     console.log(`🔄 Processing batch ${batchIndex + 1}/${totalBatches} (${currentBatch.length} articles)`)
-    console.log(`📊 Articles ${startIndex + 1}-${endIndex} of ${totalArticles}`)
+    console.log(`📊 Processing ${currentBatch.length} articles in this batch`)
     
     const results: ImportResult[] = []
     let successCount = 0
@@ -173,8 +170,8 @@ export async function POST(request: NextRequest) {
       batch: batchIndex + 1,
       totalBatches: totalBatches,
       results: {
-        total: totalArticles,
-        processed: endIndex,
+        total: actualTotalArticles,
+        processed: (batchIndex + 1) * batchSize,
         imported: successCount,
         failed: errorCount,
         timedOut: timeoutCount,

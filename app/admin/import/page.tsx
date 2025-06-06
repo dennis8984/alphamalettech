@@ -193,7 +193,8 @@ export default function ImportPage() {
 
     try {
       // Process articles in batches to prevent timeouts
-      const batchSize = selectedArticlesList.length > 10 ? 2 : 3 // Smaller batches for larger imports
+      // Use very small batches for large uploads to prevent payload size issues
+    const batchSize = selectedArticlesList.length > 100 ? 1 : selectedArticlesList.length > 10 ? 2 : 3
       const totalBatches = Math.ceil(selectedArticlesList.length / batchSize)
       
       let allResults: any = {
@@ -210,19 +211,35 @@ export default function ImportPage() {
       for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
         console.log(`Processing batch ${batchIndex + 1}/${totalBatches}`)
         
+        // Calculate which articles to send in this batch
+        const startIndex = batchIndex * batchSize
+        const endIndex = Math.min(startIndex + batchSize, selectedArticlesList.length)
+        const batchArticles = selectedArticlesList.slice(startIndex, endIndex)
+        
+        console.log(`Sending ${batchArticles.length} articles in batch ${batchIndex + 1}`)
+        
         const response = await fetch('/api/admin/import/process', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            articles: selectedArticlesList,
+            articles: batchArticles, // Only send articles for this batch
             batchSize: batchSize,
-            batchIndex: batchIndex
+            batchIndex: batchIndex,
+            totalArticles: selectedArticlesList.length // Add total for progress tracking
           })
         })
 
-        const batchResult = await response.json()
+        let batchResult
+        try {
+          batchResult = await response.json()
+        } catch (jsonError) {
+          // If JSON parsing fails, the response is likely an error page
+          const responseText = await response.text()
+          console.error(`JSON parsing failed for batch ${batchIndex + 1}:`, responseText)
+          throw new Error(`Server error in batch ${batchIndex + 1}. This usually means the request was too large or timed out. Try uploading fewer articles at once.`)
+        }
 
         if (!response.ok) {
           console.error(`Batch ${batchIndex + 1} failed:`, batchResult)
