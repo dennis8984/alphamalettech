@@ -1,7 +1,71 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
+
+interface Article {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  category: string | null;
+  published_at: string | null;
+  created_at: string;
+  image_url: string | null;
+  relevanceScore?: number;
+}
+
+interface SearchResults {
+  results: Article[];
+  total: number;
+  query: string;
+}
 
 export default function SearchPage() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Article[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const performSearch = async (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+      const data: SearchResults = await response.json();
+      
+      if (response.ok) {
+        setResults(data.results);
+        setHasSearched(true);
+      } else {
+        setError(data.error || 'Search failed');
+      }
+    } catch (err) {
+      setError('Failed to search articles');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    performSearch(query);
+  };
+
+  // Search on URL params if present
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlQuery = urlParams.get('q');
+    if (urlQuery) {
+      setQuery(urlQuery);
+      performSearch(urlQuery);
+    }
+  }, []);
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto px-4">
@@ -21,24 +85,107 @@ export default function SearchPage() {
 
         {/* Search Form */}
         <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
-          <form className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search articles, topics, or categories..."
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-lg"
                 autoFocus
+                disabled={isLoading}
               />
             </div>
             <button
               type="submit"
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+              disabled={isLoading || !query.trim()}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Search Articles
+              {isLoading ? (
+                <>
+                  <Loader2 className="animate-spin" size={20} />
+                  Searching...
+                </>
+              ) : (
+                'Search Articles'
+              )}
             </button>
           </form>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
+            <p className="text-red-600">{error}</p>
+          </div>
+        )}
+
+        {/* Search Results */}
+        {hasSearched && (
+          <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              {results.length > 0 ? (
+                `Found ${results.length} article${results.length === 1 ? '' : 's'} for "${query}"`
+              ) : (
+                `No articles found for "${query}"`
+              )}
+            </h2>
+            
+            {results.length > 0 ? (
+              <div className="space-y-6">
+                {results.map((article) => (
+                  <Link
+                    key={article.id}
+                    href={`/articles/${article.slug}`}
+                    className="block p-6 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex gap-4">
+                      {article.image_url && (
+                        <div className="flex-shrink-0">
+                          <img
+                            src={article.image_url}
+                            alt={article.title}
+                            className="w-24 h-24 object-cover rounded-lg"
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="text-xl font-semibold text-gray-900 hover:text-red-600 transition-colors">
+                            {article.title}
+                          </h3>
+                          {article.category && (
+                            <span className="text-sm text-red-600 font-medium ml-4">
+                              {article.category}
+                            </span>
+                          )}
+                        </div>
+                        {article.excerpt && (
+                          <p className="text-gray-600 mb-3 line-clamp-2">
+                            {article.excerpt}
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-500">
+                          {new Date(article.published_at || article.created_at).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-600 mb-4">Try searching for different keywords or browse our popular categories below.</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Popular Categories */}
         <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
