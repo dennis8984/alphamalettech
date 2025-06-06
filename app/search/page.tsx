@@ -40,7 +40,7 @@ export default function SearchPage() {
     setError(null);
     
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+      const response = await fetch(`/api/search/simple?q=${encodeURIComponent(searchQuery)}`);
       const data = await response.json();
       
       if (response.ok) {
