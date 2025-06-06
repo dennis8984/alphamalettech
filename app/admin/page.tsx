@@ -25,7 +25,9 @@ import {
 export const dynamic = 'force-dynamic'
 
 export default function AdminDashboard() {
-  const { data: session, status } = useSession()
+  const sessionData = useSession()
+  const session = sessionData?.data
+  const status = sessionData?.status || 'loading'
   const router = useRouter()
 
   useEffect(() => {
