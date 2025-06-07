@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
@@ -20,36 +19,72 @@ import {
   PlusCircle,
   BarChart3
 } from 'lucide-react'
+import { getCurrentUser, signOut } from '@/lib/supabase-auth'
+
+// Admin email whitelist - only these emails can access admin
+const ADMIN_EMAILS = [
+  'admin@menshealth.com',
+  'editor@menshealth.com',
+  'menshb@hqoffshore.com', // Primary admin email
+  'admin@menshb.com',
+  // Add your admin emails here
+  process.env.NEXT_PUBLIC_ADMIN_EMAIL_1,
+  process.env.NEXT_PUBLIC_ADMIN_EMAIL_2,
+  process.env.NEXT_PUBLIC_ADMIN_EMAIL_3,
+].filter(Boolean) as string[]
 
 // Force this page to be dynamic (not statically generated)
 export const dynamic = 'force-dynamic'
 
 export default function AdminDashboard() {
-  const sessionData = useSession()
-  const session = sessionData?.data
-  const status = sessionData?.status || 'loading'
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [isAuthorized, setIsAuthorized] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
-    if (status === 'loading') return // Still loading
-    
-    if (!session) {
-      router.push('/admin/auth/signin')
-      return
-    }
-    
-    // Check if user has admin role
-    if (session.user?.role !== 'admin') {
-      router.push('/admin/auth/error?error=AccessDenied')
-      return
-    }
-  }, [session, status, router])
+    checkAuth()
+  }, [])
 
-  const handleSignOut = async () => {
-    await signOut({ callbackUrl: '/admin/auth/signin' })
+  const checkAuth = async () => {
+    try {
+      setLoading(true)
+      const { user: currentUser, error } = await getCurrentUser()
+      
+      if (error || !currentUser) {
+        console.log('No user found, redirecting to signin')
+        router.push('/admin/auth/signin')
+        return
+      }
+
+      // Check if user email is in admin whitelist
+      const userEmail = currentUser.email?.toLowerCase()
+      if (!userEmail || !ADMIN_EMAILS.includes(userEmail)) {
+        console.log('User not authorized:', userEmail)
+        router.push('/admin/auth/signin')
+        return
+      }
+
+      setUser(currentUser)
+      setIsAuthorized(true)
+    } catch (error) {
+      console.error('Auth check error:', error)
+      router.push('/admin/auth/signin')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  if (status === 'loading') {
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      router.push('/admin/auth/signin')
+    } catch (error) {
+      console.error('Sign out error:', error)
+    }
+  }
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -60,7 +95,7 @@ export default function AdminDashboard() {
     )
   }
 
-  if (!session || session.user?.role !== 'admin') {
+  if (!isAuthorized || !user) {
     return null // Will redirect
   }
 
@@ -76,7 +111,7 @@ export default function AdminDashboard() {
                 HUB Admin
               </h1>
               <p className="text-sm text-gray-600">
-                Welcome back, {session.user?.name || session.user?.email}
+                Welcome back, {user?.user_metadata?.name || user?.email}
               </p>
             </div>
             <div className="flex items-center space-x-4">
