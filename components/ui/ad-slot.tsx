@@ -13,13 +13,12 @@ export function AdSlot({ placement, className = '' }: AdSlotProps) {
   const [ad, setAd] = useState<Ad | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Use Ezoic for sidebar ads
+  // Use Ezoic for sidebar ads (following official implementation)
   if (placement === 'sidebar') {
     return (
       <EzoicAd 
-        placement="sidebar" 
-        adId="ezoic-pub-ad-sidebar-1" 
-        className={className}
+        placementId={101} 
+        className={`flex justify-center my-4 ${className}`}
       />
     )
   }
