@@ -146,13 +146,12 @@ export function usePageViewTracking() {
       console.log('📄 Page view tracked:', newViews)
       
       // Check if we should show pop-under using database settings
-      const { shouldShow, settings } = await shouldShowPopUnder()
+      const { show, error } = await shouldShowPopUnder()
       
-      if (shouldShow && settings) {
-        const delay = settings.popunder_settings?.delay_seconds || 2
-        setTimeout(() => {
-          showPopunder(settings)
-        }, delay * 1000)
+      if (show && !error) {
+        // For now, we'll implement a simple pop-under check
+        // This can be enhanced later with more sophisticated logic
+        console.log('🎯 Pop-under conditions met, but implementation simplified for now')
       }
     }
 
