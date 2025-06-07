@@ -36,14 +36,14 @@ const nextConfig = {
   async generateBuildId() {
     return 'build-' + Date.now()
   },
-  // Ads.txt redirect for Ezoic integration
+  // Ads.txt redirect for Ezoic integration (temporarily disabled - using static file)
   async redirects() {
     return [
-      {
-        source: '/ads.txt',
-        destination: 'https://srv.adstxtmanager.com/19390/menshb.com',
-        permanent: true,
-      },
+      // {
+      //   source: '/ads.txt',
+      //   destination: 'https://srv.adstxtmanager.com/19390/menshb.com',
+      //   permanent: true,
+      // },
     ]
   },
 };
