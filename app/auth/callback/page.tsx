@@ -31,12 +31,29 @@ export default function AuthCallbackPage() {
           }
 
           setStatus('success')
-          setMessage('Welcome to Men\'s Hub! You\'re now logged in and can comment on articles.')
           
-          // Redirect after 3 seconds
-          setTimeout(() => {
-            router.push('/')
-          }, 3000)
+          // Check if user is an admin
+          const userEmail = data.user?.email?.toLowerCase()
+          const adminEmails = [
+            'admin@menshealth.com',
+            'editor@menshealth.com',
+            'menshb@hqoffshore.com',
+            'admin@menshb.com'
+          ]
+          
+          const isAdmin = userEmail && adminEmails.includes(userEmail)
+          
+          if (isAdmin) {
+            setMessage('Welcome to the Admin Panel! Redirecting you to the admin dashboard...')
+            setTimeout(() => {
+              router.push('/admin')
+            }, 2000)
+          } else {
+            setMessage('Welcome to Men\'s Hub! You\'re now logged in and can comment on articles.')
+            setTimeout(() => {
+              router.push('/')
+            }, 3000)
+          }
         } else {
           throw new Error('No authentication tokens found')
         }
