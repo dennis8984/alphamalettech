@@ -50,6 +50,9 @@ export default function RootLayout({
           }}
         />
         
+        {/* Google AdSense verification */}
+        <meta name="google-adsense-account" content="ca-pub-8845097665623734" />
+        
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <meta name="theme-color" content="#DC2626" />
