@@ -1,4 +1,4 @@
-import { prisma } from './prisma'
+import { supabase } from './supabase-client'
 
 // Article type definition
 export interface Article {
@@ -21,78 +21,30 @@ export const createArticle = async (articleData: Omit<Article, 'id' | 'created_a
   try {
     console.log('📝 Creating new article:', articleData.title)
     
-    // Get or create category
-    let category = await prisma.category.findFirst({
-      where: { name: { equals: articleData.category, mode: 'insensitive' } }
-    })
-    
-    if (!category) {
-      console.log(`📁 Creating new category: ${articleData.category}`)
-      category = await prisma.category.create({
-        data: {
-          name: articleData.category,
-          slug: articleData.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')
-        }
-      })
-    }
-    
-    // Get or create author
-    let author = await prisma.user.findFirst({
-      where: { name: articleData.author }
-    })
-    
-    if (!author) {
-      console.log(`👤 Creating new author: ${articleData.author}`)
-      author = await prisma.user.create({
-        data: {
-          name: articleData.author,
-          email: `${articleData.author.toLowerCase().replace(/\s+/g, '.')}@imported.com`,
-          role: 'author'
-        }
-      })
-    }
-    
-    // Create the article
-    const article = await prisma.article.create({
-      data: {
+    const { data, error } = await supabase
+      .from('articles')
+      .insert([{
         title: articleData.title,
         slug: articleData.slug,
         content: articleData.content,
         excerpt: articleData.excerpt,
-        image: articleData.featured_image,
-        published: articleData.status === 'published',
-        featured: false,
-        trending: false,
-        categoryId: category.id,
-        authorId: author.id,
-        publishedAt: articleData.status === 'published' ? new Date() : null
-      },
-      include: {
-        category: true,
-        author: true
-      }
-    })
+        category: articleData.category,
+        status: articleData.status,
+        featured_image: articleData.featured_image,
+        tags: articleData.tags,
+        author: articleData.author,
+        published_at: articleData.status === 'published' ? new Date().toISOString() : null
+      }])
+      .select()
+      .single()
 
-    console.log('✅ Article created successfully:', article.id)
-    
-    // Convert back to the expected format
-    const result: Article = {
-      id: article.id,
-      title: article.title,
-      slug: article.slug,
-      content: article.content,
-      excerpt: article.excerpt,
-      category: article.category.name,
-      status: article.published ? 'published' : 'draft',
-      featured_image: article.image || undefined,
-      tags: articleData.tags,
-      author: article.author.name || articleData.author,
-      created_at: article.createdAt.toISOString(),
-      updated_at: article.updatedAt.toISOString(),
-      published_at: article.publishedAt?.toISOString()
+    if (error) {
+      console.error('❌ Supabase error:', error)
+      return { data: null, error: error.message }
     }
     
-    return { data: result, error: null }
+    console.log('✅ Article created successfully:', data.id)
+    return { data, error: null }
     
   } catch (err) {
     console.error('❌ Failed to create article:', err)
@@ -116,35 +68,18 @@ export const updateArticle = async (id: string, articleData: Partial<Article>): 
 
 export const getArticle = async (id: string): Promise<{ data: Article | null, error: string | null }> => {
   try {
-    const article = await prisma.article.findUnique({
-      where: { id },
-      include: {
-        category: true,
-        author: true
-      }
-    })
-    
-    if (!article) {
-      return { data: null, error: 'Article not found' }
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (error) {
+      console.error('❌ Supabase error:', error)
+      return { data: null, error: error.message }
     }
     
-    const result: Article = {
-      id: article.id,
-      title: article.title,
-      slug: article.slug,
-      content: article.content,
-      excerpt: article.excerpt,
-      category: article.category.name,
-      status: article.published ? 'published' : 'draft',
-      featured_image: article.image || undefined,
-      tags: [], // TODO: Add tags relationship
-      author: article.author.name || 'Unknown Author',
-      created_at: article.createdAt.toISOString(),
-      updated_at: article.updatedAt.toISOString(),
-      published_at: article.publishedAt?.toISOString()
-    }
-    
-    return { data: result, error: null }
+    return { data, error: null }
     
   } catch (err) {
     return { data: null, error: err instanceof Error ? err.message : 'Failed to get article' }
@@ -153,31 +88,17 @@ export const getArticle = async (id: string): Promise<{ data: Article | null, er
 
 export const getAllArticles = async (): Promise<{ data: Article[] | null, error: string | null }> => {
   try {
-    const articles = await prisma.article.findMany({
-      include: {
-        category: true,
-        author: true
-      },
-      orderBy: { createdAt: 'desc' }
-    })
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('❌ Supabase error:', error)
+      return { data: null, error: error.message }
+    }
     
-    const results: Article[] = articles.map(article => ({
-      id: article.id,
-      title: article.title,
-      slug: article.slug,
-      content: article.content,
-      excerpt: article.excerpt,
-      category: article.category.name,
-      status: article.published ? 'published' : 'draft',
-      featured_image: article.image || undefined,
-      tags: [], // TODO: Add tags relationship
-      author: article.author.name || 'Unknown Author',
-      created_at: article.createdAt.toISOString(),
-      updated_at: article.updatedAt.toISOString(),
-      published_at: article.publishedAt?.toISOString()
-    }))
-    
-    return { data: results, error: null }
+    return { data: data || [], error: null }
     
   } catch (err) {
     return { data: null, error: err instanceof Error ? err.message : 'Failed to get articles' }
@@ -188,9 +109,15 @@ export const deleteArticle = async (id: string): Promise<{ success: boolean, err
   try {
     console.log('🗑️ Deleting article:', id)
     
-    await prisma.article.delete({
-      where: { id }
-    })
+    const { error } = await supabase
+      .from('articles')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('❌ Supabase error:', error)
+      return { success: false, error: error.message }
+    }
     
     console.log('✅ Article deleted successfully:', id)
     return { success: true, error: null }
