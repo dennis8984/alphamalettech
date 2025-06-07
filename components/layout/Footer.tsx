@@ -127,13 +127,13 @@ const Footer = () => {
               <Link href="/sitemap" className="hover:text-white transition-colors">
                 Sitemap
               </Link>
-              <Link href="#" className="hover:text-white transition-colors">
+              <Link href="/privacy-policy" className="hover:text-white transition-colors">
                 Privacy Policy
               </Link>
-              <Link href="#" className="hover:text-white transition-colors">
+              <Link href="/terms-of-use" className="hover:text-white transition-colors">
                 Terms of Use
               </Link>
-              <Link href="#" className="hover:text-white transition-colors">
+              <Link href="/accessibility" className="hover:text-white transition-colors">
                 Accessibility
               </Link>
             </div>
