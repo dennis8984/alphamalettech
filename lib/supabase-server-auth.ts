@@ -1,11 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest } from 'next/server'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-// Server-side Supabase client with service role
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+// Server-side Supabase client with service role (only create if env vars are available)
+const supabaseAdmin = supabaseUrl && supabaseServiceKey 
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : null
 
 // Admin email whitelist - only these emails can access admin
 const ADMIN_EMAILS = [
@@ -28,6 +30,12 @@ export interface AdminUser {
 
 export async function getAdminSession(request: NextRequest): Promise<AdminUser | null> {
   try {
+    // Return null if Supabase is not configured
+    if (!supabaseAdmin) {
+      console.log('⚠️ Supabase not configured, skipping auth check')
+      return null
+    }
+
     // Get the Authorization header
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -66,11 +74,17 @@ export async function getAdminSession(request: NextRequest): Promise<AdminUser |
 // Alternative method for getting admin session from cookies (for browser requests)
 export async function getAdminSessionFromCookies(request: NextRequest): Promise<AdminUser | null> {
   try {
+    // Return null if Supabase is not configured (during build time)
+    if (!supabaseAdmin) {
+      console.log('⚠️ Supabase not configured, admin auth disabled')
+      return null
+    }
+    
     // For API routes called from the browser, we can't easily get the Supabase session
     // So we'll temporarily disable auth checks and add a simpler method
     
     // TODO: Implement proper session validation from cookies
-    // For now, we'll just return a mock admin user to unblock the build
+    // For now, we'll just return a mock admin user to unblock functionality
     console.log('⚠️ Admin auth temporarily disabled for API routes')
     
     return {
