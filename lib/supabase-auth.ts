@@ -80,7 +80,7 @@ export const signInWithEmail = async (email: string) => {
     const { data, error } = await client.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/admin`,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     })
     
