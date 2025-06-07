@@ -21,30 +21,63 @@ export const createArticle = async (articleData: Omit<Article, 'id' | 'created_a
   try {
     console.log('📝 Creating new article:', articleData.title)
     
-    const { data, error } = await supabase
-      .from('articles')
-      .insert([{
-        title: articleData.title,
-        slug: articleData.slug,
-        content: articleData.content,
-        excerpt: articleData.excerpt,
-        category: articleData.category,
-        status: articleData.status,
-        featured_image: articleData.featured_image,
-        tags: articleData.tags,
-        author: articleData.author,
-        published_at: articleData.status === 'published' ? new Date().toISOString() : null
-      }])
-      .select()
-      .single()
+    let finalSlug = articleData.slug
+    let attempts = 0
+    const maxAttempts = 5
+    
+    // Try to insert with original slug, if it fails due to duplicate, generate a new one
+    while (attempts < maxAttempts) {
+      try {
+        const { data, error } = await supabase
+          .from('articles')
+          .insert([{
+            title: articleData.title,
+            slug: finalSlug,
+            content: articleData.content,
+            excerpt: articleData.excerpt,
+            category: articleData.category,
+            status: articleData.status,
+            featured_image: articleData.featured_image,
+            tags: articleData.tags,
+            author: articleData.author,
+            published_at: articleData.status === 'published' ? new Date().toISOString() : null
+          }])
+          .select()
+          .single()
 
-    if (error) {
-      console.error('❌ Supabase error:', error)
-      return { data: null, error: error.message }
+        if (error) {
+          // Check if it's a duplicate slug error
+          if ((error.code === '23505' && error.message.includes('articles_slug_key')) || 
+              error.message.includes('duplicate key value violates unique constraint') ||
+              error.message.includes('slug') && error.message.includes('unique')) {
+            attempts++
+            // Generate a new slug with random suffix
+            const randomSuffix = Math.random().toString(36).substring(2, 8)
+            finalSlug = `${articleData.slug}-${randomSuffix}`
+            console.log(`🔄 Slug conflict detected, trying new slug: ${finalSlug} (attempt ${attempts})`)
+            continue
+          } else {
+            console.error('❌ Supabase error:', error)
+            return { data: null, error: error.message }
+          }
+        }
+        
+        console.log('✅ Article created successfully:', data.id)
+        return { data, error: null }
+        
+      } catch (insertError) {
+        console.error('❌ Insert attempt failed:', insertError)
+        if (attempts >= maxAttempts - 1) {
+          throw insertError
+        }
+        attempts++
+        const randomSuffix = Math.random().toString(36).substring(2, 8)
+        finalSlug = `${articleData.slug}-${randomSuffix}`
+        console.log(`🔄 Retrying with new slug: ${finalSlug} (attempt ${attempts})`)
+      }
     }
     
-    console.log('✅ Article created successfully:', data.id)
-    return { data, error: null }
+    return { data: null, error: 'Failed to create article after multiple attempts' }
     
   } catch (err) {
     console.error('❌ Failed to create article:', err)

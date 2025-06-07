@@ -214,11 +214,16 @@ function extractTags(text: string): string[] {
 
 // Helper function to generate URL-friendly slugs
 function generateSlug(title: string): string {
-  return title
+  const baseSlug = title
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .trim()
-    .substring(0, 60)
+    .substring(0, 50) // Leave room for timestamp
+  
+  // Add timestamp for uniqueness during bulk imports
+  const timestamp = Date.now().toString().slice(-6) // Last 6 digits of timestamp
+  
+  return `${baseSlug}-${timestamp}`
 } 

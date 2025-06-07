@@ -1,5 +1,7 @@
 'use client'
 
+import { supabase } from './supabase-client'
+
 // Ad type definition
 export interface Ad {
   id?: string
@@ -24,299 +26,287 @@ export interface Ad {
   updated_at?: string
 }
 
-// Mock database for ads
-let mockAds: Ad[] = [
-  {
-    id: '1',
-    name: 'Protein Powder Banner',
-    placement: 'header',
-    size: '320x50',
-    status: 'active',
-    target_url: 'https://example.com/protein',
-    image_url: '/api/placeholder/320/50',
-    weight: 100,
-    impressions: 45670,
-    clicks: 1543,
-    ctr: 3.4,
-    created_at: '2024-01-10T00:00:00Z',
-    updated_at: '2024-01-15T00:00:00Z'
-  },
-  {
-    id: '2',
-    name: 'Fitness App Sidebar',
-    placement: 'sidebar',
-    size: '300x250',
-    status: 'active',
-    target_url: 'https://example.com/fitness-app',
-    image_url: '/api/placeholder/300/250',
-    weight: 80,
-    impressions: 23450,
-    clicks: 892,
-    ctr: 3.8,
-    created_at: '2024-01-08T00:00:00Z',
-    updated_at: '2024-01-15T00:00:00Z'
-  },
-  {
-    id: '3',
-    name: 'Supplement Footer',
-    placement: 'footer',
-    size: '320x50',
-    status: 'paused',
-    target_url: 'https://example.com/supplements',
-    image_url: '/api/placeholder/320/50',
-    weight: 60,
-    impressions: 12890,
-    clicks: 234,
-    ctr: 1.8,
-    created_at: '2024-01-05T00:00:00Z',
-    updated_at: '2024-01-15T00:00:00Z'
-  },
-  {
-    id: '4',
-    name: 'Mid-Article Supplement',
-    placement: 'mid-article',
-    size: '300x250',
-    status: 'active',
-    target_url: 'https://example.com/mid-supplement',
-    image_url: '/api/placeholder/300/250',
-    weight: 90,
-    impressions: 18750,
-    clicks: 675,
-    ctr: 3.6,
-    created_at: '2024-01-12T00:00:00Z',
-    updated_at: '2024-01-15T00:00:00Z'
-  },
-  {
-    id: '5',
-    name: 'Special Offer Pop-Under',
-    placement: 'pop-under',
-    size: 'fullscreen',
-    status: 'active',
-    target_url: 'https://example.com/special-offer',
-    weight: 100,
-    impressions: 2340,
-    clicks: 187,
-    ctr: 8.0,
-    popunder_settings: {
-      trigger_after_views: 3,
-      frequency_days: 7,
-      user_interaction_required: false,
-      delay_seconds: 2
-    },
-    created_at: '2024-01-15T00:00:00Z',
-    updated_at: '2024-01-15T00:00:00Z'
+// Get all ads
+export const getAllAds = async (): Promise<{ data: Ad[] | null, error: string | null }> => {
+  try {
+    console.log('📊 Fetching all ads from Supabase...')
+    
+    const { data, error } = await supabase
+      .from('ads')
+      .select('*')
+      .order('weight', { ascending: false })
+    
+    if (error) {
+      console.error('❌ Error fetching ads:', error)
+      return { data: null, error: error.message }
+    }
+    
+    console.log(`✅ Retrieved ${data?.length || 0} ads`)
+    return { data, error: null }
+    
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Failed to get ads'
+    console.error('💥 Unexpected error:', errorMessage)
+    return { data: null, error: errorMessage }
   }
-]
+}
 
+// Get ads by placement
+export const getAdsByPlacement = async (placement: string): Promise<{ data: Ad[] | null, error: string | null }> => {
+  try {
+    console.log(`📊 Fetching ads for placement: ${placement}`)
+    
+    const { data, error } = await supabase
+      .from('ads')
+      .select('*')
+      .eq('placement', placement)
+      .eq('status', 'active')
+      .order('weight', { ascending: false })
+    
+    if (error) {
+      console.error('❌ Error fetching ads by placement:', error)
+      return { data: null, error: error.message }
+    }
+    
+    console.log(`✅ Retrieved ${data?.length || 0} ads for ${placement}`)
+    return { data, error: null }
+    
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Failed to get ads by placement'
+    console.error('💥 Unexpected error:', errorMessage)
+    return { data: null, error: errorMessage }
+  }
+}
+
+// Get single ad by ID
+export const getAd = async (id: string): Promise<{ data: Ad | null, error: string | null }> => {
+  try {
+    console.log(`📊 Fetching ad by ID: ${id}`)
+    
+    const { data, error } = await supabase
+      .from('ads')
+      .select('*')
+      .eq('id', id)
+      .single()
+    
+    if (error) {
+      console.error('❌ Error fetching ad:', error)
+      return { data: null, error: error.message }
+    }
+    
+    console.log('✅ Retrieved ad:', data?.name)
+    return { data, error: null }
+    
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Failed to get ad'
+    console.error('💥 Unexpected error:', errorMessage)
+    return { data: null, error: errorMessage }
+  }
+}
+
+// Create new ad
 export const createAd = async (adData: Omit<Ad, 'id' | 'created_at' | 'updated_at' | 'impressions' | 'clicks' | 'ctr'>): Promise<{ data: Ad | null, error: string | null }> => {
   try {
     console.log('📊 Creating new ad:', adData.name)
     
-    const newAd: Ad = {
-      ...adData,
-      id: `${Date.now()}`,
-      impressions: 0,
-      clicks: 0,
-      ctr: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+    const { data, error } = await supabase
+      .from('ads')
+      .insert([{
+        name: adData.name,
+        placement: adData.placement,
+        size: adData.size,
+        status: adData.status,
+        target_url: adData.target_url,
+        image_url: adData.image_url || null,
+        weight: adData.weight,
+        popunder_settings: adData.popunder_settings || null,
+        impressions: 0,
+        clicks: 0,
+        ctr: 0.00
+      }])
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('❌ Error creating ad:', error)
+      return { data: null, error: error.message }
     }
     
-    mockAds.push(newAd)
-    
-    console.log('✅ Ad created successfully:', newAd.id)
-    return { data: newAd, error: null }
+    console.log('✅ Ad created successfully:', data?.name)
+    return { data, error: null }
     
   } catch (err) {
-    console.error('❌ Failed to create ad:', err)
-    return { data: null, error: err instanceof Error ? err.message : 'Failed to create ad' }
+    const errorMessage = err instanceof Error ? err.message : 'Failed to create ad'
+    console.error('💥 Unexpected error:', errorMessage)
+    return { data: null, error: errorMessage }
   }
 }
 
-export const updateAd = async (id: string, adData: Partial<Ad>): Promise<{ data: Ad | null, error: string | null }> => {
+// Update ad
+export const updateAd = async (id: string, adData: Partial<Omit<Ad, 'id' | 'created_at' | 'updated_at'>>): Promise<{ data: Ad | null, error: string | null }> => {
   try {
-    console.log('✏️ Updating ad:', id)
+    console.log(`📊 Updating ad: ${id}`)
     
-    const adIndex = mockAds.findIndex(ad => ad.id === id)
-    if (adIndex === -1) {
-      return { data: null, error: 'Ad not found' }
+    const updateData: any = {}
+    
+    // Only include fields that are provided
+    if (adData.name !== undefined) updateData.name = adData.name
+    if (adData.placement !== undefined) updateData.placement = adData.placement
+    if (adData.size !== undefined) updateData.size = adData.size
+    if (adData.status !== undefined) updateData.status = adData.status
+    if (adData.target_url !== undefined) updateData.target_url = adData.target_url
+    if (adData.image_url !== undefined) updateData.image_url = adData.image_url
+    if (adData.weight !== undefined) updateData.weight = adData.weight
+    if (adData.popunder_settings !== undefined) updateData.popunder_settings = adData.popunder_settings
+    
+    const { data, error } = await supabase
+      .from('ads')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('❌ Error updating ad:', error)
+      return { data: null, error: error.message }
     }
     
-    // Update ad and recalculate CTR if needed
-    const updatedAd = {
-      ...mockAds[adIndex],
-      ...adData,
-      updated_at: new Date().toISOString()
-    }
-    
-    // Recalculate CTR
-    if (updatedAd.impressions > 0) {
-      updatedAd.ctr = Math.round((updatedAd.clicks / updatedAd.impressions) * 100 * 100) / 100
-    }
-    
-    mockAds[adIndex] = updatedAd
-    
-    console.log('✅ Ad updated successfully:', id)
-    return { data: updatedAd, error: null }
+    console.log('✅ Ad updated successfully:', data?.name)
+    return { data, error: null }
     
   } catch (err) {
-    console.error('❌ Failed to update ad:', err)
-    return { data: null, error: err instanceof Error ? err.message : 'Failed to update ad' }
+    const errorMessage = err instanceof Error ? err.message : 'Failed to update ad'
+    console.error('💥 Unexpected error:', errorMessage)
+    return { data: null, error: errorMessage }
   }
 }
 
-export const getAd = async (id: string): Promise<{ data: Ad | null, error: string | null }> => {
-  try {
-    const ad = mockAds.find(ad => ad.id === id)
-    
-    if (!ad) {
-      return { data: null, error: 'Ad not found' }
-    }
-    
-    return { data: ad, error: null }
-    
-  } catch (err) {
-    return { data: null, error: err instanceof Error ? err.message : 'Failed to get ad' }
-  }
-}
-
-export const getAllAds = async (): Promise<{ data: Ad[] | null, error: string | null }> => {
-  try {
-    const sortedAds = [...mockAds].sort((a, b) => 
-      new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
-    )
-    
-    return { data: sortedAds, error: null }
-    
-  } catch (err) {
-    return { data: null, error: err instanceof Error ? err.message : 'Failed to get ads' }
-  }
-}
-
-export const getAdsByPlacement = async (placement: string): Promise<{ data: Ad[] | null, error: string | null }> => {
-  try {
-    const ads = mockAds.filter(ad => ad.placement === placement && ad.status === 'active')
-    
-    // Sort by weight (higher weight = higher priority)
-    const sortedAds = ads.sort((a, b) => b.weight - a.weight)
-    
-    return { data: sortedAds, error: null }
-    
-  } catch (err) {
-    return { data: null, error: err instanceof Error ? err.message : 'Failed to get ads by placement' }
-  }
-}
-
+// Delete ad
 export const deleteAd = async (id: string): Promise<{ success: boolean, error: string | null }> => {
   try {
-    console.log('🗑️ Deleting ad:', id)
+    console.log(`🗑️ Deleting ad: ${id}`)
     
-    const adIndex = mockAds.findIndex(ad => ad.id === id)
-    if (adIndex === -1) {
-      return { success: false, error: 'Ad not found' }
+    const { error } = await supabase
+      .from('ads')
+      .delete()
+      .eq('id', id)
+    
+    if (error) {
+      console.error('❌ Error deleting ad:', error)
+      return { success: false, error: error.message }
     }
     
-    mockAds.splice(adIndex, 1)
-    
-    console.log('✅ Ad deleted successfully:', id)
+    console.log('✅ Ad deleted successfully')
     return { success: true, error: null }
     
   } catch (err) {
-    console.error('❌ Failed to delete ad:', err)
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete ad' }
+    const errorMessage = err instanceof Error ? err.message : 'Failed to delete ad'
+    console.error('💥 Unexpected error:', errorMessage)
+    return { success: false, error: errorMessage }
   }
 }
 
-export const trackAdImpression = async (id: string): Promise<{ success: boolean, error: string | null }> => {
+// Track ad impression
+export const trackAdImpression = async (adId: string): Promise<{ success: boolean, error: string | null }> => {
   try {
-    const adIndex = mockAds.findIndex(ad => ad.id === id)
-    if (adIndex === -1) {
-      return { success: false, error: 'Ad not found' }
+    console.log(`👁️ Tracking impression for ad: ${adId}`)
+    
+    const { error } = await supabase
+      .from('ad_impressions')
+      .insert([{
+        ad_id: adId,
+        ip_address: null, // Could be populated server-side if needed
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        referrer: typeof document !== 'undefined' ? document.referrer : null
+      }])
+    
+    if (error) {
+      console.error('❌ Error tracking impression:', error)
+      return { success: false, error: error.message }
     }
     
-    mockAds[adIndex].impressions += 1
-    
-    // Recalculate CTR
-    if (mockAds[adIndex].impressions > 0) {
-      mockAds[adIndex].ctr = Math.round((mockAds[adIndex].clicks / mockAds[adIndex].impressions) * 100 * 100) / 100
-    }
-    
+    console.log('✅ Impression tracked successfully')
     return { success: true, error: null }
     
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to track impression' }
+    const errorMessage = err instanceof Error ? err.message : 'Failed to track impression'
+    console.error('💥 Unexpected error:', errorMessage)
+    return { success: false, error: errorMessage }
   }
 }
 
-export const trackAdClick = async (id: string): Promise<{ success: boolean, error: string | null }> => {
+// Track ad click
+export const trackAdClick = async (adId: string): Promise<{ success: boolean, error: string | null }> => {
   try {
-    const adIndex = mockAds.findIndex(ad => ad.id === id)
-    if (adIndex === -1) {
-      return { success: false, error: 'Ad not found' }
+    console.log(`🖱️ Tracking click for ad: ${adId}`)
+    
+    const { error } = await supabase
+      .from('ad_clicks')
+      .insert([{
+        ad_id: adId,
+        ip_address: null, // Could be populated server-side if needed
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        referrer: typeof document !== 'undefined' ? document.referrer : null
+      }])
+    
+    if (error) {
+      console.error('❌ Error tracking click:', error)
+      return { success: false, error: error.message }
     }
     
-    mockAds[adIndex].clicks += 1
-    
-    // Recalculate CTR
-    if (mockAds[adIndex].impressions > 0) {
-      mockAds[adIndex].ctr = Math.round((mockAds[adIndex].clicks / mockAds[adIndex].impressions) * 100 * 100) / 100
-    }
-    
+    console.log('✅ Click tracked successfully')
     return { success: true, error: null }
     
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to track click' }
+    const errorMessage = err instanceof Error ? err.message : 'Failed to track click'
+    console.error('💥 Unexpected error:', errorMessage)
+    return { success: false, error: errorMessage }
   }
 }
 
-// Get active pop-under settings
-export const getPopUnderSettings = async (): Promise<{ data: Ad | null, error: string | null }> => {
+// Pop-under specific functions
+export const shouldShowPopUnder = async (): Promise<{ show: boolean, error: string | null }> => {
   try {
-    const popUnderAd = mockAds.find(ad => 
-      ad.placement === 'pop-under' && ad.status === 'active'
-    )
+    // Check if pop-under ads are enabled globally
+    const { data: settings, error: settingsError } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'popunder_enabled')
+      .single()
     
-    return { data: popUnderAd || null, error: null }
+    if (settingsError && settingsError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('❌ Error checking pop-under settings:', settingsError)
+      return { show: false, error: settingsError.message }
+    }
+    
+    const popunderEnabled = settings?.value === 'true'
+    
+    if (!popunderEnabled) {
+      return { show: false, error: null }
+    }
+    
+    // Get active pop-under ads
+    const { data: ads, error: adsError } = await supabase
+      .from('ads')
+      .select('*')
+      .eq('placement', 'pop-under')
+      .eq('status', 'active')
+      .order('weight', { ascending: false })
+      .limit(1)
+    
+    if (adsError) {
+      console.error('❌ Error fetching pop-under ads:', adsError)
+      return { show: false, error: adsError.message }
+    }
+    
+    const shouldShow = ads && ads.length > 0
+    console.log(`Pop-under check: ${shouldShow ? 'Show' : 'Hide'}`)
+    
+    return { show: shouldShow, error: null }
     
   } catch (err) {
-    return { data: null, error: err instanceof Error ? err.message : 'Failed to get pop-under settings' }
-  }
-}
-
-// Helper to check if user should see pop-under
-export const shouldShowPopUnder = async (): Promise<{ shouldShow: boolean, settings: Ad | null }> => {
-  try {
-    const { data: popUnderAd } = await getPopUnderSettings()
-    
-    if (!popUnderAd || !popUnderAd.popunder_settings) {
-      return { shouldShow: false, settings: null }
-    }
-    
-    // Check localStorage for frequency control
-    const lastShown = localStorage.getItem('popunderLastShown')
-    const viewCount = parseInt(localStorage.getItem('pageViewCount') || '0')
-    
-    const settings = popUnderAd.popunder_settings
-    
-    // Check view count requirement
-    if (viewCount < settings.trigger_after_views) {
-      return { shouldShow: false, settings: popUnderAd }
-    }
-    
-    // Check frequency (days between shows)
-    if (lastShown) {
-      const lastShownDate = new Date(lastShown)
-      const daysSinceLastShown = (Date.now() - lastShownDate.getTime()) / (1000 * 60 * 60 * 24)
-      
-      if (daysSinceLastShown < settings.frequency_days) {
-        return { shouldShow: false, settings: popUnderAd }
-      }
-    }
-    
-    return { shouldShow: true, settings: popUnderAd }
-    
-  } catch (err) {
-    console.error('Error checking pop-under conditions:', err)
-    return { shouldShow: false, settings: null }
+    const errorMessage = err instanceof Error ? err.message : 'Failed to check pop-under'
+    console.error('💥 Unexpected error:', errorMessage)
+    return { show: false, error: errorMessage }
   }
 } 
