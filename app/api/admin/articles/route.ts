@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getAdminSessionFromCookies } from '@/lib/supabase-server-auth'
 import { z } from 'zod'
 
 // Validation schema for article creation
@@ -21,8 +20,8 @@ const createArticleSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== 'admin') {
+    const adminUser = await getAdminSessionFromCookies(request)
+    if (!adminUser) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -155,8 +154,8 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== 'admin') {
+    const adminUser = await getAdminSessionFromCookies(request)
+    if (!adminUser) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getAdminSessionFromCookies } from '@/lib/supabase-server-auth'
 
 export async function DELETE(
   request: NextRequest,
@@ -9,8 +8,8 @@ export async function DELETE(
 ) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== 'admin') {
+    const adminUser = await getAdminSessionFromCookies(request)
+    if (!adminUser) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
