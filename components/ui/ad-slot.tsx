@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { getAdsByPlacement, trackAdImpression, trackAdClick, shouldShowPopUnder, type Ad } from '@/lib/ads-db'
+import { EzoicAd } from './ezoic-ad'
 
 interface AdSlotProps {
   placement: 'header' | 'sidebar' | 'mid-article' | 'footer' | 'mobile-leaderboard' | 'bottom-banner'
@@ -11,6 +12,17 @@ interface AdSlotProps {
 export function AdSlot({ placement, className = '' }: AdSlotProps) {
   const [ad, setAd] = useState<Ad | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Use Ezoic for sidebar ads
+  if (placement === 'sidebar') {
+    return (
+      <EzoicAd 
+        placement="sidebar" 
+        adId="ezoic-pub-ad-sidebar-1" 
+        className={className}
+      />
+    )
+  }
 
   useEffect(() => {
     const loadAd = async () => {
