@@ -38,6 +38,11 @@ The repo is a Next.js 13 (app router, TypeScript) site that already deploys to V
    • Serve via `<AdSlot placement="sidebar" />` component that chooses creatives by placement & weight.  
    • Image upload with **next-cloudinary** (open source) or Vercel Blob if simpler.
 
+   7.*** Authentication ***
+   - Use supabase for admin login and authentication
+   - use supabase for newsletter
+   - use supabase for signups
+
 ### Deliverables
 A. **Patch set**  
    * Prisma schema additions + migration.  
