@@ -10,6 +10,7 @@ import { ArrowLeft, Plus, Search, Edit, Trash2, Eye } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getAllArticles, deleteArticle, type Article } from '@/lib/articles-db'
+import { createArticleAdCampaign } from '@/lib/google-ads-automation'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +32,7 @@ export default function ArticlesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedArticles, setSelectedArticles] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
+  const [generatingAds, setGeneratingAds] = useState<string | null>(null)
 
   // Load articles
   useEffect(() => {
@@ -178,6 +180,66 @@ export default function ArticlesPage() {
     router.push(`/admin/articles/edit/${articleId}`)
   }
 
+  // Handle Google Ads campaign generation
+  const handleGenerateGoogleAds = async (article: Article) => {
+    if (!article.id) return
+    
+    setGeneratingAds(article.id)
+    
+    try {
+      console.log(`🎯 Generating Google Ads campaign for: ${article.title}`)
+      
+      const campaignData = await createArticleAdCampaign({
+        articleId: article.id,
+        title: article.title,
+        excerpt: article.excerpt || '',
+        category: article.category,
+        slug: article.slug,
+        tags: article.tags || []
+      })
+      
+      // Format campaign data for copying
+      const campaignText = `
+🎯 GOOGLE ADS CAMPAIGN GENERATED
+
+Campaign: ${campaignData.name}
+Budget: $${campaignData.budget / 100}/day
+Target: ${campaignData.targetUrl}
+
+📝 HEADLINES (${campaignData.headlines.length}):
+${campaignData.headlines.map((h, i) => `${i + 1}. ${h}`).join('\n')}
+
+📄 DESCRIPTIONS (${campaignData.descriptions.length}):
+${campaignData.descriptions.map((d, i) => `${i + 1}. ${d}`).join('\n')}
+
+🔍 KEYWORDS (${campaignData.keywords.length}):
+${campaignData.keywords.join(', ')}
+
+Next Steps:
+1. Copy this data
+2. Go to https://ads.google.com  
+3. Create new Search campaign
+4. Paste the content above
+      `
+      
+      // Copy to clipboard and show success
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(campaignText)
+        toast.success('✅ Campaign data generated and copied to clipboard!\n\nGo to https://ads.google.com to create your campaign.')
+      } else {
+        // Fallback for older browsers
+        console.log('📊 Campaign Data:', campaignText)
+        alert('✅ Campaign generated! Check browser console for data to copy.')
+      }
+      
+    } catch (error) {
+      console.error('❌ Campaign generation failed:', error)
+      toast.error('Failed to generate campaign. Check console for details.')
+    } finally {
+      setGeneratingAds(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto py-6">
@@ -228,6 +290,24 @@ export default function ArticlesPage() {
                 New Article
               </Button>
             </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Google Ads Info */}
+      <Card className="mb-6 border-red-100 bg-red-50">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-3">
+            <div className="text-red-600 text-xl">🎯</div>
+            <div>
+              <h3 className="font-semibold text-red-900 mb-1">Google Ads Campaign Generator</h3>
+              <p className="text-sm text-red-700 mb-2">
+                Click the 🎯 button next to published articles to automatically generate optimized Google Ads campaigns.
+              </p>
+              <p className="text-xs text-red-600">
+                Campaign data will be copied to your clipboard. Then go to <a href="https://ads.google.com" target="_blank" className="underline">Google Ads Manager</a> to create your campaign.
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -327,14 +407,30 @@ export default function ArticlesPage() {
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           {article.status === 'published' && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleViewArticle(article)}
-                              title="View article"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
+                            <>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleViewArticle(article)}
+                                title="View article"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleGenerateGoogleAds(article)}
+                                disabled={generatingAds === article.id}
+                                title="Generate Google Ads campaign"
+                                className="text-red-600 border-red-200 hover:bg-red-50"
+                              >
+                                {generatingAds === article.id ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                                ) : (
+                                  '🎯'
+                                )}
+                              </Button>
+                            </>
                           )}
                           <Button 
                             variant="ghost" 

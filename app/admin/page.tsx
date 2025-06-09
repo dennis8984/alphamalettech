@@ -275,6 +275,69 @@ export default function AdminDashboard() {
             </Link>
           </Card>
         </div>
+
+        {/* Marketing Tools Section */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Marketing Tools</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Google Ads Campaign Generator */}
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-red-200">
+              <Link href="/admin/google-ads">
+                <CardHeader className="text-center">
+                  <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <div className="text-red-600 font-bold text-sm">GA</div>
+                  </div>
+                  <CardTitle>Google Ads Campaigns</CardTitle>
+                  <CardDescription>
+                    Automatically generate Google Ads campaigns for your published articles
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button className="w-full" variant="outline">
+                    <BarChart3 className="mr-2 h-4 w-4" />
+                    Generate Campaigns
+                  </Button>
+                </CardContent>
+              </Link>
+            </Card>
+
+            {/* Facebook Ads (Coming Soon) */}
+            <Card className="opacity-50">
+              <CardHeader className="text-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <div className="text-blue-600 font-bold text-sm">FB</div>
+                </div>
+                <CardTitle>Facebook Ads</CardTitle>
+                <CardDescription>
+                  Create Facebook ad campaigns for your content (Coming Soon)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full" variant="outline" disabled>
+                  Coming Soon
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Email Marketing */}
+            <Card className="opacity-50">
+              <CardHeader className="text-center">
+                <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <div className="text-indigo-600 font-bold text-sm">📧</div>
+                </div>
+                <CardTitle>Email Campaigns</CardTitle>
+                <CardDescription>
+                  Send newsletter campaigns to your subscribers (Coming Soon)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full" variant="outline" disabled>
+                  Coming Soon
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </main>
     </div>
   )
