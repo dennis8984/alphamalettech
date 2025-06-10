@@ -62,39 +62,73 @@ export async function GET() {
     const tokenData = await tokenResponse.json()
     console.log('✅ OAuth token refreshed successfully')
 
-    // Test simple Google Ads API call - get customer info
-    const customerUrl = `https://googleads.googleapis.com/v14/customers/${customerId}`
-    console.log('🔍 Testing customer API:', customerUrl)
-
-    const customerResponse = await fetch(customerUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${tokenData.access_token}`,
-        'developer-token': developerToken,
-        'Content-Type': 'application/json',
+    // Test multiple Google Ads API endpoints
+    const testEndpoints = [
+      {
+        name: 'Customer Info v14',
+        url: `https://googleads.googleapis.com/v14/customers/${customerId}`,
+        method: 'GET'
       },
-    })
+      {
+        name: 'Customer Info v13',
+        url: `https://googleads.googleapis.com/v13/customers/${customerId}`,
+        method: 'GET'
+      },
+      {
+        name: 'List Accessible Customers',
+        url: 'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers',
+        method: 'GET'
+      }
+    ]
 
-    const customerResult = await customerResponse.text()
-    console.log('📊 Customer API Response Status:', customerResponse.status)
-    console.log('📊 Customer API Response:', customerResult)
+    const results = []
 
-    if (customerResponse.ok) {
-      return NextResponse.json({
-        success: true,
-        message: 'Google Ads API authentication successful',
-        customerId: customerId,
-        customerData: JSON.parse(customerResult)
-      })
-    } else {
-      return NextResponse.json({
-        success: false,
-        error: 'Google Ads API call failed',
-        status: customerResponse.status,
-        details: customerResult,
-        customerId: customerId
-      })
+    for (const endpoint of testEndpoints) {
+      console.log(`🔍 Testing ${endpoint.name}:`, endpoint.url)
+      
+      try {
+        const response = await fetch(endpoint.url, {
+          method: endpoint.method,
+          headers: {
+            'Authorization': `Bearer ${tokenData.access_token}`,
+            'developer-token': developerToken,
+            'Content-Type': 'application/json',
+          },
+        })
+
+        const result = await response.text()
+        console.log(`📊 ${endpoint.name} Status:`, response.status)
+        console.log(`📊 ${endpoint.name} Response:`, result)
+
+        results.push({
+          name: endpoint.name,
+          url: endpoint.url,
+          status: response.status,
+          success: response.ok,
+          response: result
+        })
+      } catch (error) {
+        console.error(`❌ ${endpoint.name} Error:`, error)
+        results.push({
+          name: endpoint.name,
+          url: endpoint.url,
+          status: 'error',
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
+      }
     }
+
+    // Check if any endpoint was successful
+    const hasSuccess = results.some(r => r.success)
+    
+    return NextResponse.json({
+      success: hasSuccess,
+      message: hasSuccess ? 'Google Ads API authentication successful' : 'Google Ads API authentication failed',
+      customerId: customerId,
+      tokenRefreshSuccess: true,
+      testResults: results
+    })
 
   } catch (error) {
     console.error('❌ Google Ads API test error:', error)
