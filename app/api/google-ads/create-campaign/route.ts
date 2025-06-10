@@ -21,8 +21,16 @@ export async function POST(request: NextRequest) {
       clientId: process.env.GOOGLE_ADS_CLIENT_ID,
       clientSecret: process.env.GOOGLE_ADS_CLIENT_SECRET,
       refreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN,
-      customerId: process.env.GOOGLE_ADS_CUSTOMER_ID
+      customerId: process.env.GOOGLE_ADS_CUSTOMER_ID?.replace(/[-\s]/g, '') // Remove hyphens and spaces
     }
+
+    console.log('🔍 Google Ads API Config:', {
+      hasDevToken: !!config.developerToken,
+      hasClientId: !!config.clientId,
+      hasClientSecret: !!config.clientSecret,
+      hasRefreshToken: !!config.refreshToken,
+      customerId: config.customerId
+    })
 
     // Validate required credentials
     if (!config.developerToken || !config.customerId || !config.clientId || !config.clientSecret || !config.refreshToken) {
@@ -60,26 +68,31 @@ export async function POST(request: NextRequest) {
     const accessToken = tokenData.access_token
 
     // Create campaign budget
-    const budgetResponse = await fetch(
-      `https://googleads.googleapis.com/v14/customers/${config.customerId}/campaignBudgets:mutate`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'developer-token': config.developerToken,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          operations: [{
-            create: {
-              name: `Budget-${Date.now()}`,
-              amountMicros: (campaignData.budget * 10000).toString(),
-              deliveryMethod: 'STANDARD'
-            }
-          }]
-        }),
-      }
-    )
+    const budgetUrl = `https://googleads.googleapis.com/v14/customers/${config.customerId}/campaignBudgets:mutate`
+    console.log('🔍 Budget API URL:', budgetUrl)
+    
+    const budgetRequestBody = {
+      operations: [{
+        create: {
+          name: `Budget-${Date.now()}`,
+          amountMicros: (campaignData.budget * 10000).toString(),
+          deliveryMethod: 'STANDARD'
+        }
+      }]
+    }
+    
+    console.log('🔍 Budget Request:', JSON.stringify(budgetRequestBody, null, 2))
+    
+    const budgetResponse = await fetch(budgetUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'developer-token': config.developerToken,
+        'Content-Type': 'application/json',
+        'login-customer-id': config.customerId,
+      },
+      body: JSON.stringify(budgetRequestBody),
+    })
 
     if (!budgetResponse.ok) {
       const budgetError = await budgetResponse.text()
