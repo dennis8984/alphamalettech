@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getAllArticles, deleteArticle, type Article } from '@/lib/articles-db'
 import { createArticleAdCampaign } from '@/lib/google-ads-automation'
+import { clearArticlesCache } from '@/lib/data'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -96,6 +97,8 @@ export default function ArticlesPage() {
           newSet.delete(articleId)
           return newSet
         })
+        // Clear the frontend cache so changes show immediately
+        clearArticlesCache()
         toast.success('Article deleted successfully')
       } else {
         toast.error(`Failed to delete article: ${error}`)
@@ -144,6 +147,11 @@ export default function ArticlesPage() {
       // Update local state
       setArticles(articles.filter(a => a.id && !deletedIds.includes(a.id)))
       setSelectedArticles(new Set())
+
+      // Clear the frontend cache so changes show immediately
+      if (successCount > 0) {
+        clearArticlesCache()
+      }
 
       // Show results
       if (successCount > 0 && failCount === 0) {
