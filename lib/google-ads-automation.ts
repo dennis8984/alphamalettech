@@ -18,7 +18,7 @@ interface CampaignData {
   budget: number
 }
 
-export async function createArticleAdCampaign(article: ArticleAdCampaign): Promise<CampaignData> {
+export async function createArticleAdCampaign(article: ArticleAdCampaign): Promise<CampaignData & { apiResult?: any }> {
   console.log(`🎯 Creating Google Ads campaign for: ${article.title}`)
   
   const campaignData: CampaignData = {
@@ -30,14 +30,59 @@ export async function createArticleAdCampaign(article: ArticleAdCampaign): Promi
     budget: 2000 // $20 daily budget in cents
   }
   
-  console.log('📊 Campaign generated:', {
+  console.log('📊 Campaign data generated:', {
     name: campaignData.name,
     headlines: campaignData.headlines.length,
     descriptions: campaignData.descriptions.length,
     keywords: campaignData.keywords.length
   })
-  
-  return campaignData
+
+  // Try to create actual campaign via API
+  try {
+    console.log('🚀 Attempting to create actual Google Ads campaign...')
+    
+    const response = await fetch('/api/google-ads/create-campaign', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(campaignData),
+    })
+
+    const apiResult = await response.json()
+    
+    if (apiResult.success) {
+      console.log('✅ Google Ads campaign created successfully!', apiResult.data)
+      return {
+        ...campaignData,
+        apiResult: {
+          success: true,
+          message: 'Campaign created in your Google Ads account',
+          campaignId: apiResult.data.campaignId
+        }
+      }
+    } else {
+      console.error('❌ Google Ads API failed:', apiResult.error)
+      return {
+        ...campaignData,
+        apiResult: {
+          success: false,
+          message: 'Campaign data generated but API creation failed',
+          error: apiResult.error
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ API call failed:', error)
+    return {
+      ...campaignData,
+      apiResult: {
+        success: false,
+        message: 'Campaign data generated but API unavailable',
+        error: error instanceof Error ? error.message : 'Network error'
+      }
+    }
+  }
 }
 
 function generateHeadlines(article: ArticleAdCampaign): string[] {

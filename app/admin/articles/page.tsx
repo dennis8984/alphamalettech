@@ -222,14 +222,28 @@ Next Steps:
 4. Paste the content above
       `
       
-      // Copy to clipboard and show success
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(campaignText)
-        toast.success('✅ Campaign data generated and copied to clipboard!\n\nGo to https://ads.google.com to create your campaign.')
+      // Handle API result and clipboard
+      if (campaignData.apiResult?.success) {
+        // Campaign was actually created in Google Ads
+        toast.success(`🎉 Google Ads campaign created successfully!\n\nCampaign ID: ${campaignData.apiResult.campaignId}\n\nCheck your Google Ads account - campaign is PAUSED for your review.`)
+      } else if (campaignData.apiResult?.error) {
+        // API failed, fallback to clipboard
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(campaignText)
+          toast.error(`⚠️ API Error: ${campaignData.apiResult.error}\n\nCampaign data copied to clipboard as fallback.\nGo to https://ads.google.com to create manually.`)
+        } else {
+          console.log('📊 Campaign Data:', campaignText)
+          toast.error(`⚠️ API Error: ${campaignData.apiResult.error}\n\nCheck console for campaign data.`)
+        }
       } else {
-        // Fallback for older browsers
-        console.log('📊 Campaign Data:', campaignText)
-        alert('✅ Campaign generated! Check browser console for data to copy.')
+        // No API result, use clipboard as before
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(campaignText)
+          toast.success('✅ Campaign data generated and copied to clipboard!\n\nGo to https://ads.google.com to create your campaign.')
+        } else {
+          console.log('📊 Campaign Data:', campaignText)
+          toast.success('✅ Campaign generated! Check browser console for data to copy.')
+        }
       }
       
     } catch (error) {
@@ -300,13 +314,15 @@ Next Steps:
           <div className="flex items-start gap-3">
             <div className="text-red-600 text-xl">🎯</div>
             <div>
-              <h3 className="font-semibold text-red-900 mb-1">Google Ads Campaign Generator</h3>
+              <h3 className="font-semibold text-red-900 mb-1">Automated Google Ads Campaign Creator</h3>
               <p className="text-sm text-red-700 mb-2">
-                Click the 🎯 button next to published articles to automatically generate optimized Google Ads campaigns.
+                Click the 🎯 button next to published articles to <strong>automatically create</strong> Google Ads campaigns in your account.
               </p>
-              <p className="text-xs text-red-600">
-                Campaign data will be copied to your clipboard. Then go to <a href="https://ads.google.com" target="_blank" className="underline">Google Ads Manager</a> to create your campaign.
-              </p>
+              <div className="text-xs text-red-600 space-y-1">
+                <p><strong>✅ If API configured:</strong> Campaign created directly in your Google Ads account (PAUSED for review)</p>
+                <p><strong>⚠️ If API unavailable:</strong> Campaign data copied to clipboard for manual creation</p>
+                <p>Requires Google Ads API credentials in Vercel environment variables</p>
+              </div>
             </div>
           </div>
         </CardContent>
