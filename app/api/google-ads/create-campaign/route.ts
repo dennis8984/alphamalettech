@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleAdsApi, enums } from 'google-ads-api'
 
 interface CampaignData {
   name: string
@@ -29,7 +28,7 @@ export async function POST(request: NextRequest) {
       clientId: process.env.GOOGLE_ADS_CLIENT_ID,
       clientSecret: process.env.GOOGLE_ADS_CLIENT_SECRET,
       refreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN,
-      customerId: process.env.GOOGLE_ADS_CUSTOMER_ID?.replace(/[-\s]/g, '') // Remove hyphens and spaces
+      customerId: process.env.GOOGLE_ADS_CUSTOMER_ID?.replace(/[-\s]/g, '')
     }
 
     console.log('🔍 Google Ads API Config:', {
@@ -41,148 +40,149 @@ export async function POST(request: NextRequest) {
     })
 
     // Validate required credentials with detailed feedback
-    const missingVars: Record<string, boolean> = {
-      GOOGLE_ADS_DEVELOPER_TOKEN: !config.developerToken,
-      GOOGLE_ADS_CLIENT_ID: !config.clientId,
-      GOOGLE_ADS_CLIENT_SECRET: !config.clientSecret,
-      GOOGLE_ADS_REFRESH_TOKEN: !config.refreshToken,
-      GOOGLE_ADS_CUSTOMER_ID: !config.customerId
-    }
+    const missingVars: string[] = []
+    if (!config.developerToken) missingVars.push('GOOGLE_ADS_DEVELOPER_TOKEN')
+    if (!config.clientId) missingVars.push('GOOGLE_ADS_CLIENT_ID') 
+    if (!config.clientSecret) missingVars.push('GOOGLE_ADS_CLIENT_SECRET')
+    if (!config.refreshToken) missingVars.push('GOOGLE_ADS_REFRESH_TOKEN')
+    if (!config.customerId) missingVars.push('GOOGLE_ADS_CUSTOMER_ID')
 
-    const missingVarNames = Object.entries(missingVars)
-      .filter(([_, missing]) => missing)
-      .map(([name, _]) => name)
-
-    if (missingVarNames.length > 0) {
-      console.error('❌ Missing Google Ads API credentials:', missingVarNames)
+    if (missingVars.length > 0) {
+      console.error('❌ Missing Google Ads API credentials:', missingVars)
       return NextResponse.json({
         success: false,
-        error: `Missing Google Ads API credentials: ${missingVarNames.join(', ')}`,
+        error: `Missing Google Ads API credentials: ${missingVars.join(', ')}`,
         helpMessage: 'Add these environment variables to your Vercel project settings.',
         missingVars,
         setupGuide: 'https://developers.google.com/google-ads/api/docs/first-call/oauth'
       })
     }
 
-    // Initialize Google Ads API client
-    const client = new GoogleAdsApi({
-      client_id: config.clientId,
-      client_secret: config.clientSecret,
-      developer_token: config.developerToken,
+    // Get access token using validated credentials
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: config.clientId as string,
+        client_secret: config.clientSecret as string,
+        refresh_token: config.refreshToken as string,
+        grant_type: 'refresh_token',
+      }),
     })
 
-    console.log('✅ Google Ads API client initialized')
+    if (!tokenResponse.ok) {
+      const tokenError = await tokenResponse.text()
+      console.error('❌ Failed to get access token:', tokenError)
+      
+      if (tokenError.includes('invalid_grant')) {
+        return NextResponse.json({
+          success: false,
+          error: 'Refresh token expired or invalid',
+          helpMessage: 'Generate a new refresh token using Google OAuth 2.0 Playground: https://developers.google.com/oauthplayground/',
+          details: tokenError
+        })
+      }
+      
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication failed',
+        helpMessage: 'Check your Google OAuth credentials',
+        details: tokenError
+      })
+    }
 
-    // Get customer instance
-    const customer = client.Customer({
-      customer_id: config.customerId,
-      refresh_token: config.refreshToken,
-    })
+    const tokenData = await tokenResponse.json()
+    const accessToken = tokenData.access_token
 
-    console.log('✅ Customer instance created for ID:', config.customerId)
-
-    // Create campaign budget first
+    // Create campaign budget
     console.log('💰 Creating campaign budget...')
-    const budgetOperation = {
-      create: {
-        name: `MensHub Budget ${Date.now()}`,
-        delivery_method: enums.BudgetDeliveryMethod.STANDARD,
-        amount_micros: campaignData.budget * 10000, // Convert cents to micros
+    const budgetResponse = await fetch(
+      `https://googleads.googleapis.com/v14/customers/${config.customerId}/campaignBudgets:mutate`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'developer-token': config.developerToken as string,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          operations: [{
+            create: {
+              name: `MensHub Budget ${Date.now()}`,
+              deliveryMethod: 'STANDARD',
+              amountMicros: (campaignData.budget * 10000).toString(),
+            }
+          }]
+        }),
       }
+    )
+
+    if (!budgetResponse.ok) {
+      const budgetError = await budgetResponse.text()
+      console.error('❌ Budget creation failed:', budgetError)
+      return NextResponse.json({
+        success: false,
+        error: 'Budget creation failed',
+        details: budgetError,
+        helpMessage: 'Check your Google Ads API permissions and developer token status'
+      })
     }
 
-    const budgetResponse = await customer.campaignBudgets.create([budgetOperation])
-    const budgetResourceName = budgetResponse.results[0].resource_name
-    console.log('✅ Budget created:', budgetResourceName)
+    const budgetResult = await budgetResponse.json()
+    const budgetResourceName = budgetResult.results?.[0]?.resourceName
 
-    // Create the campaign
+    // Create campaign
     console.log('🎯 Creating search campaign...')
-    const campaignOperation = {
-      create: {
-        name: campaignData.name,
-        advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
-        status: enums.CampaignStatus.PAUSED, // Start paused for review
-        campaign_budget: budgetResourceName,
-        network_settings: {
-          target_google_search: true,
-          target_search_network: true,
-          target_content_network: false,
-          target_partner_search_network: false,
+    const campaignResponse = await fetch(
+      `https://googleads.googleapis.com/v14/customers/${config.customerId}/campaigns:mutate`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'developer-token': config.developerToken as string,
+          'Content-Type': 'application/json',
         },
-        bidding_strategy_type: enums.BiddingStrategyType.MANUAL_CPC,
-        manual_cpc: {
-          enhanced_cpc_enabled: true,
-        },
+        body: JSON.stringify({
+          operations: [{
+            create: {
+              name: campaignData.name,
+              advertisingChannelType: 'SEARCH',
+              status: 'PAUSED',
+              campaignBudget: budgetResourceName,
+              networkSettings: {
+                targetGoogleSearch: true,
+                targetSearchNetwork: true,
+                targetContentNetwork: false,
+                targetPartnerSearchNetwork: false
+              },
+              biddingStrategyType: 'MANUAL_CPC',
+              manualCpc: {
+                enhancedCpcEnabled: true
+              }
+            }
+          }]
+        }),
       }
+    )
+
+    if (!campaignResponse.ok) {
+      const campaignError = await campaignResponse.text()
+      console.error('❌ Campaign creation failed:', campaignError)
+      return NextResponse.json({
+        success: false,
+        error: 'Campaign creation failed',
+        details: campaignError,
+        helpMessage: 'Check your Google Ads account permissions'
+      })
     }
 
-    const campaignResponse = await customer.campaigns.create([campaignOperation])
-    const campaignResourceName = campaignResponse.results[0].resource_name
-    console.log('✅ Campaign created:', campaignResourceName)
+    const campaignResult = await campaignResponse.json()
+    const campaignResourceName = campaignResult.results?.[0]?.resourceName
+    const campaignId = campaignResourceName?.split('/').pop()
 
-    // Create ad group
-    console.log('📁 Creating ad group...')
-    const adGroupOperation = {
-      create: {
-        name: `${campaignData.name} - Ad Group`,
-        campaign: campaignResourceName,
-        status: enums.AdGroupStatus.ENABLED,
-        type: enums.AdGroupType.SEARCH_STANDARD,
-        cpc_bid_micros: 1000000, // $1.00 in micros
-      }
-    }
-
-    const adGroupResponse = await customer.adGroups.create([adGroupOperation])
-    const adGroupResourceName = adGroupResponse.results[0].resource_name
-    console.log('✅ Ad group created:', adGroupResourceName)
-
-    // Create responsive search ad
-    console.log('📝 Creating responsive search ad...')
-    const headlines = campaignData.headlines.slice(0, 15).map(headline => ({
-      text: headline.substring(0, 30), // Max 30 chars
-    }))
-
-    const descriptions = campaignData.descriptions.slice(0, 4).map(description => ({
-      text: description.substring(0, 90), // Max 90 chars
-    }))
-
-    const adOperation = {
-      create: {
-        ad_group: adGroupResourceName,
-        status: enums.AdGroupAdStatus.ENABLED,
-        ad: {
-          responsive_search_ad: {
-            headlines,
-            descriptions,
-            final_urls: [campaignData.targetUrl],
-          },
-        },
-      }
-    }
-
-    const adResponse = await customer.adGroupAds.create([adOperation])
-    console.log('✅ Responsive search ad created')
-
-    // Add keywords
-    console.log('🔑 Adding keywords...')
-    const keywordOperations = campaignData.keywords.slice(0, 20).map(keyword => ({
-      create: {
-        ad_group: adGroupResourceName,
-        status: enums.AdGroupCriterionStatus.ENABLED,
-        keyword: {
-          text: keyword,
-          match_type: enums.KeywordMatchType.PHRASE,
-        },
-        cpc_bid_micros: 500000, // $0.50 in micros
-      }
-    }))
-
-    const keywordsResponse = await customer.adGroupCriteria.create(keywordOperations)
-    console.log(`✅ ${keywordsResponse.results.length} keywords added`)
-
-    // Return success response
-    const campaignId = campaignResourceName.split('/').pop()
-    console.log('🎉 Campaign creation completed successfully!')
+    console.log('✅ Campaign created successfully:', campaignResourceName)
 
     return NextResponse.json({
       success: true,
@@ -192,44 +192,27 @@ export async function POST(request: NextRequest) {
         campaignName: campaignData.name,
         budget: `$${(campaignData.budget / 100).toFixed(2)}/day`,
         status: 'PAUSED',
-        adGroupId: adGroupResourceName.split('/').pop(),
-        totalKeywords: keywordsResponse.results.length,
-        totalHeadlines: headlines.length,
-        totalDescriptions: descriptions.length,
+        campaignResourceName,
         nextSteps: [
-          'Go to your Google Ads account',
-          'Review the campaign settings',
-          'Enable the campaign when ready',
-          'Monitor performance and optimize'
-        ]
+          'Go to your Google Ads account at https://ads.google.com',
+          'Find your new campaign: ' + campaignData.name,
+          'Review the campaign settings and targeting',
+          'Add ad groups, ads, and keywords manually or enable the campaign',
+          'Monitor performance and optimize as needed'
+        ],
+        note: 'Basic campaign structure created. Add ad groups, ads, and keywords through Google Ads interface.'
       }
     })
 
   } catch (error: any) {
     console.error('❌ Google Ads API Error:', error)
     
-    // Handle specific Google Ads API errors
-    if (error.errors) {
-      const apiErrors = error.errors.map((e: any) => ({
-        error_code: e.error_code,
-        message: e.message,
-        location: e.location
-      }))
-      
-      return NextResponse.json({
-        success: false,
-        error: 'Google Ads API Error',
-        details: apiErrors,
-        helpMessage: 'Check your Google Ads API credentials and account permissions.'
-      })
-    }
-
-    // Handle authentication errors
+    // Handle specific errors
     if (error.message?.includes('INVALID_REFRESH_TOKEN')) {
       return NextResponse.json({
         success: false,
         error: 'Invalid refresh token',
-        helpMessage: 'Please generate a new refresh token using Google OAuth 2.0 Playground.'
+        helpMessage: 'Generate a new refresh token using Google OAuth 2.0 Playground: https://developers.google.com/oauthplayground/'
       })
     }
 
@@ -237,15 +220,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: false,
         error: 'Developer token not approved',
-        helpMessage: 'Apply for Google Ads API access and wait for approval.'
+        helpMessage: 'Apply for Google Ads API access and wait for approval (24-48 hours)'
       })
     }
 
-    // Generic error handling
     return NextResponse.json({
       success: false,
       error: error.message || 'Unknown error occurred',
-      helpMessage: 'Check the server logs for more details.'
+      helpMessage: 'Check the setup guide and ensure all credentials are correct'
     })
   }
 } 

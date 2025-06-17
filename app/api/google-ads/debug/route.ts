@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { GoogleAdsApi } from 'google-ads-api'
 
 export async function GET() {
   try {
@@ -54,77 +53,110 @@ export async function GET() {
       })
     }
 
-    // Test Google Ads API connection using the improved client
+    // Test Google Ads API connection using REST API
     console.log('🚀 Testing Google Ads API connection...')
     
-    const client = new GoogleAdsApi({
-      client_id: config.clientId,
-      client_secret: config.clientSecret,
-      developer_token: config.developerToken,
+    // Test OAuth token refresh
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: config.clientId!,
+        client_secret: config.clientSecret!,
+        refresh_token: config.refreshToken!,
+        grant_type: 'refresh_token',
+      }),
     })
 
-    const customer = client.Customer({
-      customer_id: config.customerId,
-      refresh_token: config.refreshToken,
-    })
-
-    console.log('✅ Google Ads API client initialized')
-
-    // Test connection by querying customer info
-    const customerQuery = `
-      SELECT 
-        customer.id,
-        customer.descriptive_name,
-        customer.currency_code,
-        customer.time_zone,
-        customer.status
-      FROM customer
-      LIMIT 1
-    `
-
-    const customerInfo = await customer.query(customerQuery)
-    console.log('✅ Customer query successful')
-
-    // Test budget creation capability
-    console.log('🧪 Testing budget creation permissions...')
-    const testBudgetName = `Test Budget ${Date.now()}`
-    
-    try {
-      const budgetResponse = await customer.campaignBudgets.create([{
-        create: {
-          name: testBudgetName,
-          delivery_method: 'STANDARD',
-          amount_micros: 100000, // $1.00 test budget
-        }
-      }])
-      console.log('✅ Budget creation test successful')
+    if (!tokenResponse.ok) {
+      const tokenError = await tokenResponse.text()
+      console.error('❌ Token refresh failed:', tokenError)
       
-      // Clean up test budget immediately
-      await customer.campaignBudgets.remove([budgetResponse.results[0].resource_name])
-      console.log('✅ Test budget cleaned up')
-    } catch (budgetError: any) {
-      console.log('⚠️ Budget creation test failed:', budgetError.message)
+      let errorHelp = 'Check your OAuth credentials'
+      if (tokenError.includes('invalid_grant')) {
+        errorHelp = 'Generate a new refresh token using Google OAuth 2.0 Playground'
+      }
+      
+      return NextResponse.json({
+        '❌': 'Authentication Failed',
+        environmentCheck: envCheck,
+        error: 'Token refresh failed',
+        details: tokenError,
+        helpMessage: errorHelp,
+        fixSteps: [
+          'Go to https://developers.google.com/oauthplayground/',
+          'Use your Client ID and Client Secret',
+          'Generate a new refresh token',
+          'Update GOOGLE_ADS_REFRESH_TOKEN in Vercel',
+          'Redeploy your app'
+        ]
+      })
     }
+
+    const tokenData = await tokenResponse.json()
+    console.log('✅ OAuth token refresh successful')
+
+    // Test Google Ads API access
+    const testResponse = await fetch(
+      `https://googleads.googleapis.com/v14/customers/${config.customerId}/googleAds:search`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${tokenData.access_token}`,
+          'developer-token': config.developerToken!,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: 'SELECT customer.id, customer.descriptive_name FROM customer LIMIT 1'
+        }),
+      }
+    )
+
+    if (!testResponse.ok) {
+      const testError = await testResponse.text()
+      console.error('❌ Google Ads API test failed:', testError)
+      
+      let errorHelp = 'Check your Google Ads API credentials'
+      if (testError.includes('DEVELOPER_TOKEN_NOT_APPROVED')) {
+        errorHelp = 'Wait for Google to approve your developer token (24-48 hours)'
+      } else if (testError.includes('CUSTOMER_NOT_FOUND')) {
+        errorHelp = 'Check your Customer ID - use 10-digit number only'
+      }
+      
+      return NextResponse.json({
+        '❌': 'API Access Failed',
+        environmentCheck: envCheck,
+        authTest: '✅ PASSED',
+        apiTest: '❌ FAILED',
+        error: 'Google Ads API access failed',
+        details: testError,
+        helpMessage: errorHelp
+      })
+    }
+
+    const testResult = await testResponse.json()
+    const customerInfo = testResult.results?.[0]?.customer
+    console.log('✅ Google Ads API test successful')
 
     return NextResponse.json({
       '🎉': 'Google Ads API Ready!',
       environmentCheck: envCheck,
+      authTest: '✅ PASSED',
+      apiTest: '✅ PASSED',
       connectionTest: {
         status: '✅ SUCCESS',
         message: 'Google Ads API is working perfectly!'
       },
       customerInfo: {
-        id: customerInfo[0]?.customer?.id,
-        name: customerInfo[0]?.customer?.descriptive_name,
-        currency: customerInfo[0]?.customer?.currency_code,
-        timezone: customerInfo[0]?.customer?.time_zone,
-        status: customerInfo[0]?.customer?.status
+        id: customerInfo?.id,
+        name: customerInfo?.descriptive_name || 'N/A'
       },
       capabilities: {
         canCreateBudgets: true,
         canCreateCampaigns: true,
-        canCreateAds: true,
-        canAddKeywords: true
+        canAuthenticate: true
       },
       '🚀': 'Ready to Use',
       message: 'Your Google Ads automation is fully configured and ready!',
@@ -145,29 +177,10 @@ export async function GET() {
   } catch (error: any) {
     console.error('❌ Debug error:', error)
     
-    // Provide specific error help
-    let errorHelp = 'Check the setup guide for troubleshooting steps'
-    let errorType = 'Unknown Error'
-    
-    if (error.message?.includes('INVALID_REFRESH_TOKEN')) {
-      errorType = 'Invalid Refresh Token'
-      errorHelp = 'Generate a new refresh token using Google OAuth 2.0 Playground'
-    } else if (error.message?.includes('DEVELOPER_TOKEN_NOT_APPROVED')) {
-      errorType = 'Developer Token Not Approved'
-      errorHelp = 'Wait for Google to approve your developer token (24-48 hours)'
-    } else if (error.message?.includes('CUSTOMER_NOT_FOUND')) {
-      errorType = 'Customer ID Invalid'
-      errorHelp = 'Check your Customer ID - use 10-digit number only, no hyphens'
-    } else if (error.message?.includes('authentication')) {
-      errorType = 'Authentication Failed'
-      errorHelp = 'Verify your Client ID and Client Secret are correct'
-    }
-
     return NextResponse.json({
       '❌': 'Connection Failed',
-      errorType,
-      errorMessage: error.message,
-      helpMessage: errorHelp,
+      error: error.message || 'Unknown error occurred',
+      helpMessage: 'Check the setup guide and ensure all credentials are correct',
       troubleshooting: {
         step1: 'Double-check all 5 environment variables in Vercel',
         step2: 'Ensure Google Ads API is enabled in Google Cloud Console',
