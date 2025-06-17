@@ -53,15 +53,14 @@
     "@xmldom/xmldom": "^0.8.10",
     "autoprefixer": "10.4.15",
     "bcryptjs": "^2.4.3",
-    "bufferutil": "^4.0.8",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.3.0",
-    "encoding": "^0.1.13",
     "eslint": "8.49.0",
     "eslint-config-next": "13.5.1",
+    "google-ads-api": "^16.0.0",
     "input-otp": "^1.2.4",
     "jszip": "^3.10.1",
     "lucide-react": "^0.446.0",
@@ -91,13 +90,12 @@
     "typescript": "5.2.2",
     "unified": "^11.0.4",
     "unist-util-visit": "^5.0.0",
-    "utf-8-validate": "^6.0.4",
     "vaul": "^0.9.9",
     "zod": "^3.23.8"
   },
   "optionalDependencies": {
-    "encoding": "^0.1.13",
     "bufferutil": "^4.0.8",
+    "encoding": "^0.1.13",
     "utf-8-validate": "^6.0.4"
   },
   "devDependencies": {
