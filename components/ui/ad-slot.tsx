@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { getAdsByPlacement, trackAdImpression, trackAdClick, shouldShowPopUnder, type Ad } from '@/lib/ads-db'
-import { EzoicAd } from './ezoic-ad'
 
 interface AdSlotProps {
   placement: 'header' | 'sidebar' | 'mid-article' | 'footer' | 'mobile-leaderboard' | 'bottom-banner'
@@ -12,16 +11,6 @@ interface AdSlotProps {
 export function AdSlot({ placement, className = '' }: AdSlotProps) {
   const [ad, setAd] = useState<Ad | null>(null)
   const [loading, setLoading] = useState(true)
-
-  // Use Ezoic for sidebar ads (following official implementation)
-  if (placement === 'sidebar') {
-    return (
-      <EzoicAd 
-        placementId={101} 
-        className={`flex justify-center my-4 ${className}`}
-      />
-    )
-  }
 
   useEffect(() => {
     const loadAd = async () => {
@@ -71,11 +60,6 @@ export function AdSlot({ placement, className = '' }: AdSlotProps) {
     }
   }
 
-  // Don't render anything if loading or no ad
-  if (loading || !ad) {
-    return null
-  }
-
   // Get responsive classes based on ad size
   const getAdSizeClasses = (size: string) => {
     switch (size) {
@@ -111,6 +95,22 @@ export function AdSlot({ placement, className = '' }: AdSlotProps) {
       default:
         return 'flex justify-center'
     }
+  }
+
+  // Show loading state while fetching ad
+  if (loading) {
+    return (
+      <div className={`${getPlacementClasses(placement)} ${className}`}>
+        <div className="w-full max-w-[300px] h-[250px] bg-gray-100 rounded-lg flex items-center justify-center animate-pulse">
+          <span className="text-gray-500 text-sm">Loading ad...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render anything if no ad
+  if (!ad) {
+    return null
   }
 
   return (
