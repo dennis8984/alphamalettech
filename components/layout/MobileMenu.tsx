@@ -5,6 +5,16 @@ import Link from 'next/link';
 import { X, Search, User } from 'lucide-react';
 import { categories } from '@/lib/data';
 
+// Landing page routes for specific categories (same as Header)
+const categoryRoutes = {
+  'fitness': '/articles/ultimate-workout-guide',
+  'nutrition': '/articles/nutrition-hub',
+  'health': '/articles/welcome-to-mens-hub',
+  'style': '/articles/style',
+  'weight-loss': '/articles/weight-loss',
+  'entertainment': '/articles/entertainment'
+};
+
 interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
@@ -44,7 +54,7 @@ const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
             {categories.map((category) => (
               <Link
                 key={category.id}
-                href={`/articles/${category.slug}`}
+                href={categoryRoutes[category.id as keyof typeof categoryRoutes] || `/articles/${category.slug}`}
                 className="block px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-red-600 transition-colors"
                 onClick={onClose}
               >
@@ -54,17 +64,29 @@ const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
           </nav>
 
           <div className="border-t py-4 space-y-3 px-4">
-            <div className="flex items-center space-x-3">
+            <Link
+              href="/search"
+              className="flex items-center space-x-3"
+              onClick={onClose}
+            >
               <Search size={20} className="text-gray-600" />
               <span className="text-base font-medium">Search</span>
-            </div>
-            <div className="flex items-center space-x-3">
+            </Link>
+            <Link
+              href="/auth/signin"
+              className="flex items-center space-x-3"
+              onClick={onClose}
+            >
               <User size={20} className="text-gray-600" />
               <span className="text-base font-medium">Account</span>
-            </div>
-            <button className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-sm transition-colors mt-4">
+            </Link>
+            <Link
+              href="/subscribe"
+              className="block w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-sm transition-colors mt-4 text-center"
+              onClick={onClose}
+            >
               Subscribe
-            </button>
+            </Link>
           </div>
         </div>
       </div>
