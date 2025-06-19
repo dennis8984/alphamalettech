@@ -1,11 +1,8 @@
 'use client'
 
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from './supabase-client'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export { supabase }
 
 export const uploadImage = async (file: File, bucket: string = 'articles'): Promise<{ url: string | null, error: string | null }> => {
   try {

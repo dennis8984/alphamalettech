@@ -19,7 +19,7 @@ import {
   PlusCircle,
   BarChart3
 } from 'lucide-react'
-import { getCurrentUser, signOut } from '@/lib/supabase-auth'
+import { getCurrentUser, signOut } from '@/lib/supabase-client'
 
 // Admin email whitelist - only these emails can access admin
 const ADMIN_EMAILS = [

@@ -267,21 +267,20 @@ export const trackAdClick = async (adId: string): Promise<{ success: boolean, er
 // Pop-under specific functions
 export const shouldShowPopUnder = async (): Promise<{ show: boolean, error: string | null }> => {
   try {
-    // Check if pop-under ads are enabled globally
-    const { data: settings, error: settingsError } = await supabase
-      .from('site_settings')
-      .select('value')
-      .eq('key', 'popunder_enabled')
-      .single()
+    // Use the simple API endpoint instead of direct database query
+    // This avoids the missing site_settings table issue
+    const response = await fetch('/api/admin/popunder-settings/simple')
     
-    if (settingsError && settingsError.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('❌ Error checking pop-under settings:', settingsError)
-      return { show: false, error: settingsError.message }
+    if (!response.ok) {
+      console.log('📱 Popunder settings endpoint not available, defaulting to disabled')
+      return { show: false, error: null }
     }
     
-    const popunderEnabled = settings?.value === 'true'
+    const settings = await response.json()
+    const popunderEnabled = settings?.enabled === true
     
     if (!popunderEnabled) {
+      console.log('🚫 Popunder ads are disabled globally')
       return { show: false, error: null }
     }
     
@@ -300,13 +299,14 @@ export const shouldShowPopUnder = async (): Promise<{ show: boolean, error: stri
     }
     
     const shouldShow = ads && ads.length > 0
-    console.log(`Pop-under check: ${shouldShow ? 'Show' : 'Hide'}`)
+    console.log(`🎯 Pop-under check: ${shouldShow ? 'Show' : 'Hide'} (${ads?.length || 0} ads available)`)
     
     return { show: shouldShow, error: null }
     
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Failed to check pop-under'
-    console.error('💥 Unexpected error:', errorMessage)
-    return { show: false, error: errorMessage }
+    console.log('💥 Pop-under check error (falling back to disabled):', errorMessage)
+    // Return false instead of error to prevent console spam
+    return { show: false, error: null }
   }
 } 

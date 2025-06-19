@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Mail, AlertCircle } from 'lucide-react'
-import { signInWithEmail } from '@/lib/supabase-auth'
+import { supabase } from '@/lib/supabase-client'
 
 // Admin email whitelist - only these emails can access admin
 const ADMIN_EMAILS = [
@@ -20,7 +20,7 @@ const ADMIN_EMAILS = [
   process.env.NEXT_PUBLIC_ADMIN_EMAIL_3,
 ].filter(Boolean) as string[]
 
-export default function SignInPage() {
+export default function AdminSignIn() {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -36,11 +36,17 @@ export default function SignInPage() {
       // Check if email is in admin whitelist
       if (!ADMIN_EMAILS.includes(email.toLowerCase())) {
         setMessage('Access denied. Your email is not authorized for admin access.')
+        setIsSuccess(false)
         setIsLoading(false)
         return
       }
 
-      const { data, error } = await signInWithEmail(email)
+      const { data, error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
       
       if (error) {
         setMessage(error.message || 'Failed to send magic link')
