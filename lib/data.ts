@@ -13,7 +13,7 @@ export const categories: Category[] = [
 // Cache for articles to avoid multiple fetches
 let articlesCache: Article[] | null = null;
 let lastFetchTime = 0;
-const CACHE_DURATION = 5000; // Reduced to 5 seconds for immediate debugging
+const CACHE_DURATION = 1000; // 1 second cache to ensure fresh data
 
 // Function to clear cache (useful after imports)
 export const clearArticlesCache = () => {

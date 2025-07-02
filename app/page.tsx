@@ -12,6 +12,9 @@ import {
   initializeArticles
 } from '@/lib/data';
 
+// Revalidate the page every 60 seconds to ensure fresh content
+export const revalidate = 60;
+
 export default async function Home() {
   // Initialize articles from the database
   await initializeArticles();
@@ -23,6 +26,11 @@ export default async function Home() {
   const nutritionArticles = getArticlesByCategory('nutrition');
   const healthArticles = getArticlesByCategory('health');
   const weightLossArticles = getArticlesByCategory('weight-loss');
+
+  // Check if we have any articles
+  const hasArticles = featuredArticles.length > 0 || trendingArticles.length > 0 || 
+                      fitnessArticles.length > 0 || nutritionArticles.length > 0 || 
+                      healthArticles.length > 0 || weightLossArticles.length > 0;
 
   return (
     <div>
@@ -42,39 +50,57 @@ export default async function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-12">
-            {/* Trending Articles */}
-            <TrendingArticles articles={trendingArticles} />
+            {!hasArticles ? (
+              <div className="text-center py-16">
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">No Articles Found</h2>
+                <p className="text-gray-600 mb-8">No published articles are currently available. Please check back later or contact the administrator.</p>
+                <a href="/admin" className="text-red-600 hover:text-red-700 font-medium">Go to Admin Panel →</a>
+              </div>
+            ) : (
+              <>
+                {/* Trending Articles */}
+                {trendingArticles.length > 0 && <TrendingArticles articles={trendingArticles} />}
 
-            {/* Mid-Content Ad */}
-            <AdSlot placement="mid-article" className="my-8" />
+                {/* Mid-Content Ad */}
+                <AdSlot placement="mid-article" className="my-8" />
 
-            {/* Fitness Section */}
-            <CategorySection 
-              title="Fitness" 
-              articles={fitnessArticles} 
-              categorySlug="fitness" 
-            />
+                {/* Fitness Section */}
+                {fitnessArticles.length > 0 && (
+                  <CategorySection 
+                    title="Fitness" 
+                    articles={fitnessArticles} 
+                    categorySlug="fitness" 
+                  />
+                )}
 
-            {/* Nutrition Section */}
-            <CategorySection 
-              title="Nutrition" 
-              articles={nutritionArticles} 
-              categorySlug="nutrition" 
-            />
+                {/* Nutrition Section */}
+                {nutritionArticles.length > 0 && (
+                  <CategorySection 
+                    title="Nutrition" 
+                    articles={nutritionArticles} 
+                    categorySlug="nutrition" 
+                  />
+                )}
 
-            {/* Health Section */}
-            <CategorySection 
-              title="Health" 
-              articles={healthArticles} 
-              categorySlug="health" 
-            />
+                {/* Health Section */}
+                {healthArticles.length > 0 && (
+                  <CategorySection 
+                    title="Health" 
+                    articles={healthArticles} 
+                    categorySlug="health" 
+                  />
+                )}
 
-            {/* Weight Loss Section */}
-            <CategorySection 
-              title="Weight Loss" 
-              articles={weightLossArticles} 
-              categorySlug="weight-loss" 
-            />
+                {/* Weight Loss Section */}
+                {weightLossArticles.length > 0 && (
+                  <CategorySection 
+                    title="Weight Loss" 
+                    articles={weightLossArticles} 
+                    categorySlug="weight-loss" 
+                  />
+                )}
+              </>
+            )}
 
             {/* Bottom Banner Ad */}
             <AdSlot placement="bottom-banner" className="my-8" />
