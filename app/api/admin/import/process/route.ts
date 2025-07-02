@@ -88,25 +88,60 @@ export async function POST(request: NextRequest) {
         
         const articleStartTime = Date.now()
         
-        // Simplified processing without content enhancement (for faster imports)
-        console.log(`📝 Processing: ${article.title}`)
+        // Enhanced processing with Claude AI content rewriting
+        console.log(`📝 Processing with Claude AI enhancement: ${article.title}`)
         
-        // Use original content without enhancement to avoid timeouts
-        const enhancedSlug = generateSlug(article.title)
-        const wordCount = article.content.split(' ').length
-        console.log(`   ↳ Processing without enhancement: ${wordCount} words`)
+        // Enhance content with Claude AI for originality (pass Copyscape)
+        let enhancedContent = article.content
+        let enhancedTitle = article.title
+        let enhancedExcerpt = article.excerpt
+        let warnings: string[] = []
+        let readabilityScore = 85
+        
+        try {
+          const enhancementResult = await ContentEnhancer.enhanceContent(
+            article.title,
+            article.content,
+            {
+              rewriteForOriginality: true,  // Rewrite for Copyscape
+              improveReadability: true,
+              addHeadings: true,
+              optimizeForSEO: true,
+              replaceImages: false,  // Keep original Men's Health images
+              addAuthorityLinks: true,
+              addInternalLinks: true,
+              articleSlug: generateSlug(article.title),
+              category: article.category,
+              useClaude: true  // Use Claude AI for rewriting
+            }
+          )
+          
+          enhancedTitle = enhancementResult.title
+          enhancedContent = enhancementResult.content
+          enhancedExcerpt = enhancementResult.excerpt
+          readabilityScore = enhancementResult.readabilityScore
+          warnings = enhancementResult.warnings
+          
+          console.log(`   ✨ Enhanced with Claude AI: ${enhancementResult.wordCount} words, readability: ${readabilityScore}`)
+        } catch (enhanceError) {
+          console.warn(`   ⚠️ Enhancement failed, using original content:`, enhanceError)
+          warnings.push('Content enhancement failed - using original content')
+        }
+        
+        const enhancedSlug = generateSlug(enhancedTitle)
+        const wordCount = enhancedContent.split(' ').length
 
         // Convert the imported article format to match the database format
         const articleData = {
-          title: article.title,
+          title: enhancedTitle,
           slug: enhancedSlug,
-          content: article.content,
-          excerpt: article.excerpt || article.content.substring(0, 160) + '...',
+          content: enhancedContent,
+          excerpt: enhancedExcerpt,
           category: article.category,
           status: 'published' as const,
-          featured_image: article.image,
-          tags: extractTags(article.title + ' ' + article.content),
-          author: article.author || 'Imported Author'
+          featured_image: article.image,  // Keep original Men's Health images
+          tags: extractTags(enhancedTitle + ' ' + enhancedContent),
+          author: article.author || 'Men\'s Health Editorial Team'
         }
 
         // Create the article in the database
@@ -122,14 +157,14 @@ export async function POST(request: NextRequest) {
           })
           errorCount++
         } else {
-          console.log(`✅ Successfully imported: "${article.title}"`)
+          console.log(`✅ Successfully imported: "${enhancedTitle}"`)
           results.push({
             articleId: data.id!,
-            title: article.title,
+            title: enhancedTitle,
             status: 'success',
             wordCount: wordCount,
-            readabilityScore: 85, // Default score since we're not enhancing
-            warnings: []
+            readabilityScore: readabilityScore,
+            warnings: warnings
           })
           successCount++
         }
