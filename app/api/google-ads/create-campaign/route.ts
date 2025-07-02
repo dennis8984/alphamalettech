@@ -36,7 +36,9 @@ export async function POST(request: NextRequest) {
       hasClientId: !!config.clientId,
       hasClientSecret: !!config.clientSecret,
       hasRefreshToken: !!config.refreshToken,
-      customerId: config.customerId
+      customerId: config.customerId,
+      customerIdLength: config.customerId?.length,
+      developerTokenLength: config.developerToken?.length
     })
 
     // Validate required credentials with detailed feedback
@@ -130,28 +132,48 @@ export async function POST(request: NextRequest) {
       }
     )
 
+    console.log('📡 Budget API Response Status:', budgetResponse.status, budgetResponse.statusText)
+    
     if (!budgetResponse.ok) {
       const budgetError = await budgetResponse.text()
       console.error('❌ Budget creation failed:', budgetError)
+      console.error('📊 Response headers:', Object.fromEntries(budgetResponse.headers.entries()))
       
       // Parse error for more details
       let errorDetails = budgetError
+      let errorCode = ''
       try {
         const errorJson = JSON.parse(budgetError)
         errorDetails = errorJson.error?.message || errorJson.error?.details?.[0]?.errors?.[0]?.message || budgetError
+        errorCode = errorJson.error?.code || errorJson.error?.status || ''
       } catch (e) {
         // Keep original error text if not JSON
+      }
+      
+      // Common error explanations
+      let helpMessage = 'Check your Google Ads API permissions and developer token status'
+      if (errorDetails.includes('PERMISSION_DENIED')) {
+        helpMessage = 'Your developer token may not have access to this account. Ensure token is approved.'
+      } else if (errorDetails.includes('INVALID_ARGUMENT')) {
+        helpMessage = 'Invalid request format. Check customer ID and budget parameters.'
+      } else if (errorDetails.includes('UNAUTHENTICATED')) {
+        helpMessage = 'Authentication failed. Check your refresh token and OAuth credentials.'
+      } else if (errorDetails.includes('DEVELOPER_TOKEN')) {
+        helpMessage = 'Developer token issue. Ensure it\'s approved for production use.'
       }
       
       return NextResponse.json({
         success: false,
         error: 'Budget creation failed',
         details: errorDetails,
-        helpMessage: 'Check your Google Ads API permissions and developer token status',
+        errorCode,
+        helpMessage,
         debugInfo: {
           customerId: config.customerId,
           hasAccessToken: !!accessToken,
-          budgetAmountMicros: (campaignData.budget * 10000).toString()
+          budgetAmountMicros: (campaignData.budget * 10000).toString(),
+          responseStatus: budgetResponse.status,
+          apiUrl: `https://googleads.googleapis.com/v14/customers/${config.customerId}/campaignBudgets:mutate`
         }
       })
     }
