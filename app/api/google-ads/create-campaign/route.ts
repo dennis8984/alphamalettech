@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
           'Authorization': `Bearer ${accessToken}`,
           'developer-token': config.developerToken as string,
           'Content-Type': 'application/json',
-          'login-customer-id': config.customerId // Add login-customer-id header
+          'login-customer-id': config.customerId || '' // Add login-customer-id header (ensure it's a string)
         },
         body: JSON.stringify(budgetPayload),
       }
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
           'Authorization': `Bearer ${accessToken}`,
           'developer-token': config.developerToken as string,
           'Content-Type': 'application/json',
-          'login-customer-id': config.customerId // Add login-customer-id header
+          'login-customer-id': config.customerId || '' // Add login-customer-id header (ensure it's a string)
         },
         body: JSON.stringify({
           operations: [{

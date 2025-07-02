@@ -17,7 +17,6 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ['@supabase/supabase-js'],
-    appDir: true,
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
