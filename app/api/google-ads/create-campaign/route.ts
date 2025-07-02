@@ -98,6 +98,24 @@ export async function POST(request: NextRequest) {
 
     // Create campaign budget
     console.log('💰 Creating campaign budget...')
+    console.log('📊 Budget details:', {
+      dailyBudgetDollars: campaignData.budget / 100,
+      dailyBudgetCents: campaignData.budget,
+      dailyBudgetMicros: campaignData.budget * 10000
+    })
+    
+    const budgetPayload = {
+      operations: [{
+        create: {
+          name: `MensHub Budget ${Date.now()}`,
+          deliveryMethod: 'STANDARD',
+          amountMicros: (campaignData.budget * 10000).toString(), // Convert cents to micros (100 cents * 10000 = 1,000,000 micros)
+        }
+      }]
+    }
+    
+    console.log('📤 Budget request payload:', JSON.stringify(budgetPayload, null, 2))
+    
     const budgetResponse = await fetch(
       `https://googleads.googleapis.com/v14/customers/${config.customerId}/campaignBudgets:mutate`,
       {
@@ -106,27 +124,35 @@ export async function POST(request: NextRequest) {
           'Authorization': `Bearer ${accessToken}`,
           'developer-token': config.developerToken as string,
           'Content-Type': 'application/json',
+          'login-customer-id': config.customerId // Add login-customer-id header
         },
-        body: JSON.stringify({
-          operations: [{
-            create: {
-              name: `MensHub Budget ${Date.now()}`,
-              deliveryMethod: 'STANDARD',
-              amountMicros: (campaignData.budget * 10000).toString(),
-            }
-          }]
-        }),
+        body: JSON.stringify(budgetPayload),
       }
     )
 
     if (!budgetResponse.ok) {
       const budgetError = await budgetResponse.text()
       console.error('❌ Budget creation failed:', budgetError)
+      
+      // Parse error for more details
+      let errorDetails = budgetError
+      try {
+        const errorJson = JSON.parse(budgetError)
+        errorDetails = errorJson.error?.message || errorJson.error?.details?.[0]?.errors?.[0]?.message || budgetError
+      } catch (e) {
+        // Keep original error text if not JSON
+      }
+      
       return NextResponse.json({
         success: false,
         error: 'Budget creation failed',
-        details: budgetError,
-        helpMessage: 'Check your Google Ads API permissions and developer token status'
+        details: errorDetails,
+        helpMessage: 'Check your Google Ads API permissions and developer token status',
+        debugInfo: {
+          customerId: config.customerId,
+          hasAccessToken: !!accessToken,
+          budgetAmountMicros: (campaignData.budget * 10000).toString()
+        }
       })
     }
 
@@ -143,6 +169,7 @@ export async function POST(request: NextRequest) {
           'Authorization': `Bearer ${accessToken}`,
           'developer-token': config.developerToken as string,
           'Content-Type': 'application/json',
+          'login-customer-id': config.customerId // Add login-customer-id header
         },
         body: JSON.stringify({
           operations: [{
