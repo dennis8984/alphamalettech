@@ -1,7 +1,13 @@
-import { supabase } from '../lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import fs from 'fs'
 import path from 'path'
 import { parse } from 'csv-parse/sync'
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 interface Article {
   id: string
