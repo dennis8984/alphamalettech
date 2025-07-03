@@ -160,6 +160,7 @@ Return your response as valid JSON with exactly these three fields:
     try {
       const response = await this.claude.messages.create({
         model: 'claude-3-opus-20240229',
+        max_tokens: 100000,  // Very high limit to avoid truncation
         temperature: 0.7,
         messages: [{
           role: 'user',
@@ -212,6 +213,7 @@ CRITICAL: Return ONLY the improved content without any meta-commentary or explan
     try {
       const response = await this.claude.messages.create({
         model: 'claude-3-opus-20240229',
+        max_tokens: 100000,  // Very high limit to avoid truncation
         temperature: 0.5,
         messages: [{
           role: 'user',
@@ -257,6 +259,7 @@ CRITICAL: Return ONLY the complete content with headings added. Do NOT include a
     try {
       const response = await this.claude.messages.create({
         model: 'claude-3-opus-20240229',
+        max_tokens: 100000,  // Very high limit to avoid truncation
         temperature: 0.6,
         messages: [{
           role: 'user',
@@ -303,6 +306,7 @@ Return ONLY the meta description text (no quotes or formatting):`
     try {
       const response = await this.claude.messages.create({
         model: 'claude-3-opus-20240229',
+        max_tokens: 100000,  // Very high limit to avoid truncation
         temperature: 0.7,
         messages: [{
           role: 'user',
