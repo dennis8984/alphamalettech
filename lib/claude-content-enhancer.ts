@@ -134,8 +134,9 @@ Focus on:
 5) Creating engaging, reader-friendly content
 6) Preserving the key health and fitness information
 7) IMPORTANT: The rewritten article must be approximately the same length as the original (${content.split(' ').length} words)
-8) PRESERVE ALL IMAGE TAGS (<img>) exactly as they appear in the original
+8) If you find images in HTML comments <!-- AVAILABLE IMAGES: -->, place them strategically AFTER relevant headers/sections throughout the article
 9) Replace any mentions of "Men's Health" with "Men's Hub"
+10) Do NOT place all images at the beginning - distribute them throughout the article
 
 Article Information:
 - Original Title: ${title}
@@ -151,10 +152,15 @@ CRITICAL INSTRUCTIONS:
 - Return ONLY valid JSON
 - The content field should contain ONLY the article content, no explanations
 - Maintain the full length of the original article
+- Place images AFTER their related headers/sections, not all at the beginning
+- End the article with a <h2>Conclusion</h2> section summarizing key points
+- After the conclusion, add an <h2>Frequently Asked Questions</h2> section with 5 relevant Q&As in this format:
+  <h3>Question here?</h3>
+  <p>Answer here...</p>
 
 Return your response as valid JSON with exactly these three fields:
 - "title": The rewritten article title (make it compelling and SEO-friendly)
-- "content": The rewritten article content (in HTML format with <p>, <h2>, <h3> tags for structure)
+- "content": The rewritten article content (in HTML format with <p>, <h2>, <h3> tags for structure, ending with Conclusion and FAQ sections)
 - "meta_description": A 150-160 character meta description based on the rewritten content`
 
     try {

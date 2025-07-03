@@ -47,20 +47,15 @@ export async function POST(request: NextRequest) {
         // Step 2: Enhance content with Claude AI
         console.log(`🤖 Enhancing content with Claude AI...`)
         
-        // Include all images in the content before enhancement
+        // Prepare content with image placeholders for Claude to place properly
         let enrichedContent = scrapedData.content
         if (scrapedData.allImages && scrapedData.allImages.length > 0) {
-          // Add images throughout the content
-          const paragraphs = enrichedContent.split('\n\n')
-          const imageInterval = Math.floor(paragraphs.length / (scrapedData.allImages.length + 1))
-          
-          for (let i = 0; i < scrapedData.allImages.length && i < 5; i++) { // Max 5 images
-            const insertIndex = (i + 1) * imageInterval
-            if (insertIndex < paragraphs.length) {
-              paragraphs.splice(insertIndex, 0, `<img src="${scrapedData.allImages[i]}" alt="${scrapedData.title} - Image ${i + 1}" class="w-full rounded-lg my-6">`)
-            }
-          }
-          enrichedContent = paragraphs.join('\n\n')
+          // Add image URLs at the end for Claude to place appropriately
+          enrichedContent += '\n\n<!-- AVAILABLE IMAGES:\n'
+          scrapedData.allImages.slice(0, 5).forEach((img, i) => {
+            enrichedContent += `<img src="${img}" alt="${scrapedData.title} - Image ${i + 1}" class="w-full rounded-lg my-6">\n`
+          })
+          enrichedContent += '-->'
         }
         
         const enhancementResult = await ContentEnhancer.enhanceContent(
@@ -177,8 +172,19 @@ async function scrapeArticleWithFirecrawl(url: string): Promise<FirecrawlArticle
     const allImages: string[] = []
     const imgMatches = html.matchAll(/<img[^>]*(?:src|data-src|data-lazy-src)="([^"]+)"[^>]*>/gi)
     for (const match of imgMatches) {
-      if (match[1] && !match[1].includes('logo') && !match[1].includes('icon')) {
-        allImages.push(match[1])
+      const imgUrl = match[1]
+      if (imgUrl && 
+          !imgUrl.includes('logo') && 
+          !imgUrl.includes('icon') &&
+          !imgUrl.includes('opt-out') &&
+          !imgUrl.includes('privacy') &&
+          !imgUrl.includes('.svg') &&
+          !imgUrl.includes('data:image') &&
+          (imgUrl.startsWith('http') || imgUrl.startsWith('//'))
+      ) {
+        // Ensure absolute URL
+        const absoluteUrl = imgUrl.startsWith('//') ? 'https:' + imgUrl : imgUrl
+        allImages.push(absoluteUrl)
       }
     }
     
