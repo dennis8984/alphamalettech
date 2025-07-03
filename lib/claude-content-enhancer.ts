@@ -133,6 +133,7 @@ Focus on:
 4) Maintaining factual accuracy
 5) Creating engaging, reader-friendly content
 6) Preserving the key health and fitness information
+7) IMPORTANT: The rewritten article must be approximately the same length as the original (${content.split(' ').length} words)
 
 Article Information:
 - Original Title: ${title}
@@ -143,6 +144,12 @@ Article Information:
 Content to Rewrite:
 ${content}
 
+CRITICAL INSTRUCTIONS:
+- Do NOT include any meta-commentary like "Here is the rewritten article" or "I've added headings"
+- Return ONLY valid JSON
+- The content field should contain ONLY the article content, no explanations
+- Maintain the full length of the original article
+
 Return your response as valid JSON with exactly these three fields:
 - "title": The rewritten article title (make it compelling and SEO-friendly)
 - "content": The rewritten article content (in HTML format with <p>, <h2>, <h3> tags for structure)
@@ -151,7 +158,7 @@ Return your response as valid JSON with exactly these three fields:
     try {
       const response = await this.claude.messages.create({
         model: 'claude-3-opus-20240229',
-        max_tokens: 4000,
+        max_tokens: 8000,
         temperature: 0.7,
         messages: [{
           role: 'user',
@@ -199,12 +206,12 @@ MAINTAIN:
 - HTML formatting and structure
 - Professional tone
 
-Return only the improved content with all HTML formatting preserved:`
+CRITICAL: Return ONLY the improved content without any meta-commentary or explanations. Do NOT include phrases like "Here is the improved content" or any other commentary. Start directly with the article content:`
 
     try {
       const response = await this.claude.messages.create({
         model: 'claude-3-opus-20240229',
-        max_tokens: 4000,
+        max_tokens: 8000,
         temperature: 0.5,
         messages: [{
           role: 'user',
@@ -245,12 +252,12 @@ HEADING EXAMPLES:
 Add H2 headings with this HTML format:
 <h2>Heading Text</h2>
 
-Return the complete content with headings added:`
+CRITICAL: Return ONLY the complete content with headings added. Do NOT include any meta-commentary like "Here is the article with strategic H2 headings added" or any explanations. Start directly with the article content:`
 
     try {
       const response = await this.claude.messages.create({
         model: 'claude-3-opus-20240229',
-        max_tokens: 4000,
+        max_tokens: 8000,
         temperature: 0.6,
         messages: [{
           role: 'user',
