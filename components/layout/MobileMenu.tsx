@@ -5,16 +5,6 @@ import Link from 'next/link';
 import { X, Search, User } from 'lucide-react';
 import { categories } from '@/lib/data';
 
-// Landing page routes for specific categories (same as Header)
-const categoryRoutes = {
-  'fitness': '/articles/ultimate-workout-guide',
-  'nutrition': '/articles/nutrition-hub',
-  'health': '/articles/welcome-to-mens-hub',
-  'style': '/articles/style',
-  'weight-loss': '/articles/weight-loss',
-  'entertainment': '/articles/entertainment'
-};
-
 interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
@@ -54,7 +44,7 @@ const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
             {categories.map((category) => (
               <Link
                 key={category.id}
-                href={categoryRoutes[category.id as keyof typeof categoryRoutes] || `/articles/${category.slug}`}
+                href={`/articles/${category.slug}`}
                 className="block px-4 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-red-600 transition-colors"
                 onClick={onClose}
               >

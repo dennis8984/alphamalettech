@@ -7,16 +7,6 @@ import { cn } from '@/lib/utils';
 import { categories } from '@/lib/data';
 import MobileMenu from './MobileMenu';
 
-// Landing page routes for specific categories
-const categoryRoutes = {
-  'fitness': '/articles/ultimate-workout-guide',
-  'nutrition': '/articles/nutrition-hub',
-  'health': '/articles/welcome-to-mens-hub',
-  'style': '/articles/style',
-  'weight-loss': '/articles/weight-loss',
-  'entertainment': '/articles/entertainment'
-};
-
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -55,7 +45,7 @@ const Header = () => {
             {categories.map((category) => (
               <Link
                 key={category.id}
-                href={categoryRoutes[category.id as keyof typeof categoryRoutes] || `/articles/${category.slug}`}
+                href={`/articles/${category.slug}`}
                 className="text-sm font-medium text-gray-700 hover:text-red-600 transition-colors"
               >
                 {category.name}
