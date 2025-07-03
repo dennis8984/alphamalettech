@@ -183,11 +183,21 @@ export default function ImportMensHealthPage() {
       const response = await fetch('/api/admin/import/menshealth-sitemap')
       const data = await response.json()
       
-      if (data.success) {
-        setDynamicCategories(data.categories)
+      if (data.success && data.categories) {
+        // Check if we actually got new articles
+        const hasArticles = Object.values(data.categories).some((cat: any) => cat.urls && cat.urls.length > 0)
+        if (hasArticles) {
+          setDynamicCategories(data.categories)
+          alert('Successfully fetched latest articles!')
+        } else {
+          alert('No new articles found. Using pre-selected articles.')
+        }
+      } else {
+        alert(data.message || 'Unable to fetch latest articles. Using pre-selected articles.')
       }
     } catch (error) {
       console.error('Failed to fetch sitemap:', error)
+      alert('Failed to fetch latest articles. Using pre-selected articles.')
     } finally {
       setLoadingSitemap(false)
     }
