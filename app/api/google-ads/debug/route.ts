@@ -100,13 +100,14 @@ export async function GET() {
 
     // Test Google Ads API access
     const testResponse = await fetch(
-      `https://googleads.googleapis.com/v14/customers/${config.customerId}/googleAds:search`,
+      `https://googleads.googleapis.com/v14/customers/${config.customerId}/googleAds:searchStream`,
       {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${tokenData.access_token}`,
           'developer-token': config.developerToken!,
           'Content-Type': 'application/json',
+          'login-customer-id': config.customerId || ''
         },
         body: JSON.stringify({
           query: 'SELECT customer.id, customer.descriptive_name FROM customer LIMIT 1'
