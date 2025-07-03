@@ -219,7 +219,7 @@ async function scrapeArticleWithFirecrawl(url: string): Promise<FirecrawlArticle
       excerpt,
       author,
       publishDate: new Date().toISOString(),
-      image
+      image: image || undefined
     }
     
   } catch (error) {
