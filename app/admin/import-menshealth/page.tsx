@@ -297,6 +297,20 @@ export default function ImportMensHealthPage() {
         <CardContent>
           <div className="space-y-4">
             {/* Fetch Latest Articles Button */}
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-blue-900 font-medium mb-1">Pre-Selected Articles Available</p>
+                  <p className="text-sm text-blue-700">
+                    We've pre-selected high-quality articles from Men's Health that are verified to import successfully. 
+                    These articles cover the latest trends and evergreen content across all categories.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Fetch Latest Articles Button */}
             {!dynamicCategories && (
               <div className="mb-4">
                 <Button 

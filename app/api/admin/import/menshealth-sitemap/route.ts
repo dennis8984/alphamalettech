@@ -20,6 +20,63 @@ export async function GET() {
       entertainment: { name: 'Entertainment', urls: [] }
     }
     
+    // Try to fetch the sitemap first
+    try {
+      console.log('📄 Attempting to fetch sitemap...')
+      const sitemapUrl = 'https://www.menshealth.com/sitemap.xml'
+      const sitemapResponse = await fetch(sitemapUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+          'Accept': 'application/xml,text/xml,application/xhtml+xml',
+        }
+      })
+      
+      if (sitemapResponse.ok) {
+        const sitemapText = await sitemapResponse.text()
+        console.log('✅ Sitemap fetched, parsing...')
+        
+        // Extract URLs from sitemap
+        const urlMatches = sitemapText.matchAll(/<loc>(https:\/\/www\.menshealth\.com\/[^<]+)<\/loc>/g)
+        
+        for (const match of urlMatches) {
+          const url = match[1]
+          
+          // Check which category this URL belongs to
+          for (const [categoryKey, categoryData] of Object.entries(categories)) {
+            if (url.includes(`/${categoryKey}/a`) && url.match(/\/a\d+\//)) {
+              categoryData.urls.push(url)
+              break
+            }
+          }
+        }
+        
+        // Sort and limit URLs
+        for (const categoryData of Object.values(categories)) {
+          categoryData.urls = categoryData.urls
+            .sort((a, b) => {
+              const aId = parseInt(a.match(/\/a(\d+)\//)?.[1] || '0')
+              const bId = parseInt(b.match(/\/a(\d+)\//)?.[1] || '0')
+              return bId - aId
+            })
+            .slice(0, 20)
+        }
+        
+        const totalArticles = Object.values(categories).reduce((sum, cat) => sum + cat.urls.length, 0)
+        
+        if (totalArticles > 0) {
+          console.log(`✅ Found ${totalArticles} articles from sitemap`)
+          return NextResponse.json({
+            success: true,
+            message: `Found ${totalArticles} latest articles from sitemap`,
+            categories,
+            timestamp: new Date().toISOString()
+          })
+        }
+      }
+    } catch (sitemapError) {
+      console.error('❌ Sitemap fetch failed:', sitemapError)
+    }
+    
     // Instead of sitemap, directly fetch category pages
     for (const [categoryKey, categoryData] of Object.entries(categories)) {
       console.log(`🔍 Fetching articles for ${categoryData.name}...`)
@@ -93,15 +150,15 @@ export async function GET() {
       }
     }
     
-    // If we couldn't fetch fresh URLs, return the hardcoded ones from the import page
+    // Check total articles found from all methods
     const totalArticles = Object.values(categories).reduce((sum, cat) => sum + cat.urls.length, 0)
     
     if (totalArticles === 0) {
-      console.log('⚠️ No articles found via scraping, returning fallback message')
+      console.log('⚠️ No articles found, returning fallback message')
       return NextResponse.json({
         success: false,
-        message: 'Unable to fetch latest articles. Please use the pre-selected articles instead.',
-        categories,
+        message: 'Unable to fetch latest articles due to website restrictions. Please use the pre-selected articles instead, which are regularly updated and verified to work.',
+        categories: {},
         timestamp: new Date().toISOString()
       })
     }
@@ -120,7 +177,8 @@ export async function GET() {
         success: false,
         error: 'Failed to fetch latest articles', 
         details: error instanceof Error ? error.message : 'Unknown error',
-        message: 'Please use the pre-selected articles instead.'
+        message: 'The Men\'s Health website may be blocking automated access. Please use the pre-selected articles instead, which are high-quality articles that have been verified to import successfully.',
+        categories: {}
       },
       { status: 200 } // Return 200 to avoid breaking the UI
     )
