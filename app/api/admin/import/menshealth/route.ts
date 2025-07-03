@@ -11,7 +11,10 @@ interface FirecrawlArticle {
   author?: string
   publishDate?: string
   image?: string
+  allImages?: string[]
 }
+
+export const maxDuration = 300; // 5 minutes timeout for import
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,9 +47,25 @@ export async function POST(request: NextRequest) {
         // Step 2: Enhance content with Claude AI
         console.log(`🤖 Enhancing content with Claude AI...`)
         
+        // Include all images in the content before enhancement
+        let enrichedContent = scrapedData.content
+        if (scrapedData.allImages && scrapedData.allImages.length > 0) {
+          // Add images throughout the content
+          const paragraphs = enrichedContent.split('\n\n')
+          const imageInterval = Math.floor(paragraphs.length / (scrapedData.allImages.length + 1))
+          
+          for (let i = 0; i < scrapedData.allImages.length && i < 5; i++) { // Max 5 images
+            const insertIndex = (i + 1) * imageInterval
+            if (insertIndex < paragraphs.length) {
+              paragraphs.splice(insertIndex, 0, `<img src="${scrapedData.allImages[i]}" alt="${scrapedData.title} - Image ${i + 1}" class="w-full rounded-lg my-6">`)
+            }
+          }
+          enrichedContent = paragraphs.join('\n\n')
+        }
+        
         const enhancementResult = await ContentEnhancer.enhanceContent(
-          scrapedData.title,
-          scrapedData.content,
+          scrapedData.title.replace(/Men's Health/gi, "Men's Hub"),
+          enrichedContent,
           {
             rewriteForOriginality: true,  // Complete rewrite for Copyscape
             improveReadability: true,
@@ -95,8 +114,8 @@ export async function POST(request: NextRequest) {
         
         successCount++
         
-        // Small delay between articles
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        // Longer delay between articles to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 5000))
         
       } catch (error) {
         console.error(`❌ Failed to process ${url}:`, error)
@@ -154,46 +173,84 @@ async function scrapeArticleWithFirecrawl(url: string): Promise<FirecrawlArticle
                       html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i)
     const title = titleMatch ? titleMatch[1].trim() : 'Untitled Article'
     
+    // Extract all images from the article
+    const allImages: string[] = []
+    const imgMatches = html.matchAll(/<img[^>]*(?:src|data-src|data-lazy-src)="([^"]+)"[^>]*>/gi)
+    for (const match of imgMatches) {
+      if (match[1] && !match[1].includes('logo') && !match[1].includes('icon')) {
+        allImages.push(match[1])
+      }
+    }
+    
     // Extract main content - Men's Health specific selectors
     let content = ''
+    let contentHtml = ''
     
-    // Try multiple content selectors
+    // Try multiple content selectors to get full HTML content
     const contentPatterns = [
-      /<div[^>]*class="[^"]*article-body[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-      /<div[^>]*class="[^"]*body-text[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-      /<div[^>]*data-journey-content[^>]*>([\s\S]*?)<\/div>/i,
+      /<div[^>]*class="[^"]*article-body[^"]*"[^>]*>([\s\S]*?)<\/div>(?=<div|<footer|<aside|$)/i,
+      /<div[^>]*class="[^"]*body-content[^"]*"[^>]*>([\s\S]*?)<\/div>(?=<div|<footer|<aside|$)/i,
+      /<div[^>]*data-journey-content[^>]*>([\s\S]*?)<\/div>(?=<div|<footer|<aside|$)/i,
+      /<div[^>]*class="[^"]*content-body[^"]*"[^>]*>([\s\S]*?)<\/div>(?=<div|<footer|<aside|$)/i,
       /<article[^>]*>([\s\S]*?)<\/article>/i
     ]
     
     for (const pattern of contentPatterns) {
       const match = html.match(pattern)
       if (match) {
-        content = match[1]
+        contentHtml = match[1]
         break
       }
     }
     
-    // Clean up content - extract text from paragraphs
-    if (content) {
-      const paragraphs = content.match(/<p[^>]*>([^<]+)<\/p>/gi) || []
-      content = paragraphs
-        .map(p => p.replace(/<[^>]+>/g, '').trim())
-        .filter(p => p.length > 20)
-        .join('\n\n')
+    // If no content found with specific selectors, try a more comprehensive approach
+    if (!contentHtml) {
+      // Look for content between h1 and common footer/sidebar elements
+      const contentMatch = html.match(/<h1[^>]*>[\s\S]*?<\/h1>([\s\S]*?)(?:<footer|<aside|<div[^>]*class="[^"]*sidebar|<div[^>]*class="[^"]*related)/i)
+      if (contentMatch) {
+        contentHtml = contentMatch[1]
+      }
     }
     
-    // If still no content, try a more aggressive approach
-    if (!content || content.length < 100) {
-      const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
-      if (bodyMatch) {
-        const body = bodyMatch[1]
-        const paragraphs = body.match(/<p[^>]*>([^<]+)<\/p>/gi) || []
-        content = paragraphs
-          .map(p => p.replace(/<[^>]+>/g, '').trim())
-          .filter(p => p.length > 50 && !p.includes('Advertisement') && !p.includes('Subscribe'))
-          .slice(0, 20) // Take first 20 paragraphs
-          .join('\n\n')
-      }
+    // Extract paragraphs and other content elements while preserving structure
+    if (contentHtml) {
+      // Extract all text content including paragraphs, headers, lists
+      const textElements = contentHtml.match(/<(p|h[2-6]|li)[^>]*>([\s\S]*?)<\/\1>/gi) || []
+      
+      const cleanedElements = textElements
+        .map(element => {
+          // Keep the HTML structure but clean the content
+          return element
+            .replace(/Men's Health/gi, "Men's Hub")
+            .replace(/menshealth\.com/gi, "menshub.com")
+        })
+        .filter(element => {
+          const text = element.replace(/<[^>]+>/g, '').trim()
+          return text.length > 20 && 
+                 !text.includes('Advertisement') && 
+                 !text.includes('Subscribe to') &&
+                 !text.includes('Sign up for') &&
+                 !text.includes('Newsletter')
+        })
+      
+      content = cleanedElements.join('\n\n')
+    }
+    
+    // If still no content, extract all paragraphs from body
+    if (!content || content.length < 500) {
+      const allParagraphs = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || []
+      const cleanParagraphs = allParagraphs
+        .map(p => p.replace(/Men's Health/gi, "Men's Hub"))
+        .filter(p => {
+          const text = p.replace(/<[^>]+>/g, '').trim()
+          return text.length > 50 && 
+                 !text.includes('Advertisement') && 
+                 !text.includes('Subscribe') &&
+                 !text.includes('cookie') &&
+                 !text.includes('privacy policy')
+        })
+      
+      content = cleanParagraphs.join('\n\n')
     }
     
     // Extract excerpt (first paragraph or meta description)
@@ -206,11 +263,12 @@ async function scrapeArticleWithFirecrawl(url: string): Promise<FirecrawlArticle
                       html.match(/<img[^>]*data-src="([^"]+)"/i)
     const image = imageMatch ? imageMatch[1] : null
     
-    // Extract author
+    // Extract author and replace Men's Health references
     const authorMatch = html.match(/<span[^>]*class="[^"]*byline[^"]*"[^>]*>By ([^<]+)<\/span>/i) ||
                        html.match(/<meta[^>]*name="author"[^>]*content="([^"]+)"/i) ||
                        html.match(/By\s+<a[^>]*>([^<]+)<\/a>/i)
-    const author = authorMatch ? authorMatch[1].trim() : 'Men\'s Health Editors'
+    let author = authorMatch ? authorMatch[1].trim() : 'Men\'s Hub Editorial Team'
+    author = author.replace(/Men's Health/gi, "Men's Hub")
     
     return {
       url,
@@ -219,7 +277,8 @@ async function scrapeArticleWithFirecrawl(url: string): Promise<FirecrawlArticle
       excerpt,
       author,
       publishDate: new Date().toISOString(),
-      image: image || undefined
+      image: image || undefined,
+      allImages: allImages // Pass all images for enhancement
     }
     
   } catch (error) {

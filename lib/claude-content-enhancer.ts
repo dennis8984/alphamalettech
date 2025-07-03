@@ -134,6 +134,8 @@ Focus on:
 5) Creating engaging, reader-friendly content
 6) Preserving the key health and fitness information
 7) IMPORTANT: The rewritten article must be approximately the same length as the original (${content.split(' ').length} words)
+8) PRESERVE ALL IMAGE TAGS (<img>) exactly as they appear in the original
+9) Replace any mentions of "Men's Health" with "Men's Hub"
 
 Article Information:
 - Original Title: ${title}
@@ -158,7 +160,6 @@ Return your response as valid JSON with exactly these three fields:
     try {
       const response = await this.claude.messages.create({
         model: 'claude-3-opus-20240229',
-        max_tokens: 8000,
         temperature: 0.7,
         messages: [{
           role: 'user',
@@ -211,7 +212,6 @@ CRITICAL: Return ONLY the improved content without any meta-commentary or explan
     try {
       const response = await this.claude.messages.create({
         model: 'claude-3-opus-20240229',
-        max_tokens: 8000,
         temperature: 0.5,
         messages: [{
           role: 'user',
@@ -257,7 +257,6 @@ CRITICAL: Return ONLY the complete content with headings added. Do NOT include a
     try {
       const response = await this.claude.messages.create({
         model: 'claude-3-opus-20240229',
-        max_tokens: 8000,
         temperature: 0.6,
         messages: [{
           role: 'user',
@@ -304,7 +303,6 @@ Return ONLY the meta description text (no quotes or formatting):`
     try {
       const response = await this.claude.messages.create({
         model: 'claude-3-opus-20240229',
-        max_tokens: 200,
         temperature: 0.7,
         messages: [{
           role: 'user',
