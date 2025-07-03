@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { ArrowLeft, Plus, Search, Edit, Trash2, Eye } from 'lucide-react'
+import { ArrowLeft, Plus, Search, Edit, Trash2, Eye, Wand2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getAllArticles, deleteArticle, type Article } from '@/lib/articles-db'
@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
+import { createClient } from '@/lib/supabase/client'
 
 export default function ArticlesPage() {
   const router = useRouter()
@@ -34,6 +35,7 @@ export default function ArticlesPage() {
   const [selectedArticles, setSelectedArticles] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
   const [generatingAds, setGeneratingAds] = useState<string | null>(null)
+  const [isFixingArticles, setIsFixingArticles] = useState(false)
 
   // Load articles
   useEffect(() => {
@@ -188,6 +190,57 @@ export default function ArticlesPage() {
     router.push(`/admin/articles/edit/${articleId}`)
   }
 
+  // Handle fix article formatting
+  const handleFixArticleFormatting = async () => {
+    setIsFixingArticles(true)
+    
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        toast.error('Not authenticated')
+        return
+      }
+      
+      const response = await fetch('/api/admin/fix-articles', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok) {
+        if (result.failed === 0) {
+          toast.success(`✅ Successfully formatted ${result.success} articles!`)
+        } else if (result.success > 0) {
+          toast.warning(`Formatted ${result.success} articles, ${result.failed} failed`)
+        } else {
+          toast.error('Failed to format articles')
+        }
+        
+        // Reload articles to show updated content
+        const { data } = await getAllArticles()
+        if (data) {
+          setArticles(data)
+        }
+        
+        // Clear cache
+        clearArticlesCache()
+      } else {
+        toast.error(result.error || 'Failed to fix article formatting')
+      }
+    } catch (error) {
+      console.error('Error fixing articles:', error)
+      toast.error('Failed to fix article formatting')
+    } finally {
+      setIsFixingArticles(false)
+    }
+  }
+
   // Handle Google Ads campaign generation
   const handleGenerateGoogleAds = async (article: Article) => {
     if (!article.id) return
@@ -306,35 +359,78 @@ Next Steps:
                 className="pl-10"
               />
             </div>
-            <Link href="/admin/articles/new">
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                New Article
+            <div className="flex gap-2">
+              <Button
+                onClick={handleFixArticleFormatting}
+                disabled={isFixingArticles}
+                variant="outline"
+                className="border-purple-200 hover:bg-purple-50 text-purple-700"
+              >
+                {isFixingArticles ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600 mr-2"></div>
+                    Fixing...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    Fix Formatting
+                  </>
+                )}
               </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Google Ads Info */}
-      <Card className="mb-6 border-red-100 bg-red-50">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <div className="text-red-600 text-xl">🎯</div>
-            <div>
-              <h3 className="font-semibold text-red-900 mb-1">Automated Google Ads Campaign Creator</h3>
-              <p className="text-sm text-red-700 mb-2">
-                Click the 🎯 button next to published articles to <strong>automatically create</strong> Google Ads campaigns in your account.
-              </p>
-              <div className="text-xs text-red-600 space-y-1">
-                <p><strong>✅ If API configured:</strong> Campaign created directly in your Google Ads account (PAUSED for review)</p>
-                <p><strong>⚠️ If API unavailable:</strong> Campaign data copied to clipboard for manual creation</p>
-                <p>Requires Google Ads API credentials in Vercel environment variables</p>
-              </div>
+              <Link href="/admin/articles/new">
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Article
+                </Button>
+              </Link>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Info Cards */}
+      <div className="grid gap-4 md:grid-cols-2 mb-6">
+        {/* Fix Formatting Info */}
+        <Card className="border-purple-100 bg-purple-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="text-purple-600 text-xl">✨</div>
+              <div>
+                <h3 className="font-semibold text-purple-900 mb-1">Fix Article Formatting</h3>
+                <p className="text-sm text-purple-700 mb-2">
+                  Click the <strong>Fix Formatting</strong> button to automatically fix markdown formatting issues in all articles.
+                </p>
+                <div className="text-xs text-purple-600 space-y-1">
+                  <p>• Converts markdown headers to proper HTML</p>
+                  <p>• Updates images with original URLs from CSV</p>
+                  <p>• Fixes lists and text styling</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Google Ads Info */}
+        <Card className="border-red-100 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="text-red-600 text-xl">🎯</div>
+              <div>
+                <h3 className="font-semibold text-red-900 mb-1">Automated Google Ads Campaign Creator</h3>
+                <p className="text-sm text-red-700 mb-2">
+                  Click the 🎯 button next to published articles to <strong>automatically create</strong> Google Ads campaigns in your account.
+                </p>
+                <div className="text-xs text-red-600 space-y-1">
+                  <p><strong>✅ If API configured:</strong> Campaign created directly in your Google Ads account (PAUSED for review)</p>
+                  <p><strong>⚠️ If API unavailable:</strong> Campaign data copied to clipboard for manual creation</p>
+                  <p>Requires Google Ads API credentials in Vercel environment variables</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Articles Table */}
       <Card>
