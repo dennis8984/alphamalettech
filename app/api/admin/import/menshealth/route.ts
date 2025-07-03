@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
             addInternalLinks: true,
             articleSlug: generateSlug(scrapedData.title),
             category: category,
-            useClaude: true  // Use Claude AI
+            useOpenAI: true  // Use OpenAI GPT-4
           }
         )
         
