@@ -19,7 +19,7 @@ This script fixes the markdown formatting issues in articles that were imported 
 
 2. Run the formatting fix script:
    ```bash
-   npm run tsx scripts/fix-article-formatting.ts
+   npm run tsx tools/fix-article-formatting.ts
    ```
 
 3. The script will:
