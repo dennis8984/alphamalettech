@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
-import { createClient } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase-client'
 
 export default function ArticlesPage() {
   const router = useRouter()
@@ -195,7 +195,6 @@ export default function ArticlesPage() {
     setIsFixingArticles(true)
     
     try {
-      const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session?.access_token) {
