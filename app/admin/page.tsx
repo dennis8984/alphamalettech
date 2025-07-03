@@ -274,6 +274,27 @@ export default function AdminDashboard() {
               </CardContent>
             </Link>
           </Card>
+
+          {/* Men's Health Import */}
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <Link href="/admin/import-menshealth">
+              <CardHeader className="text-center">
+                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <FileText className="h-6 w-6 text-red-600" />
+                </div>
+                <CardTitle>Men's Health Import</CardTitle>
+                <CardDescription>
+                  Import and enhance articles from Men's Health with AI rewriting
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full" variant="outline">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Import from Men's Health
+                </Button>
+              </CardContent>
+            </Link>
+          </Card>
         </div>
 
         {/* Marketing Tools Section */}
