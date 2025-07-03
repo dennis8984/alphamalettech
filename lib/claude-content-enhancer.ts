@@ -133,9 +133,9 @@ Focus on:
 4) Maintaining factual accuracy
 5) Creating engaging, reader-friendly content
 6) Preserving the key health and fitness information
-7) IMPORTANT: The rewritten article must be approximately the same length as the original (${content.split(' ').length} words)
+7) CRITICAL: You MUST write a COMPLETE article that is AT LEAST as long as the original (minimum ${content.split(' ').length} words). Do NOT truncate or shorten the content
 8) If you find images in HTML comments <!-- AVAILABLE IMAGES: -->, place them strategically AFTER relevant headers/sections throughout the article
-9) Replace any mentions of "Men's Health" with "Men's Hub"
+9) Replace any mentions of "Men's Health" with "Men's Hub" and any "menshealth.com" with "menshb.com"
 10) Do NOT place all images at the beginning - distribute them throughout the article
 
 Article Information:
@@ -151,16 +151,22 @@ CRITICAL INSTRUCTIONS:
 - Do NOT include any meta-commentary like "Here is the rewritten article" or "I've added headings"
 - Return ONLY valid JSON
 - The content field should contain ONLY the article content, no explanations
-- Maintain the full length of the original article
+- MANDATORY: Write the COMPLETE article with AT LEAST ${content.split(' ').length} words
+- Do NOT truncate, summarize, or shorten the content
+- Include ALL information from the original article, expanded and rewritten
 - Place images AFTER their related headers/sections, not all at the beginning
-- End the article with a <h2>Conclusion</h2> section summarizing key points
-- After the conclusion, add an <h2>Frequently Asked Questions</h2> section with 5 relevant Q&As in this format:
-  <h3>Question here?</h3>
-  <p>Answer here...</p>
+- MANDATORY: End EVERY article with a <h2>Conclusion</h2> section (200+ words) summarizing all key points
+- MANDATORY: After the conclusion, add an <h2>Frequently Asked Questions</h2> section with EXACTLY 5 Q&As
+- Each FAQ must follow this exact format:
+  <h3>1. Question about [topic]?</h3>
+  <p>Detailed answer of at least 100 words...</p>
+  <h3>2. Question about [topic]?</h3>
+  <p>Detailed answer of at least 100 words...</p>
+  (Continue for all 5 questions)
 
 Return your response as valid JSON with exactly these three fields:
 - "title": The rewritten article title (make it compelling and SEO-friendly)
-- "content": The rewritten article content (in HTML format with <p>, <h2>, <h3> tags for structure, ending with Conclusion and FAQ sections)
+- "content": The COMPLETE rewritten article (minimum ${content.split(' ').length} words) in HTML format with <p>, <h2>, <h3> tags, MUST end with Conclusion and FAQ sections
 - "meta_description": A 150-160 character meta description based on the rewritten content`
 
     try {

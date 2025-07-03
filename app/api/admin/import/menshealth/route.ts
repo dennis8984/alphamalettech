@@ -250,7 +250,7 @@ async function scrapeArticleWithFirecrawl(url: string): Promise<FirecrawlArticle
           // Keep the HTML structure but clean the content
           return element
             .replace(/Men's Health/gi, "Men's Hub")
-            .replace(/menshealth\.com/gi, "menshub.com")
+            .replace(/menshealth\.com/gi, "menshb.com")
         })
         .filter(element => {
           const text = element.replace(/<[^>]+>/g, '').trim()
