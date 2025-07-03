@@ -166,7 +166,7 @@ export default function ImportMensHealthPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [progress, setProgress] = useState<{[key: string]: number}>({})
   const [loadingSitemap, setLoadingSitemap] = useState(false)
-  const [dynamicCategories, setDynamicCategories] = useState<any>(null)
+  const [dynamicCategories, setDynamicCategories] = useState<typeof MENSHEALTH_CATEGORIES | null>(null)
 
   const toggleCategory = (category: string) => {
     setSelectedCategories(prev => 
