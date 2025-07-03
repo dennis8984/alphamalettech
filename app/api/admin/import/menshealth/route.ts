@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
         successCount++
         
         // Longer delay between articles to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 5000))
+        await new Promise(resolve => setTimeout(resolve, 8000)) // 8 seconds between articles
         
       } catch (error) {
         console.error(`❌ Failed to process ${url}:`, error)
@@ -153,7 +153,12 @@ async function scrapeArticleWithFirecrawl(url: string): Promise<FirecrawlArticle
     // Fetch the article HTML
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1'
       }
     })
     
@@ -194,11 +199,16 @@ async function scrapeArticleWithFirecrawl(url: string): Promise<FirecrawlArticle
     
     // Try multiple content selectors to get full HTML content
     const contentPatterns = [
-      /<div[^>]*class="[^"]*article-body[^"]*"[^>]*>([\s\S]*?)<\/div>(?=<div|<footer|<aside|$)/i,
-      /<div[^>]*class="[^"]*body-content[^"]*"[^>]*>([\s\S]*?)<\/div>(?=<div|<footer|<aside|$)/i,
-      /<div[^>]*data-journey-content[^>]*>([\s\S]*?)<\/div>(?=<div|<footer|<aside|$)/i,
-      /<div[^>]*class="[^"]*content-body[^"]*"[^>]*>([\s\S]*?)<\/div>(?=<div|<footer|<aside|$)/i,
-      /<article[^>]*>([\s\S]*?)<\/article>/i
+      // Men's Health specific patterns
+      /<div[^>]*class="[^"]*article-body-content[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/i,
+      /<div[^>]*class="[^"]*body-text[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]*class="[^"]*(?:advertisement|related|sidebar))/i,
+      /<div[^>]*data-node-id="[^"]*article-body[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      /<div[^>]*class="[^"]*content__body[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      /<div[^>]*class="[^"]*article__body[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      /<div[^>]*itemprop="articleBody"[^>]*>([\s\S]*?)<\/div>/i,
+      // Generic patterns
+      /<article[^>]*>([\s\S]*?)<\/article>/i,
+      /<main[^>]*>([\s\S]*?)<\/main>/i
     ]
     
     for (const pattern of contentPatterns) {
@@ -211,17 +221,29 @@ async function scrapeArticleWithFirecrawl(url: string): Promise<FirecrawlArticle
     
     // If no content found with specific selectors, try a more comprehensive approach
     if (!contentHtml) {
-      // Look for content between h1 and common footer/sidebar elements
-      const contentMatch = html.match(/<h1[^>]*>[\s\S]*?<\/h1>([\s\S]*?)(?:<footer|<aside|<div[^>]*class="[^"]*sidebar|<div[^>]*class="[^"]*related)/i)
-      if (contentMatch) {
-        contentHtml = contentMatch[1]
+      // Try to find content blocks with specific data attributes
+      const dataContentMatch = html.match(/<div[^>]*data-embed="body"[^>]*>([\s\S]*?)<\/div>\s*<div/i)
+      if (dataContentMatch) {
+        contentHtml = dataContentMatch[1]
+      } else {
+        // Look for content between h1 and common footer/sidebar elements
+        const contentMatch = html.match(/<h1[^>]*>[\s\S]*?<\/h1>([\s\S]*?)(?:<footer|<aside|<div[^>]*class="[^"]*sidebar|<div[^>]*class="[^"]*related|<div[^>]*class="[^"]*comments)/i)
+        if (contentMatch) {
+          contentHtml = contentMatch[1]
+        }
       }
     }
     
     // Extract paragraphs and other content elements while preserving structure
     if (contentHtml) {
+      // First, remove script tags and their content
+      contentHtml = contentHtml.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      
+      // Remove style tags
+      contentHtml = contentHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      
       // Extract all text content including paragraphs, headers, lists
-      const textElements = contentHtml.match(/<(p|h[2-6]|li)[^>]*>([\s\S]*?)<\/\1>/gi) || []
+      const textElements = contentHtml.match(/<(p|h[2-6]|ul|ol|blockquote)[^>]*>([\s\S]*?)<\/\1>/gi) || []
       
       const cleanedElements = textElements
         .map(element => {
@@ -236,14 +258,32 @@ async function scrapeArticleWithFirecrawl(url: string): Promise<FirecrawlArticle
                  !text.includes('Advertisement') && 
                  !text.includes('Subscribe to') &&
                  !text.includes('Sign up for') &&
-                 !text.includes('Newsletter')
+                 !text.includes('Newsletter') &&
+                 !text.includes('View full post on') &&
+                 !text.includes('This content is imported')
         })
       
       content = cleanedElements.join('\n\n')
     }
     
-    // If still no content, extract all paragraphs from body
+    // If still no content, try JSON-LD structured data
     if (!content || content.length < 500) {
+      const jsonLdMatch = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i)
+      if (jsonLdMatch) {
+        try {
+          const jsonData = JSON.parse(jsonLdMatch[1])
+          if (jsonData.articleBody) {
+            content = jsonData.articleBody.replace(/Men's Health/gi, "Men's Hub")
+          }
+        } catch (e) {
+          console.log('Failed to parse JSON-LD')
+        }
+      }
+    }
+    
+    // Final fallback: extract all paragraphs from body
+    if (!content || content.length < 500) {
+      console.log('⚠️ Using fallback paragraph extraction for:', url)
       const allParagraphs = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || []
       const cleanParagraphs = allParagraphs
         .map(p => p.replace(/Men's Health/gi, "Men's Hub"))
@@ -253,10 +293,12 @@ async function scrapeArticleWithFirecrawl(url: string): Promise<FirecrawlArticle
                  !text.includes('Advertisement') && 
                  !text.includes('Subscribe') &&
                  !text.includes('cookie') &&
-                 !text.includes('privacy policy')
+                 !text.includes('privacy policy') &&
+                 !text.includes('Terms of Use') &&
+                 !text.includes('Privacy Policy')
         })
       
-      content = cleanParagraphs.join('\n\n')
+      content = cleanParagraphs.slice(0, 30).join('\n\n') // Limit to first 30 paragraphs
     }
     
     // Extract excerpt (first paragraph or meta description)
@@ -276,10 +318,22 @@ async function scrapeArticleWithFirecrawl(url: string): Promise<FirecrawlArticle
     let author = authorMatch ? authorMatch[1].trim() : 'Men\'s Hub Editorial Team'
     author = author.replace(/Men's Health/gi, "Men's Hub")
     
+    // Log extraction results for debugging
+    console.log(`📊 Extraction results for ${url}:`)
+    console.log(`  - Title: ${title}`)
+    console.log(`  - Content length: ${content.length} chars`)
+    console.log(`  - Images found: ${allImages.length}`)
+    console.log(`  - Author: ${author}`)
+    
+    if (!content || content.length < 100) {
+      console.error(`❌ Failed to extract sufficient content from ${url}`)
+      return null
+    }
+    
     return {
       url,
       title,
-      content: content || 'Unable to extract article content',
+      content: content,
       excerpt,
       author,
       publishDate: new Date().toISOString(),
