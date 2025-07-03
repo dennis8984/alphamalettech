@@ -64,14 +64,18 @@ export default function DynamicLanding() {
   useEffect(() => {
     // Track landing page visit
     if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', 'page_view', {
-        page_title: 'Dynamic Landing Page',
-        page_location: window.location.href,
-        utm_source: utmSource,
-        utm_medium: utmMedium,
-        utm_campaign: utmCampaign,
-        keyword: keyword || 'direct'
-      })
+      try {
+        window.gtag('event', 'page_view', {
+          page_title: 'Dynamic Landing Page',
+          page_location: window.location.href,
+          utm_source: utmSource,
+          utm_medium: utmMedium,
+          utm_campaign: utmCampaign,
+          keyword: keyword || 'direct'
+        })
+      } catch (error) {
+        console.log('Google Analytics not available')
+      }
     }
     
     // Determine best destination
