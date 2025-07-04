@@ -331,7 +331,7 @@ export class SocialPostQueue {
       .from('social_post_queue')
       .select('status')
 
-    const statusCounts = stats?.reduce((acc: any, item) => {
+    const statusCounts = stats?.reduce((acc: any, item: any) => {
       acc[item.status] = (acc[item.status] || 0) + 1
       return acc
     }, {}) || {}

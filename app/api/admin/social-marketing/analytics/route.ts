@@ -101,7 +101,7 @@ function calculateAnalytics(posts: any[], metric?: string | null) {
   // Category performance
   const categoryStats: Record<string, any> = {}
 
-  posts.forEach(post => {
+  posts.forEach((post: any) => {
     // Aggregate engagement
     const clicks = post.clicks?.[0]?.count || 0
     const engagement = post.engagement?.[0] || {}
@@ -159,8 +159,8 @@ function calculateAnalytics(posts: any[], metric?: string | null) {
 
   // Best performing posts
   const topPosts = posts
-    .filter(p => p.status === 'posted')
-    .map(post => ({
+    .filter((p: any) => p.status === 'posted')
+    .map((post: any) => ({
       id: post.id,
       title: post.article?.title || 'Unknown',
       platform: post.platform,
@@ -171,7 +171,7 @@ function calculateAnalytics(posts: any[], metric?: string | null) {
       ctr: post.clicks?.[0]?.count || 0,
       posted_at: post.posted_at
     }))
-    .sort((a, b) => {
+    .sort((a: any, b: any) => {
       if (metric === 'clicks') return b.clicks - a.clicks
       if (metric === 'engagement') return b.engagement - a.engagement
       return b.ctr - a.ctr

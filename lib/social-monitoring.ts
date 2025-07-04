@@ -343,7 +343,7 @@ export class SocialMonitoring {
   private calculateEngagementAverage(posts: any[]): number {
     if (posts.length === 0) return 0
     
-    const total = posts.reduce((sum, post) => {
+    const total = posts.reduce((sum: number, post: any) => {
       return sum + (post.likes || 0) + (post.shares || 0) + (post.comments || 0)
     }, 0)
 
