@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
 /**
  * Get platform-specific analytics
  */
-export async function getPlatformAnalytics(platform: string) {
+async function getPlatformAnalytics(platform: string) {
   const { data: posts, error } = await supabase
     .from('social_posts')
     .select(`

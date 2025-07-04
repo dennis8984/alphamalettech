@@ -409,7 +409,7 @@ export class SocialMonitoring {
 }
 
 // Create monitoring alerts table
-export const createMonitoringTable = `
+const createMonitoringTable = `
 CREATE TABLE IF NOT EXISTS social_monitoring_alerts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   type VARCHAR(20) NOT NULL,
@@ -438,8 +438,8 @@ export function getSocialMonitoring(): SocialMonitoring {
   return monitoringInstance
 }
 
-// Start monitoring in production
-if (process.env.NODE_ENV === 'production') {
+// Start monitoring in production and on server
+if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
   const monitoring = getSocialMonitoring()
   monitoring.startMonitoring(10) // Check every 10 minutes
 }

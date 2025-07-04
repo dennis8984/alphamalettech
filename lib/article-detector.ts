@@ -384,8 +384,8 @@ export function getArticleDetector(): ArticleDetector {
   return detectorInstance
 }
 
-// Start detector on module load if in production
-if (process.env.NODE_ENV === 'production') {
+// Start detector on module load if in production and on server
+if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
   const detector = getArticleDetector()
   detector.startMonitoring(5) // Check every 5 minutes
 }

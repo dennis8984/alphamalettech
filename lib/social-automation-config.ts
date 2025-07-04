@@ -339,8 +339,8 @@ export async function getActiveAutomationRules(): Promise<AutomationRule[]> {
   return config.getActiveRules()
 }
 
-// Initialize default rules on first run
-if (process.env.NODE_ENV === 'production') {
+// Initialize default rules on first run and on server
+if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
   const config = getAutomationConfig()
   config.initializeDefaultRules()
 }

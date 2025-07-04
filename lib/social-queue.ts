@@ -383,8 +383,8 @@ export async function addToSocialQueue(data: {
   }
 }
 
-// Start queue processor if in production
-if (process.env.NODE_ENV === 'production') {
+// Start queue processor if in production and on server
+if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
   const queue = getSocialQueue()
   queue.startProcessing(60) // Process every minute
 }

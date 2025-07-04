@@ -7,7 +7,12 @@ interface RedditCredentials {
   user_agent: string
 }
 
-interface RedditPost extends SocialPost {
+interface RedditPost {
+  platform: string
+  content: string
+  media_url?: string
+  link?: string
+  hashtags?: string[]
   subreddit?: string
   flair_id?: string
 }
@@ -67,11 +72,12 @@ export class RedditAPI extends SocialMediaAPI {
   /**
    * Post to Reddit
    */
-  async post(content: RedditPost): Promise<PostResult> {
+  async post(content: SocialPost): Promise<PostResult> {
+    const redditContent = content as RedditPost
     try {
       const accessToken = await this.getAccessToken()
       
-      const subreddit = content.subreddit || 'test' // Default to test subreddit
+      const subreddit = redditContent.subreddit || 'test' // Default to test subreddit
       
       // Reddit requires kind (link or self)
       const kind = content.link ? 'link' : 'self'
@@ -82,7 +88,7 @@ export class RedditAPI extends SocialMediaAPI {
         sr: subreddit,
         title: content.content, // Reddit uses title for the main text
         ...(kind === 'link' ? { url: content.link } : { text: '' }),
-        ...(content.flair_id ? { flair_id: content.flair_id } : {})
+        ...(redditContent.flair_id ? { flair_id: redditContent.flair_id } : {})
       })
 
       const response = await fetch(`${this.baseUrl}/api/submit`, {
