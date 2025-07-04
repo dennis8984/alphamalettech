@@ -107,8 +107,8 @@ IMPORTANT: Output clean content without any markdown symbols. Use proper HTML ta
       processedContent = convertMarkdownToHtml(processedContent);
       
       // Add academic links
-      const academicLinks = await generateAcademicLinks(processedTitle, processedContent);
-      processedContent = addInlineAcademicLinks(processedContent, academicLinks, primaryKeyword);
+      processedContent = addInlineAcademicLinks(processedContent);
+      processedContent = generateAcademicLinks(processedContent, primaryKeyword);
       
       // Generate images if requested
       let generatedImages: { description: string, url: string }[] = [];
