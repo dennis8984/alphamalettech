@@ -17,7 +17,8 @@ import {
   Link2, 
   Upload,
   PlusCircle,
-  BarChart3
+  BarChart3,
+  Share2
 } from 'lucide-react'
 import { getCurrentUser, signOut } from '@/lib/supabase-client'
 
@@ -291,6 +292,27 @@ export default function AdminDashboard() {
                 <Button className="w-full" variant="outline">
                   <FileText className="mr-2 h-4 w-4" />
                   Import from Men's Health
+                </Button>
+              </CardContent>
+            </Link>
+          </Card>
+
+          {/* Social Media Marketing */}
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <Link href="/admin/social-marketing">
+              <CardHeader className="text-center">
+                <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <Share2 className="h-6 w-6 text-indigo-600" />
+                </div>
+                <CardTitle>Social Media Marketing</CardTitle>
+                <CardDescription>
+                  Automated social media posting with analytics and engagement tracking
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full" variant="outline">
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Manage Social Media
                 </Button>
               </CardContent>
             </Link>
