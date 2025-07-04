@@ -79,7 +79,7 @@ export function convertMarkdownToHtml(markdown: string): string {
       return `<div class="bg-red-50 border-l-4 border-red-600 p-6 mb-8 rounded-r-lg">
   <h3 class="text-lg font-bold text-red-900 mb-4">Quick Takeaways</h3>
   <ul class="space-y-3 text-red-800">
-${takeaways.map(takeaway => `    <li class="flex items-start"><span class="text-red-600 font-bold mr-3">•</span><span class="leading-relaxed">${takeaway}</span></li>`).join('\n')}
+${takeaways.map((takeaway: string) => `    <li class="flex items-start"><span class="text-red-600 font-bold mr-3">•</span><span class="leading-relaxed">${takeaway}</span></li>`).join('\n')}
   </ul>
 </div>`;
     }
@@ -104,7 +104,7 @@ ${takeaways.map(takeaway => `    <li class="flex items-start"><span class="text-
   });
   
   // Convert paragraphs (lines not already tagged)
-  html = html.split('\n\n').map(para => {
+  html = html.split('\n\n').map((para: string) => {
     const trimmed = para.trim();
     if (trimmed && 
         !trimmed.includes('<h') && 
