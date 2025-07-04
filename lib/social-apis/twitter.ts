@@ -1,5 +1,4 @@
 import { SocialMediaAPI, SocialPost, PostResult, EngagementMetrics } from './base'
-import crypto from 'crypto'
 
 interface TwitterCredentials {
   api_key: string
@@ -16,52 +15,12 @@ export class TwitterAPI extends SocialMediaAPI {
   }
 
   /**
-   * Create OAuth 1.0a signature
+   * Create OAuth Bearer Token header
+   * Note: Twitter API v2 uses OAuth 2.0 Bearer Token, not OAuth 1.0a
    */
-  private createOAuthSignature(
-    method: string,
-    url: string,
-    params: Record<string, string>
-  ): string {
-    const { api_key, api_secret, access_token, access_token_secret } = this.credentials
-    
-    // OAuth parameters
-    const oauthParams = {
-      oauth_consumer_key: api_key,
-      oauth_nonce: crypto.randomBytes(32).toString('base64'),
-      oauth_signature_method: 'HMAC-SHA1',
-      oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
-      oauth_token: access_token,
-      oauth_version: '1.0'
-    }
-
-    // Combine all parameters
-    const allParams = { ...params, ...oauthParams }
-    
-    // Sort parameters
-    const sortedParams = Object.keys(allParams)
-      .sort()
-      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(allParams[key])}`)
-      .join('&')
-
-    // Create signature base string
-    const signatureBase = `${method}&${encodeURIComponent(url)}&${encodeURIComponent(sortedParams)}`
-    
-    // Create signing key
-    const signingKey = `${encodeURIComponent(api_secret)}&${encodeURIComponent(access_token_secret)}`
-    
-    // Generate signature
-    const signature = crypto
-      .createHmac('sha1', signingKey)
-      .update(signatureBase)
-      .digest('base64')
-
-    // Create Authorization header
-    const authHeader = 'OAuth ' + Object.keys(oauthParams)
-      .map(key => `${key}="${encodeURIComponent(oauthParams[key])}"`)
-      .join(', ') + `, oauth_signature="${encodeURIComponent(signature)}"`
-
-    return authHeader
+  private createAuthHeader(): string {
+    // For Twitter API v2, we use Bearer token authentication
+    return `Bearer ${this.credentials.access_token}`
   }
 
   /**
@@ -90,7 +49,7 @@ export class TwitterAPI extends SocialMediaAPI {
       const response = await fetch(`${this.baseUrl}/tweets`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.credentials.access_token}`,
+          'Authorization': this.createAuthHeader(),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(tweet)
@@ -118,35 +77,14 @@ export class TwitterAPI extends SocialMediaAPI {
 
   /**
    * Upload media to Twitter
+   * Note: Media upload requires additional setup with Twitter API v1.1
    */
   private async uploadMedia(mediaUrl: string): Promise<string | null> {
     try {
-      // Download image
-      const imageResponse = await fetch(mediaUrl)
-      const imageBuffer = await imageResponse.arrayBuffer()
-      const base64Image = Buffer.from(imageBuffer).toString('base64')
-
-      // Upload to Twitter (v1.1 API for media upload)
-      const uploadUrl = 'https://upload.twitter.com/1.1/media/upload.json'
-      
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': this.createOAuthSignature('POST', uploadUrl, {
-            media_data: base64Image
-          }),
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `media_data=${encodeURIComponent(base64Image)}`
-      })
-
-      if (!response.ok) {
-        console.error('Failed to upload media to Twitter')
-        return null
-      }
-
-      const result = await response.json()
-      return result.media_id_string
+      // For now, we'll skip media uploads
+      // Twitter will automatically create a preview from the link
+      console.log('Media upload not implemented for Twitter')
+      return null
     } catch (error) {
       console.error('Twitter media upload error:', error)
       return null
@@ -161,7 +99,7 @@ export class TwitterAPI extends SocialMediaAPI {
       const response = await fetch(`${this.baseUrl}/tweets/${postId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${this.credentials.access_token}`,
+          'Authorization': this.createAuthHeader(),
         }
       })
 
@@ -182,7 +120,7 @@ export class TwitterAPI extends SocialMediaAPI {
         `${this.baseUrl}/tweets/${postId}?tweet.fields=${fields}`,
         {
           headers: {
-            'Authorization': `Bearer ${this.credentials.access_token}`,
+            'Authorization': this.createAuthHeader(),
           }
         }
       )
@@ -219,7 +157,7 @@ export class TwitterAPI extends SocialMediaAPI {
     try {
       const response = await fetch(`${this.baseUrl}/users/me`, {
         headers: {
-          'Authorization': `Bearer ${this.credentials.access_token}`,
+          'Authorization': this.createAuthHeader(),
         }
       })
 
@@ -237,7 +175,7 @@ export class TwitterAPI extends SocialMediaAPI {
     try {
       const response = await fetch(`${this.baseUrl}/users/me`, {
         headers: {
-          'Authorization': `Bearer ${this.credentials.access_token}`,
+          'Authorization': this.createAuthHeader(),
         }
       })
 

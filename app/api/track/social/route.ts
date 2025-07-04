@@ -137,9 +137,9 @@ export async function POST(request: NextRequest) {
 
 /**
  * Get click analytics
- * GET /api/track/social/analytics?post_id=xxx
+ * Internal function - not exported as route handler
  */
-export async function getAnalytics(postId: string) {
+async function getAnalytics(postId: string) {
   try {
     // Get total clicks
     const { count: totalClicks } = await supabase
