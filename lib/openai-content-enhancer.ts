@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { convertMarkdownToHtml } from './markdown-to-html';
 
 interface ContentEnhancementOptions {
   rewriteForOriginality?: boolean
@@ -65,6 +66,7 @@ FORMATTING:
 - Use **bold** for emphasis
 - Use bullet points with - or * 
 - Add image placeholders: ![DALL-E: Detailed description of what the image should show]
+- If original images are provided in HTML comments, distribute them throughout the article
 
 Remember: The content should be completely rewritten to pass Copyscape and provide unique value.`;
 
@@ -111,6 +113,9 @@ Please provide:
       // Parse the response to extract title, content, and meta description
       const parsedContent = this.parseAIResponse(response);
       
+      // Extract original images from the content if present
+      const originalImages = this.extractOriginalImages(content);
+      
       // Generate images with DALL-E 3 if enabled
       let generatedImages: { description: string, url: string }[] = [];
       if (options.generateImages) {
@@ -123,9 +128,19 @@ Please provide:
         parsedContent.content = this.enhanceImageDescriptions(parsedContent.content, primaryKeyword);
       }
       
+      // Distribute original images throughout the content
+      if (originalImages.length > 0) {
+        console.log(`📸 Distributing ${originalImages.length} original images throughout the article...`);
+        parsedContent.content = this.distributeOriginalImages(parsedContent.content, originalImages, primaryKeyword);
+      }
+      
+      // Convert markdown to HTML
+      console.log('📝 Converting markdown to HTML...');
+      const htmlContent = convertMarkdownToHtml(parsedContent.content);
+      
       return {
         title: parsedContent.title,
-        content: parsedContent.content,
+        content: htmlContent,
         metaDescription: parsedContent.metaDescription,
         warnings: [],
         generatedImages: generatedImages.length > 0 ? generatedImages : undefined
@@ -325,5 +340,68 @@ Please provide:
     // Fallback: Create from title
     const primaryKeyword = this.extractPrimaryKeyword(title);
     return `Discover proven ${primaryKeyword} strategies and expert tips. Get science-backed advice for real results.`.substring(0, 160);
+  }
+  
+  private extractOriginalImages(content: string): string[] {
+    const images: string[] = [];
+    
+    // Extract images from HTML comments
+    const commentMatch = content.match(/<!-- AVAILABLE IMAGES:([\s\S]*?)-->/);
+    if (commentMatch) {
+      const imgMatches = commentMatch[1].matchAll(/<img[^>]*src="([^"]+)"[^>]*>/g);
+      for (const match of imgMatches) {
+        if (match[1] && match[1].startsWith('http')) {
+          images.push(match[1]);
+        }
+      }
+    }
+    
+    return images;
+  }
+  
+  private distributeOriginalImages(content: string, images: string[], primaryKeyword: string): string {
+    if (images.length === 0) return content;
+    
+    // Split content into sections by headings
+    const sections = content.split(/(?=####)/);
+    
+    // Calculate how many images to place
+    const imageInterval = Math.max(2, Math.floor(sections.length / images.length));
+    let imageIndex = 0;
+    
+    // Add images after certain sections
+    const updatedSections = sections.map((section, index) => {
+      // Add image after every few sections (but not after the first or last)
+      if (index > 0 && index < sections.length - 1 && index % imageInterval === 0 && imageIndex < images.length) {
+        const imageUrl = images[imageIndex];
+        imageIndex++;
+        
+        // Add the image at the end of the section
+        return section + `\n\n![${primaryKeyword} - Professional demonstration](${imageUrl})\n\n`;
+      }
+      return section;
+    });
+    
+    // If we still have images left, add them throughout the content
+    if (imageIndex < images.length) {
+      // Find good positions to insert remaining images (after paragraphs)
+      let finalContent = updatedSections.join('');
+      const remainingImages = images.slice(imageIndex);
+      
+      // Insert remaining images after substantial paragraphs
+      const paragraphs = finalContent.split('\n\n');
+      const paragraphInterval = Math.max(3, Math.floor(paragraphs.length / remainingImages.length));
+      
+      for (let i = 0; i < remainingImages.length && i * paragraphInterval < paragraphs.length; i++) {
+        const insertIndex = (i + 1) * paragraphInterval;
+        if (insertIndex < paragraphs.length - 1) {
+          paragraphs[insertIndex] += `\n\n![${primaryKeyword} technique demonstration](${remainingImages[i]})`;
+        }
+      }
+      
+      return paragraphs.join('\n\n');
+    }
+    
+    return updatedSections.join('');
   }
 }
