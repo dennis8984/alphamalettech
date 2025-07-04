@@ -228,26 +228,8 @@ export function OpenWebComments({ articleId, articleTitle, articleUrl }: Comment
               `).join('')}
 
               ${comments.length === 0 ? `
-                <div class="bg-white p-4 rounded-lg border border-gray-200">
-                  <div class="flex items-center mb-3">
-                    <div class="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold">
-                      FJ
-                    </div>
-                    <div class="ml-3">
-                      <div class="font-semibold text-gray-900">FitnessJoe92</div>
-                      <div class="text-sm text-gray-500">2 hours ago</div>
-                    </div>
-                  </div>
-                  <p class="text-gray-700 leading-relaxed">
-                    Excellent breakdown of the exercises! I've been doing planks wrong for years. 
-                    The form tips in this article really helped me understand proper technique. 💪
-                  </p>
-                  <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                    <button class="flex items-center hover:text-red-600 transition-colors like-btn">
-                      <span class="mr-1">👍</span> 12
-                    </button>
-                    <button class="hover:text-red-600 transition-colors reply-btn">Reply</button>
-                  </div>
+                <div class="text-center py-8 text-gray-500">
+                  <p>No comments yet. Be the first to share your thoughts!</p>
                 </div>
               ` : ''}
             </div>

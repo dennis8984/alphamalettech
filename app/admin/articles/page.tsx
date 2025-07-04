@@ -36,6 +36,7 @@ export default function ArticlesPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [generatingAds, setGeneratingAds] = useState<string | null>(null)
   const [isFixingArticles, setIsFixingArticles] = useState(false)
+  const [isFixingTitles, setIsFixingTitles] = useState(false)
 
   // Load articles
   useEffect(() => {
@@ -240,6 +241,54 @@ export default function ArticlesPage() {
     }
   }
 
+  // Handle fix article titles
+  const handleFixArticleTitles = async () => {
+    setIsFixingTitles(true)
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        toast.error('Not authenticated')
+        return
+      }
+      
+      const response = await fetch('/api/admin/fix-article-titles', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok) {
+        if (result.fixedCount > 0) {
+          toast.success(`✅ Fixed titles for ${result.fixedCount} articles!`)
+        } else {
+          toast.info('All article titles are already properly formatted')
+        }
+        
+        // Reload articles to show updated titles
+        const { data } = await getAllArticles()
+        if (data) {
+          setArticles(data)
+        }
+        
+        // Clear cache
+        clearArticlesCache()
+      } else {
+        toast.error(result.error || 'Failed to fix article titles')
+      }
+    } catch (error) {
+      console.error('Error fixing titles:', error)
+      toast.error('Failed to fix article titles')
+    } finally {
+      setIsFixingTitles(false)
+    }
+  }
+
   // Handle Google Ads campaign generation
   const handleGenerateGoogleAds = async (article: Article) => {
     if (!article.id) return
@@ -377,6 +426,24 @@ Next Steps:
                   </>
                 )}
               </Button>
+              <Button
+                onClick={handleFixArticleTitles}
+                disabled={isFixingTitles}
+                variant="outline"
+                className="border-blue-200 hover:bg-blue-50 text-blue-700"
+              >
+                {isFixingTitles ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    Fixing...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    Fix Titles
+                  </>
+                )}
+              </Button>
               <Link href="/admin/articles/new">
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />
@@ -389,7 +456,7 @@ Next Steps:
       </Card>
 
       {/* Info Cards */}
-      <div className="grid gap-4 md:grid-cols-2 mb-6">
+      <div className="grid gap-4 md:grid-cols-3 mb-6">
         {/* Fix Formatting Info */}
         <Card className="border-purple-100 bg-purple-50">
           <CardContent className="pt-6">
@@ -404,6 +471,26 @@ Next Steps:
                   <p>• Converts markdown headers to proper HTML</p>
                   <p>• Updates images with original URLs from CSV</p>
                   <p>• Fixes lists and text styling</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Fix Titles Info */}
+        <Card className="border-blue-100 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="text-blue-600 text-xl">🏷️</div>
+              <div>
+                <h3 className="font-semibold text-blue-900 mb-1">Fix Article Titles</h3>
+                <p className="text-sm text-blue-700 mb-2">
+                  Click the <strong>Fix Titles</strong> button to clean up article titles that have "Title:" prefix.
+                </p>
+                <div className="text-xs text-blue-600 space-y-1">
+                  <p>• Removes "Title:" or "New Title:" prefixes</p>
+                  <p>• Updates article slugs if needed</p>
+                  <p>• Cleans up formatting issues in titles</p>
                 </div>
               </div>
             </div>
