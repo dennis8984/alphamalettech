@@ -6,6 +6,7 @@ interface ContentEnhancementOptions {
   addHeadings?: boolean
   optimizeForSEO?: boolean
   primaryKeyword?: string
+  generateImages?: boolean
 }
 
 interface EnhancedContent {
@@ -13,6 +14,7 @@ interface EnhancedContent {
   content: string
   metaDescription: string
   warnings: string[]
+  generatedImages?: { description: string, url: string }[]
 }
 
 export class OpenAIContentEnhancer {
@@ -62,7 +64,7 @@ FORMATTING:
 - Use ### for subsection headers (H3)
 - Use **bold** for emphasis
 - Use bullet points with - or * 
-- Add image placeholders: ![AI Generated Image: Detailed description of what the image should show]
+- Add image placeholders: ![DALL-E: Detailed description of what the image should show]
 
 Remember: The content should be completely rewritten to pass Copyscape and provide unique value.`;
 
@@ -86,10 +88,10 @@ Please provide:
 3. A meta description (150-160 characters) that includes the primary keyword`;
 
     try {
-      console.log('🤖 Calling OpenAI GPT-4 for content enhancement...');
+      console.log('🤖 Calling OpenAI GPT-4o-mini for content enhancement...');
       
       const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4',
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
@@ -109,20 +111,106 @@ Please provide:
       // Parse the response to extract title, content, and meta description
       const parsedContent = this.parseAIResponse(response);
       
-      // Add detailed image descriptions
-      const contentWithDetailedImages = this.enhanceImageDescriptions(parsedContent.content, primaryKeyword);
+      // Generate images with DALL-E 3 if enabled
+      let generatedImages: { description: string, url: string }[] = [];
+      if (options.generateImages) {
+        console.log('🎨 Generating images with DALL-E 3...');
+        const contentWithImages = await this.generateDALLE3Images(parsedContent.content, primaryKeyword);
+        parsedContent.content = contentWithImages.content;
+        generatedImages = contentWithImages.images;
+      } else {
+        // Just enhance image descriptions without generating
+        parsedContent.content = this.enhanceImageDescriptions(parsedContent.content, primaryKeyword);
+      }
       
       return {
         title: parsedContent.title,
-        content: contentWithDetailedImages,
+        content: parsedContent.content,
         metaDescription: parsedContent.metaDescription,
-        warnings: []
+        warnings: [],
+        generatedImages: generatedImages.length > 0 ? generatedImages : undefined
       };
       
     } catch (error) {
       console.error('OpenAI enhancement error:', error);
       throw error;
     }
+  }
+  
+  private async generateDALLE3Images(content: string, primaryKeyword: string): Promise<{ content: string, images: { description: string, url: string }[] }> {
+    const images: { description: string, url: string }[] = [];
+    let updatedContent = content;
+    
+    // Find all image placeholders
+    const imagePlaceholders = content.match(/!\[DALL-E:([^\]]*)\]/g) || [];
+    
+    // Limit to 5 images per article to manage costs
+    const imagesToGenerate = imagePlaceholders.slice(0, 5);
+    
+    for (const placeholder of imagesToGenerate) {
+      const descriptionMatch = placeholder.match(/!\[DALL-E:([^\]]*)\]/);
+      if (!descriptionMatch) continue;
+      
+      const baseDescription = descriptionMatch[1].trim();
+      const enhancedPrompt = this.createDALLE3Prompt(baseDescription, primaryKeyword);
+      
+      try {
+        console.log(`🎨 Generating image: ${enhancedPrompt.substring(0, 60)}...`);
+        
+        const imageResponse = await this.openai!.images.generate({
+          model: "dall-e-3",
+          prompt: enhancedPrompt,
+          n: 1,
+          size: "1792x1024", // 16:9 aspect ratio for web
+          quality: "standard",
+          style: "natural"
+        });
+        
+        const imageUrl = imageResponse.data[0]?.url;
+        if (imageUrl) {
+          images.push({ description: baseDescription, url: imageUrl });
+          
+          // Replace placeholder with actual image
+          updatedContent = updatedContent.replace(
+            placeholder,
+            `![${baseDescription}](${imageUrl})`
+          );
+          
+          console.log('✅ Image generated successfully');
+        }
+        
+        // Add delay to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+      } catch (error) {
+        console.error('DALL-E 3 generation error:', error);
+        // Keep the placeholder if generation fails
+      }
+    }
+    
+    return { content: updatedContent, images };
+  }
+  
+  private createDALLE3Prompt(description: string, primaryKeyword: string): string {
+    // Enhance the prompt for DALL-E 3 with specific style guidelines
+    const styleGuide = "photorealistic, professional photography, high resolution, clean composition, natural lighting";
+    
+    // Add context based on the primary keyword
+    const contextMap: Record<string, string> = {
+      'fitness': 'modern gym environment, athletic wear, professional fitness photography',
+      'nutrition': 'fresh healthy food, clean kitchen or dining setting, appetizing food photography',
+      'health': 'medical or wellness setting, clean and professional, health-focused imagery',
+      'weight': 'fitness transformation, body composition, motivational fitness imagery',
+      'muscle': 'bodybuilding, strength training, muscular definition photography',
+      'exercise': 'active movement, proper form demonstration, dynamic sports photography',
+      'workout': 'gym training, exercise equipment, intense training photography',
+      'diet': 'healthy meals, portion control, nutritional food photography'
+    };
+    
+    const context = contextMap[primaryKeyword.toLowerCase()] || 'professional fitness and health imagery';
+    
+    // Build enhanced prompt
+    return `${description}, ${context}, ${styleGuide}, no text or logos in image`;
   }
   
   private extractPrimaryKeyword(title: string): string {
@@ -191,8 +279,8 @@ Please provide:
       `Modern home gym setup optimized for ${primaryKeyword} training, compact but complete equipment arrangement, natural lighting and motivational atmosphere`
     ];
     
-    // Replace generic image placeholders with detailed ones
-    return content.replace(/!\[AI Generated Image:([^\]]*)\]/g, (match, description) => {
+    // Replace generic image placeholders with detailed ones for DALL-E
+    return content.replace(/!\[(AI Generated Image|DALL-E):([^\]]*)\]/g, (match, prefix, description) => {
       imageCount++;
       
       // Use context-appropriate image description
@@ -217,7 +305,7 @@ Please provide:
         }
       }
       
-      return `![AI Generated Image: ${enhancedDescription}]`;
+      return `![DALL-E: ${enhancedDescription}]`;
     });
   }
   

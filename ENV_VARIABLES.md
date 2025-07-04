@@ -1,12 +1,12 @@
 # Environment Variables Setup
 
-This project uses OpenAI GPT-4 for article rewriting and enhancement. You need to set up the following environment variables:
+This project uses OpenAI GPT-4o-mini for article rewriting and DALL-E 3 for image generation. You need to set up the following environment variables:
 
 ## Required Environment Variables
 
 ### OpenAI API Configuration
 ```bash
-# OpenAI API Key for GPT-4 article rewriting
+# OpenAI API Key for GPT-4o-mini article rewriting and DALL-E 3 image generation
 OPENAI_API_KEY=your_openai_api_key_here
 ```
 
@@ -45,7 +45,7 @@ OPENAI_API_KEY=sk-...your_key_here...
 2. Sign up or log in
 3. Go to API Keys section
 4. Create a new API key
-5. Make sure you have GPT-4 access enabled on your account
+5. Make sure you have access to GPT-4o-mini model and DALL-E 3
 
 ### Perplexity API Key (Optional)
 1. Visit https://www.perplexity.ai/
@@ -55,25 +55,42 @@ OPENAI_API_KEY=sk-...your_key_here...
 ## AI Model Configuration
 
 The project is configured to use:
-- **Model**: GPT-4
+- **Text Model**: gpt-4o-mini (for article rewriting)
+- **Image Model**: DALL-E 3 (for image generation)
 - **Temperature**: 0.7 (for creative yet coherent content)
-- **Max Tokens**: 6000 per article section
+- **Max Tokens**: 6000 per article
+- **Image Size**: 1792x1024 (16:9 aspect ratio)
+- **Images per Article**: Up to 5
 
 ## Usage
 
-Once configured, the Men's Health import feature will automatically use OpenAI GPT-4 for:
+Once configured, the Men's Health import feature will automatically use:
+
+### OpenAI GPT-4o-mini for:
 - Complete article rewriting for originality
 - SEO optimization with keyword placement
 - Engaging headline generation
-- Detailed image prompt generation
 - Structured content with proper formatting
 - FAQ section generation
 
+### DALL-E 3 for:
+- Photorealistic fitness imagery
+- Professional health and nutrition photos
+- Custom images based on article content
+- High-quality 16:9 images for web display
+
 ## Cost Considerations
 
-OpenAI GPT-4 usage is billed per token. Each article rewrite typically uses:
+OpenAI usage is billed as follows:
+
+### GPT-4o-mini Text Generation:
 - Input: ~2,000-4,000 tokens (original article)
 - Output: ~4,000-6,000 tokens (rewritten article)
-- Estimated cost: $0.30-0.60 per article
+- Estimated cost: $0.05-0.10 per article
+
+### DALL-E 3 Image Generation:
+- Standard quality 1792x1024: ~$0.08 per image
+- Up to 5 images per article: ~$0.40 per article
+- Total estimated cost: $0.45-0.50 per article with images
 
 Monitor your OpenAI usage at: https://platform.openai.com/usage

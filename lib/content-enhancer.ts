@@ -18,6 +18,7 @@ interface ContentEnhancementOptions {
   category?: string
   useClaude?: boolean
   useOpenAI?: boolean
+  generateImages?: boolean
 }
 
 interface EnhancedContent {
@@ -31,6 +32,7 @@ interface EnhancedContent {
   imageReplacements?: number
   authorityLinksAdded?: number
   internalLinksAdded?: number
+  generatedImages?: { description: string, url: string }[]
 }
 
 export class ContentEnhancer {
@@ -47,6 +49,7 @@ export class ContentEnhancer {
     let authorityLinksAdded = 0
     let internalLinksAdded = 0
     let metaDescription: string | undefined
+    let generatedImages: { description: string, url: string }[] | undefined
     
     console.log('🚀 Starting comprehensive content enhancement...')
     
@@ -63,13 +66,15 @@ export class ContentEnhancer {
           improveReadability: options.improveReadability,
           addHeadings: options.addHeadings,
           optimizeForSEO: options.optimizeForSEO,
-          primaryKeyword: primaryKeyword
+          primaryKeyword: primaryKeyword,
+          generateImages: options.generateImages
         })
         
         enhancedTitle = openAIResult.title
         enhancedContent = openAIResult.content
         metaDescription = openAIResult.metaDescription
         warnings.push(...openAIResult.warnings)
+        generatedImages = openAIResult.generatedImages
         
         console.log('✅ OpenAI GPT-4 enhancement complete!')
       } catch (error) {
@@ -217,7 +222,8 @@ export class ContentEnhancer {
       metaDescription,
       imageReplacements,
       authorityLinksAdded,
-      internalLinksAdded
+      internalLinksAdded,
+      generatedImages
     }
   }
   

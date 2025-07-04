@@ -71,7 +71,8 @@ export async function POST(request: NextRequest) {
             addInternalLinks: true,
             articleSlug: generateSlug(scrapedData.title),
             category: category,
-            useOpenAI: true  // Use OpenAI GPT-4
+            useOpenAI: true,  // Use OpenAI GPT-4o-mini
+            generateImages: true  // Generate images with DALL-E 3
           }
         )
         
