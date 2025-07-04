@@ -166,7 +166,7 @@ Please provide:
           style: "natural"
         });
         
-        const imageUrl = imageResponse.data[0]?.url;
+        const imageUrl = imageResponse.data?.[0]?.url;
         if (imageUrl) {
           images.push({ description: baseDescription, url: imageUrl });
           
