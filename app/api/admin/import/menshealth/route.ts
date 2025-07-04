@@ -350,7 +350,10 @@ async function scrapeArticleWithFirecrawl(url: string): Promise<FirecrawlArticle
 
 // Generate URL-friendly slug
 function generateSlug(title: string): string {
-  const baseSlug = title
+  // Clean the title first - remove "Title:" prefix if present
+  const cleanTitle = title.replace(/^(title:|new title:)\s*/i, '');
+  
+  const baseSlug = cleanTitle
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')

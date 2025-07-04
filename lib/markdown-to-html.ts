@@ -11,6 +11,11 @@ export function convertMarkdownToHtml(markdown: string): string {
   html = html.replace(/^###\s+(.+)$/gm, '<h3 class="text-xl font-bold text-gray-900 mt-10 mb-4">$1</h3>');
   html = html.replace(/^##\s+(.+)$/gm, '<h4 class="text-lg font-bold text-gray-900 mt-8 mb-3">$1</h4>');
   
+  // Also handle headers that might not be at start of line
+  html = html.replace(/####\s+(.+)$/gm, '<h2 class="text-2xl font-bold text-gray-900 mt-12 mb-6 leading-tight">$1</h2>');
+  html = html.replace(/###\s+(.+)$/gm, '<h3 class="text-xl font-bold text-gray-900 mt-10 mb-4">$1</h3>');
+  html = html.replace(/##\s+(.+)$/gm, '<h4 class="text-lg font-bold text-gray-900 mt-8 mb-3">$1</h4>');
+  
   // Convert bold text
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   
@@ -158,6 +163,10 @@ ${takeaways.map((takeaway: string) => `    <li class="flex items-start"><span cl
   
   // Final cleanup - remove any remaining image placeholders that weren't caught
   html = html.replace(/!\[(?:AI Generated Image|DALL-E):[^\]]*\]/g, '');
+  
+  // Final cleanup - remove any remaining markdown symbols
+  html = html.replace(/^#{1,4}\s+/gm, ''); // Remove any remaining # symbols at start of lines
+  html = html.replace(/#{1,4}\s+/g, ''); // Remove any # symbols anywhere
   
   // Add FAQ styling if present
   html = html.replace(

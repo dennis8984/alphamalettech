@@ -272,15 +272,18 @@ Please provide:
       content = content.replace(titleMatch[0], '');
     }
     
-    // Remove meta description section
+    // Remove meta description section - be more aggressive in removal
     if (metaMatch) {
       content = content.replace(metaMatch[0], '');
     }
+    // Also remove any standalone meta description line
+    content = content.replace(/^Meta Description:.*$/gmi, '');
     
     // Clean up the content
     content = content
       .trim()
       .replace(/^Content:|Article Content:/i, '')
+      .replace(/^Meta Description:.*$/gmi, '') // Remove any remaining meta description
       .trim();
     
     return {
@@ -376,44 +379,73 @@ Please provide:
   private distributeOriginalImages(content: string, images: string[], primaryKeyword: string): string {
     if (images.length === 0) return content;
     
+    // Remove duplicates from images array
+    const uniqueImages = [...new Set(images)];
+    
     // Split content into sections by headings
     const sections = content.split(/(?=####)/);
     
     // Calculate how many images to place
-    const imageInterval = Math.max(2, Math.floor(sections.length / images.length));
+    const imageInterval = Math.max(2, Math.floor(sections.length / uniqueImages.length));
     let imageIndex = 0;
+    const usedImages = new Set<string>();
     
     // Add images after certain sections
     const updatedSections = sections.map((section, index) => {
       // Add image after every few sections (but not after the first or last)
-      if (index > 0 && index < sections.length - 1 && index % imageInterval === 0 && imageIndex < images.length) {
-        const imageUrl = images[imageIndex];
+      if (index > 0 && index < sections.length - 1 && index % imageInterval === 0 && imageIndex < uniqueImages.length) {
+        const imageUrl = uniqueImages[imageIndex];
+        
+        // Skip if we've already used this image
+        if (usedImages.has(imageUrl)) {
+          imageIndex++;
+          return section;
+        }
+        
+        usedImages.add(imageUrl);
         imageIndex++;
         
-        // Add the image at the end of the section
-        return section + `\n\n![${primaryKeyword} - Professional demonstration](${imageUrl})\n\n`;
+        // Add the image at the end of the section with varying captions
+        const captions = [
+          `${primaryKeyword} - Professional demonstration`,
+          `Expert ${primaryKeyword} technique`,
+          `Proper ${primaryKeyword} form and execution`,
+          `${primaryKeyword} training in action`,
+          `Advanced ${primaryKeyword} methodology`
+        ];
+        const caption = captions[imageIndex % captions.length];
+        
+        return section + `\n\n![${caption}](${imageUrl})\n\n`;
       }
       return section;
     });
     
-    // If we still have images left, add them throughout the content
-    if (imageIndex < images.length) {
-      // Find good positions to insert remaining images (after paragraphs)
+    // If we still have unused unique images, add them
+    if (imageIndex < uniqueImages.length) {
       let finalContent = updatedSections.join('');
-      const remainingImages = images.slice(imageIndex);
+      const remainingImages = uniqueImages.slice(imageIndex).filter(img => !usedImages.has(img));
       
-      // Insert remaining images after substantial paragraphs
-      const paragraphs = finalContent.split('\n\n');
-      const paragraphInterval = Math.max(3, Math.floor(paragraphs.length / remainingImages.length));
-      
-      for (let i = 0; i < remainingImages.length && i * paragraphInterval < paragraphs.length; i++) {
-        const insertIndex = (i + 1) * paragraphInterval;
-        if (insertIndex < paragraphs.length - 1) {
-          paragraphs[insertIndex] += `\n\n![${primaryKeyword} technique demonstration](${remainingImages[i]})`;
+      if (remainingImages.length > 0) {
+        // Insert remaining images after substantial paragraphs
+        const paragraphs = finalContent.split('\n\n');
+        const paragraphInterval = Math.max(4, Math.floor(paragraphs.length / remainingImages.length));
+        
+        for (let i = 0; i < remainingImages.length && i * paragraphInterval < paragraphs.length; i++) {
+          const insertIndex = (i + 1) * paragraphInterval;
+          if (insertIndex < paragraphs.length - 1 && !usedImages.has(remainingImages[i])) {
+            const captions = [
+              `${primaryKeyword} technique demonstration`,
+              `Professional ${primaryKeyword} execution`,
+              `${primaryKeyword} best practices`
+            ];
+            const caption = captions[i % captions.length];
+            paragraphs[insertIndex] += `\n\n![${caption}](${remainingImages[i]})`;
+            usedImages.add(remainingImages[i]);
+          }
         }
+        
+        return paragraphs.join('\n\n');
       }
-      
-      return paragraphs.join('\n\n');
     }
     
     return updatedSections.join('');
