@@ -189,8 +189,7 @@ export class SocialAutomationConfig {
         rule_type: 'category_based',
         conditions: {
           categories: ['fitness', 'nutrition', 'health'],
-          min_word_count: 200,
-          max_word_count: 500
+          min_word_count: 200
         },
         platforms: ['twitter'],
         is_active: true,

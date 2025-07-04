@@ -129,11 +129,12 @@ export class ArticleDetector {
 
       // Add to social queue for each platform
       for (const platform of platformsToPost) {
+        const scheduledTime = await this.calculateScheduleTime(platform)
         await addToSocialQueue({
           article_id: article.id,
           platform,
           priority: this.calculatePriority(article),
-          scheduled_for: this.calculateScheduleTime(platform)
+          scheduled_for: scheduledTime
         })
       }
 

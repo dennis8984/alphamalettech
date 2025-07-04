@@ -135,8 +135,17 @@ export class SocialPostQueue {
       // Replace link with tracking URL
       socialContent.link = trackingUrl
 
+      // Convert to SocialPost format
+      const socialPost = {
+        platform: item.platform,
+        content: socialContent.text,
+        media_url: socialContent.media_url,
+        link: socialContent.link,
+        hashtags: socialContent.hashtags
+      }
+
       // Post to platform
-      const result = await socialAPIManager.postToPlatform(item.platform, socialContent)
+      const result = await socialAPIManager.postToPlatform(item.platform, socialPost)
 
       if (result.success) {
         // Create social post record

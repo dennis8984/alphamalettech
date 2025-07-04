@@ -62,7 +62,7 @@ export class RedditAPI extends SocialMediaAPI {
       this.accessToken = data.access_token
       this.tokenExpiry = new Date(Date.now() + (data.expires_in * 1000))
       
-      return this.accessToken
+      return data.access_token
     } catch (error) {
       console.error('Reddit auth error:', error)
       throw error
@@ -82,14 +82,24 @@ export class RedditAPI extends SocialMediaAPI {
       // Reddit requires kind (link or self)
       const kind = content.link ? 'link' : 'self'
       
-      const postData = new URLSearchParams({
+      const params: Record<string, string> = {
         api_type: 'json',
         kind: kind,
         sr: subreddit,
         title: content.content, // Reddit uses title for the main text
-        ...(kind === 'link' ? { url: content.link } : { text: '' }),
-        ...(redditContent.flair_id ? { flair_id: redditContent.flair_id } : {})
-      })
+      }
+      
+      if (kind === 'link' && content.link) {
+        params.url = content.link
+      } else {
+        params.text = ''
+      }
+      
+      if (redditContent.flair_id) {
+        params.flair_id = redditContent.flair_id
+      }
+      
+      const postData = new URLSearchParams(params)
 
       const response = await fetch(`${this.baseUrl}/api/submit`, {
         method: 'POST',
