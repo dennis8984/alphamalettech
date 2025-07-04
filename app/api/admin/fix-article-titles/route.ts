@@ -8,48 +8,53 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔧 Starting article title cleanup...')
     
-    // Initialize Supabase client
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
+    // Initialize Supabase client with service role for admin operations
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json(
         { error: 'Missing Supabase configuration' },
         { status: 500 }
       )
     }
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
+
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
       }
-    })
+    )
     
     // Check for admin authentication
     const headersList = headers()
     const authorization = headersList.get('authorization')
     
     if (!authorization || !authorization.startsWith('Bearer ')) {
+      console.error('Missing authorization header')
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Missing authorization header' },
         { status: 401 }
       )
     }
 
-    // Verify the user is authenticated
+    // Verify the user with the admin client
     const token = authorization.split(' ')[1]
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
     
     if (authError || !user) {
+      console.error('Auth error:', authError)
       return NextResponse.json(
-        { error: 'Invalid authentication' },
+        { error: 'Invalid authentication token' },
         { status: 401 }
       )
     }
     
+    console.log(`✅ Authenticated user: ${user.email}`)
+    
     // Fetch all articles
-    const { data: articles, error: fetchError } = await supabase
+    const { data: articles, error: fetchError } = await supabaseAdmin
       .from('articles')
       .select('id, title, slug')
       .order('created_at', { ascending: false })
@@ -98,7 +103,7 @@ export async function POST(request: NextRequest) {
           }
           
           // Update the article
-          const { error: updateError } = await supabase
+          const { error: updateError } = await supabaseAdmin
             .from('articles')
             .update({ 
               title: newTitle,
@@ -141,10 +146,19 @@ export async function POST(request: NextRequest) {
     
   } catch (error) {
     console.error('Title cleanup error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : ''
+    
+    console.error('Error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      type: error?.constructor?.name
+    })
+    
     return NextResponse.json(
       { 
         error: 'Failed to fix article titles', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
+        details: errorMessage
       },
       { status: 500 }
     )
