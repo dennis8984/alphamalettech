@@ -22,7 +22,7 @@ interface EnhancedContent {
 
 export class ClaudeContentEnhancer {
   private anthropic: Anthropic | null = null;
-  private openai: OpenAI | null = null; // Keep OpenAI for image generation only
+  private openai: OpenAI | null = null; // Keep OpenAI for DALL-E 3 image generation only
   
   constructor() {
     // Check for either ANTHROPIC_API_KEY or CLAUDE_API_KEY (for backward compatibility)
@@ -78,7 +78,7 @@ IMPORTANT: Output clean content without any markdown symbols. Use proper HTML ta
     
     try {
       const message = await this.anthropic.messages.create({
-        model: 'claude-3-opus-20240229',
+        model: 'claude-opus-4-20250514',
         max_tokens: 4000,
         temperature: 0.7,
         system: systemPrompt,

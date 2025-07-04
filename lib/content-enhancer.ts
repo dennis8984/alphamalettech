@@ -58,7 +58,7 @@ export class ContentEnhancer {
     
     // Use Claude AI as the primary content enhancer (better quality than GPT-4)
     if (options.useClaude !== false) { // Default to Claude unless explicitly disabled
-      console.log('🤖 Using Claude Opus for content enhancement...')
+      console.log('🤖 Using Claude Opus 4 for content enhancement...')
       try {
         const claudeEnhancer = new ClaudeContentEnhancer()
         const claudeResult = await claudeEnhancer.enhanceContent(title, content, {
@@ -76,7 +76,7 @@ export class ContentEnhancer {
         warnings.push(...claudeResult.warnings)
         generatedImages = claudeResult.generatedImages
         
-        console.log('✅ Claude Opus enhancement complete!')
+        console.log('✅ Claude Opus 4 enhancement complete!')
       } catch (error) {
         console.error('🚨 Claude failed, falling back to manual enhancement:', error)
         warnings.push(`Claude unavailable, using manual enhancement: ${error}`)
