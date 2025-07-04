@@ -3,14 +3,19 @@ import { createClient } from '@supabase/supabase-js'
 
 export const maxDuration = 300; // 5 minutes timeout
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
 export async function POST(request: NextRequest) {
   try {
     console.log('🔧 Starting article title cleanup...')
+    
+    // Initialize Supabase client
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase environment variables not configured')
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
     // Fetch all articles
     const { data: articles, error: fetchError } = await supabase
