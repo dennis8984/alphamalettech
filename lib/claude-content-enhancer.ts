@@ -216,7 +216,7 @@ WARNINGS: [any concerns]`;
     const title = titleMatch ? titleMatch[1].trim() : 'Untitled';
     const metaDescription = metaMatch ? metaMatch[1].trim() : undefined;
     const articleContent = contentMatch ? contentMatch[1].trim() : text;
-    const warnings = warningsMatch ? warningsMatch[1].trim().split('\n').filter(w => w.trim()) : undefined;
+    const warnings = warningsMatch ? warningsMatch[1].trim().split('\n').filter((w: string) => w.trim()) : undefined;
     
     return {
       title,
