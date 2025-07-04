@@ -231,12 +231,23 @@ export default function ImportMensHealthPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            urls: category.urls.slice(0, 20), // Limit to 20 articles
+            urls: category.urls.slice(0, 5), // Limit to 5 articles to prevent timeouts
             category: categoryKey
-          })
+          }),
+          // Add timeout to prevent hanging
+          signal: AbortSignal.timeout(240000) // 4 minute timeout
         })
 
-        const data = await response.json()
+        let data;
+        try {
+          data = await response.json()
+        } catch (jsonError) {
+          console.error('Failed to parse response:', jsonError)
+          data = { 
+            success: false, 
+            error: response.status === 504 ? 'Request timed out. Try importing fewer articles.' : 'Failed to import articles'
+          }
+        }
         
         allResults.push({
           category: categoryKey,
@@ -259,11 +270,19 @@ export default function ImportMensHealthPage() {
         totalFailed: allResults.reduce((sum, cat) => sum + (cat.errorCount || 0), 0)
       })
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Import error:', error)
+      let errorMessage = 'Import failed. Check console for details.'
+      
+      if (error.name === 'AbortError') {
+        errorMessage = 'Import timed out. Try selecting fewer categories or wait a moment before trying again.'
+      } else if (error.message?.includes('504')) {
+        errorMessage = 'Server timeout. The import is taking too long. Try importing one category at a time.'
+      }
+      
       setResults({
         success: false,
-        error: 'Import failed. Check console for details.'
+        error: errorMessage
       })
     } finally {
       setImporting(false)
@@ -375,13 +394,13 @@ export default function ImportMensHealthPage() {
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <h3 className="font-semibold text-yellow-900 mb-2">⚠️ Important:</h3>
               <ul className="text-sm text-yellow-700 space-y-1">
-                <li>• Articles will be completely rewritten by Claude AI</li>
+                <li>• Articles will be completely rewritten by OpenAI GPT-4o-mini</li>
                 <li>• Original images will be preserved and distributed throughout</li>
                 <li>• Each article will include a conclusion and FAQ section</li>
-                <li>• Process takes about 5-10 minutes per category</li>
+                <li>• Process takes about 2-3 minutes per category (5 articles)</li>
                 <li>• Selected categories: {selectedCategories.length}</li>
                 <li>• Total articles to import: {selectedCategories.reduce((sum, cat) => 
-                  sum + Math.min(20, availableCategories[cat as keyof typeof availableCategories]?.urls.length || 0), 0)}</li>
+                  sum + Math.min(5, availableCategories[cat as keyof typeof availableCategories]?.urls.length || 0), 0)}</li>
               </ul>
             </div>
 

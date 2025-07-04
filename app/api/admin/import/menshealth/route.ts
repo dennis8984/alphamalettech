@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
             articleSlug: generateSlug(scrapedData.title),
             category: category,
             useOpenAI: true,  // Use OpenAI GPT-4o-mini
-            generateImages: true  // Generate images with DALL-E 3
+            generateImages: false  // Disable DALL-E 3 for now to prevent timeouts
           }
         )
         
@@ -110,8 +110,8 @@ export async function POST(request: NextRequest) {
         
         successCount++
         
-        // Longer delay between articles to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 8000)) // 8 seconds between articles
+        // Shorter delay between articles since we're not generating images
+        await new Promise(resolve => setTimeout(resolve, 3000)) // 3 seconds between articles
         
       } catch (error) {
         console.error(`❌ Failed to process ${url}:`, error)
