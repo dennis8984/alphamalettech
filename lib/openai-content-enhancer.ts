@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { convertMarkdownToHtml } from './markdown-to-html';
+import { generateAcademicLinks, addInlineAcademicLinks } from './academic-link-generator';
 
 interface ContentEnhancementOptions {
   rewriteForOriginality?: boolean
@@ -136,7 +137,12 @@ Please provide:
       
       // Convert markdown to HTML
       console.log('📝 Converting markdown to HTML...');
-      const htmlContent = convertMarkdownToHtml(parsedContent.content);
+      let htmlContent = convertMarkdownToHtml(parsedContent.content);
+      
+      // Add academic links and references
+      console.log('🎓 Adding academic references...');
+      htmlContent = addInlineAcademicLinks(htmlContent);
+      htmlContent = generateAcademicLinks(htmlContent, primaryKeyword);
       
       return {
         title: parsedContent.title,
@@ -246,8 +252,9 @@ Please provide:
     const titleMatch = response.match(/(?:Title:|New Title:|^)(.+?)(?:\n|$)/i);
     let title = titleMatch ? titleMatch[1].trim().replace(/^["']|["']$/g, '') : 'Untitled Article';
     
-    // Clean up title - remove any markdown formatting
+    // Clean up title - remove any markdown formatting and "Title:" prefix
     title = title
+      .replace(/^(Title:|New Title:)\s*/i, '') // Remove "Title:" or "New Title:" prefix
       .replace(/^#+\s+/, '') // Remove leading # symbols
       .replace(/\*\*/g, '') // Remove bold markdown
       .replace(/[`_]/g, '') // Remove backticks and underscores

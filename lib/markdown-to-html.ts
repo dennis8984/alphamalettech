@@ -1,6 +1,11 @@
 export function convertMarkdownToHtml(markdown: string): string {
   let html = markdown;
   
+  // First, clean up any markdown artifacts
+  html = html.replace(/^---+$/gm, ''); // Remove horizontal rules
+  html = html.replace(/\*\*\s*\*\*/g, ''); // Remove empty bold markers
+  html = html.replace(/\*\*---\*\*/g, ''); // Remove bold horizontal rules
+  
   // Convert headers (#### = h2, ### = h3, ## = h4)
   html = html.replace(/^####\s+(.+)$/gm, '<h2 class="text-2xl font-bold text-gray-900 mt-12 mb-6 leading-tight">$1</h2>');
   html = html.replace(/^###\s+(.+)$/gm, '<h3 class="text-xl font-bold text-gray-900 mt-10 mb-4">$1</h3>');
