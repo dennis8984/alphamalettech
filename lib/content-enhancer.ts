@@ -56,8 +56,34 @@ export class ContentEnhancer {
     // Extract primary keyword from title
     const primaryKeyword = options.primaryKeyword || this.extractPrimaryKeyword(title)
     
-    // Use OpenAI if enabled and API key is available
-    if (options.useOpenAI) {
+    // Use Claude AI as the primary content enhancer (better quality than GPT-4)
+    if (options.useClaude !== false) { // Default to Claude unless explicitly disabled
+      console.log('🤖 Using Claude Opus for content enhancement...')
+      try {
+        const claudeEnhancer = new ClaudeContentEnhancer()
+        const claudeResult = await claudeEnhancer.enhanceContent(title, content, {
+          rewriteForOriginality: options.rewriteForOriginality,
+          improveReadability: options.improveReadability,
+          addHeadings: options.addHeadings,
+          optimizeForSEO: options.optimizeForSEO,
+          primaryKeyword: primaryKeyword,
+          generateImages: options.generateImages // Claude will use OpenAI for DALL-E image generation
+        })
+        
+        enhancedTitle = claudeResult.title
+        enhancedContent = claudeResult.content
+        metaDescription = claudeResult.metaDescription
+        warnings.push(...claudeResult.warnings)
+        generatedImages = claudeResult.generatedImages
+        
+        console.log('✅ Claude Opus enhancement complete!')
+      } catch (error) {
+        console.error('🚨 Claude failed, falling back to manual enhancement:', error)
+        warnings.push(`Claude unavailable, using manual enhancement: ${error}`)
+      }
+    }
+    // Use OpenAI only if explicitly requested and Claude is disabled
+    else if (options.useOpenAI) {
       console.log('🤖 Using OpenAI GPT-4 for content enhancement...')
       try {
         const openAIEnhancer = new OpenAIContentEnhancer()
@@ -81,38 +107,10 @@ export class ContentEnhancer {
         console.error('🚨 OpenAI failed, falling back to manual enhancement:', error)
         warnings.push(`OpenAI unavailable, using manual enhancement: ${error}`)
       }
-    } else if (options.useOpenAI) {
-      warnings.push('OpenAI requested but OPENAI_API_KEY not configured, using manual enhancement')
-    }
-    // Use Claude AI if enabled and API key is available
-    else if (options.useClaude) {
-      console.log('🤖 Using Claude AI for content enhancement...')
-      try {
-        const claudeEnhancer = new ClaudeContentEnhancer()
-        const claudeResult = await claudeEnhancer.enhanceContent(title, content, {
-          rewriteForOriginality: options.rewriteForOriginality,
-          improveReadability: options.improveReadability,
-          addHeadings: options.addHeadings,
-          optimizeForSEO: options.optimizeForSEO,
-          primaryKeyword: primaryKeyword
-        })
-        
-        enhancedTitle = claudeResult.title
-        enhancedContent = claudeResult.content
-        metaDescription = claudeResult.metaDescription
-        warnings.push(...claudeResult.warnings)
-        
-        console.log('✅ Claude AI enhancement complete!')
-      } catch (error) {
-        console.error('🚨 Claude AI failed, falling back to manual enhancement:', error)
-        warnings.push(`Claude AI unavailable, using manual enhancement: ${error}`)
-      }
-    } else if (options.useClaude) {
-      warnings.push('Claude AI requested but CLAUDE_API_KEY not configured, using manual enhancement')
     }
     
     // If not using AI or AI failed, use manual enhancement methods
-    if ((!options.useClaude && !options.useOpenAI) || warnings.some(w => w.includes('AI'))) {
+    if ((options.useClaude === false && !options.useOpenAI) || warnings.some(w => w.includes('unavailable'))) {
       // Step 1: Rewrite for originality (if enabled and not done by AI)
       if (options.rewriteForOriginality && !enhancedContent.includes('<div class="bg-red-50')) {
         console.log('✍️ Rewriting content for originality...')

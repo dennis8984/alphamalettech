@@ -1,367 +1,300 @@
-import Anthropic from '@anthropic-ai/sdk'
+import Anthropic from '@anthropic-ai/sdk';
+import { convertMarkdownToHtml } from './markdown-to-html';
+import { generateAcademicLinks, addInlineAcademicLinks } from './academic-link-generator';
+import OpenAI from 'openai';
 
-interface ClaudeEnhancementOptions {
+interface ContentEnhancementOptions {
   rewriteForOriginality?: boolean
   improveReadability?: boolean
   addHeadings?: boolean
   optimizeForSEO?: boolean
   primaryKeyword?: string
-  maxTokens?: number
+  generateImages?: boolean
 }
 
-interface ClaudeEnhancedContent {
+interface EnhancedContent {
   title: string
   content: string
-  excerpt: string
-  metaDescription?: string
+  metaDescription: string
   warnings: string[]
+  generatedImages?: { description: string, url: string }[]
 }
 
 export class ClaudeContentEnhancer {
-  private claude: Anthropic
-  private lastMetaDescription: string | undefined
+  private anthropic: Anthropic | null = null;
+  private openai: OpenAI | null = null; // Keep OpenAI for image generation only
   
   constructor() {
-    if (!process.env.CLAUDE_API_KEY) {
-      throw new Error('CLAUDE_API_KEY environment variable is required')
+    // Check for either ANTHROPIC_API_KEY or CLAUDE_API_KEY (for backward compatibility)
+    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
+    if (apiKey) {
+      this.anthropic = new Anthropic({
+        apiKey: apiKey,
+      });
     }
     
-    this.claude = new Anthropic({
-      apiKey: process.env.CLAUDE_API_KEY,
-    })
-  }
-
-  /**
-   * Get category context based on primary keyword
-   */
-  private getCategoryContext(primaryKeyword: string): string {
-    const keyword = primaryKeyword.toLowerCase()
-    
-    if (keyword.includes('fitness') || keyword.includes('exercise') || keyword.includes('workout')) {
-      return 'Fitness'
-    } else if (keyword.includes('nutrition') || keyword.includes('diet') || keyword.includes('food')) {
-      return 'Nutrition'
-    } else if (keyword.includes('weight') || keyword.includes('loss') || keyword.includes('fat')) {
-      return 'Weight Loss'
-    } else if (keyword.includes('muscle') || keyword.includes('strength') || keyword.includes('building')) {
-      return 'Muscle Building'
-    } else if (keyword.includes('health') || keyword.includes('wellness') || keyword.includes('medical')) {
-      return 'Health'
-    } else {
-      return 'Health & Fitness'
+    // Initialize OpenAI only for image generation
+    if (process.env.OPENAI_API_KEY) {
+      this.openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
     }
   }
-
-  /**
-   * Enhance content using Claude AI with Men's Health editorial style
-   */
+  
   async enhanceContent(
-    title: string,
-    content: string,
-    options: ClaudeEnhancementOptions = {}
-  ): Promise<ClaudeEnhancedContent> {
-    console.log('🤖 Starting Claude AI content enhancement...')
-    
-    const primaryKeyword = options.primaryKeyword || this.extractPrimaryKeyword(title)
-    const warnings: string[] = []
-    
-    let enhancedTitle = title
-    let enhancedContent = content
-    let metaDescription: string | undefined
-
-    try {
-      // Step 1: Rewrite for originality if requested
-      if (options.rewriteForOriginality) {
-        console.log('✍️ Rewriting with Claude for Men\'s Health originality...')
-        const rewriteResult = await this.rewriteForMensHealthStyle(title, content, primaryKeyword)
-        enhancedTitle = rewriteResult.title
-        enhancedContent = rewriteResult.content
-      }
-
-      // Step 2: Improve readability and structure
-      if (options.improveReadability) {
-        console.log('📖 Improving readability with Claude...')
-        enhancedContent = await this.improveReadabilityWithClaude(enhancedContent, primaryKeyword)
-      }
-
-      // Step 3: Add strategic headings
-      if (options.addHeadings) {
-        console.log('📝 Adding strategic headings with Claude...')
-        enhancedContent = await this.addStrategicHeadings(enhancedContent, primaryKeyword)
-      }
-
-      // Step 4: Generate SEO metadata (use stored meta description if available)
-      if (options.optimizeForSEO) {
-        console.log('🔍 Optimizing SEO metadata with Claude...')
-        metaDescription = this.lastMetaDescription || await this.generateSEOMetadata(enhancedTitle, enhancedContent, primaryKeyword)
-      }
-
-    } catch (error) {
-      console.error('❌ Claude AI enhancement failed:', error)
-      warnings.push(`Claude AI enhancement failed: ${error}`)
+    title: string, 
+    content: string, 
+    options: ContentEnhancementOptions
+  ): Promise<EnhancedContent> {
+    if (!this.anthropic) {
+      throw new Error('Anthropic API key not configured. Please set ANTHROPIC_API_KEY or CLAUDE_API_KEY environment variable.');
     }
-
-    // Generate excerpt
-    const excerpt = this.generateExcerpt(enhancedContent)
-
-    console.log('✅ Claude AI content enhancement complete!')
     
-    return {
-      title: enhancedTitle,
-      content: enhancedContent,
-      excerpt,
-      metaDescription,
-      warnings
-    }
-  }
-
-  /**
-   * Rewrite content in Men's Health editorial style using Claude
-   */
-  private async rewriteForMensHealthStyle(
-    title: string,
-    content: string,
-    primaryKeyword: string
-  ): Promise<{ title: string; content: string }> {
+    const primaryKeyword = options.primaryKeyword || this.extractPrimaryKeyword(title);
     
-    const prompt = `You are a health and fitness content writer. Rewrite the given article to be unique while maintaining accuracy.
+    // Load the article prompt template
+    const articlePromptGuidelines = await this.loadArticlePromptGuidelines();
+    
+    // Prepare the system prompt based on article-prompts.md guidelines
+    const systemPrompt = `You are an expert men's health and fitness writer following the Men's Health Article DNA guidelines. Your role is to rewrite articles to be engaging, informative, and SEO-optimized while maintaining accuracy and authority.
 
-Focus on:
-1) Using different sentence structures
-2) Adding relevant examples
-3) Reorganizing information logically
-4) Maintaining factual accuracy
-5) Creating engaging, reader-friendly content
-6) Preserving the key health and fitness information
-7) CRITICAL: You MUST write a COMPLETE article that is AT LEAST as long as the original (minimum ${content.split(' ').length} words). Do NOT truncate or shorten the content
-8) If you find images in HTML comments <!-- AVAILABLE IMAGES: -->, place them strategically AFTER relevant headers/sections throughout the article
-9) Replace any mentions of "Men's Health" with "Men's Hub" and any "menshealth.com" with "menshb.com"
-10) Do NOT place all images at the beginning - distribute them throughout the article
+${articlePromptGuidelines}
 
-Article Information:
-- Original Title: ${title}
-- Category: ${this.getCategoryContext(primaryKeyword)}
-- Primary Keyword: ${primaryKeyword}
-- Content Length: ${content.split(' ').length} words
+REWRITING GUIDELINES:
+1. Maintain the core factual content while improving engagement and readability
+2. Use active voice and second-person perspective ("you") throughout
+3. Include specific numbers, statistics, and expert credentials where relevant
+4. Break up long paragraphs into shorter, punchier ones (2-3 sentences max)
+5. Add relevant subheadings every 200-300 words for better scanability
+6. Naturally incorporate the primary keyword "${primaryKeyword}" 3-5 times
+7. Use power words and emotional triggers from the guidelines
+8. Ensure content follows the category-specific requirements
+9. Add actionable takeaways and specific next steps
+10. Write at an 8th-grade reading level for accessibility
 
-Content to Rewrite:
-${content}
-
-CRITICAL INSTRUCTIONS:
-- Do NOT include any meta-commentary like "Here is the rewritten article" or "I've added headings"
-- Return ONLY valid JSON
-- The content field should contain ONLY the article content, no explanations
-- MANDATORY: Write the COMPLETE article with AT LEAST ${content.split(' ').length} words
-- Do NOT truncate, summarize, or shorten the content
-- Include ALL information from the original article, expanded and rewritten
-- Place images AFTER their related headers/sections, not all at the beginning
-- MANDATORY: End EVERY article with a <h2>Conclusion</h2> section (200+ words) summarizing all key points
-- MANDATORY: After the conclusion, add an <h2>Frequently Asked Questions</h2> section with EXACTLY 5 Q&As
-- Each FAQ must follow this exact format:
-  <h3>1. Question about [topic]?</h3>
-  <p>Detailed answer of at least 100 words...</p>
-  <h3>2. Question about [topic]?</h3>
-  <p>Detailed answer of at least 100 words...</p>
-  (Continue for all 5 questions)
-
-Return your response as valid JSON with exactly these three fields:
-- "title": The rewritten article title (make it compelling and SEO-friendly)
-- "content": The COMPLETE rewritten article (minimum ${content.split(' ').length} words) in HTML format with <p>, <h2>, <h3> tags, MUST end with Conclusion and FAQ sections
-- "meta_description": A 150-160 character meta description based on the rewritten content`
-
+IMPORTANT: Output clean content without any markdown symbols. Use proper HTML tags for formatting.`;
+    
+    const userPrompt = this.buildUserPrompt(title, content, options);
+    
     try {
-      const response = await this.claude.messages.create({
+      const message = await this.anthropic.messages.create({
         model: 'claude-3-opus-20240229',
-        max_tokens: 100000,  // Very high limit to avoid truncation
+        max_tokens: 4000,
         temperature: 0.7,
-        messages: [{
-          role: 'user',
-          content: prompt
-        }]
-      })
-
-      const responseText = response.content[0].type === 'text' ? response.content[0].text : ''
-      const parsedResponse = JSON.parse(responseText)
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: userPrompt
+          }
+        ]
+      });
       
-      // Store meta_description if provided
-      if (parsedResponse.meta_description) {
-        this.lastMetaDescription = parsedResponse.meta_description
+      const enhancedContent = this.parseClaudeResponse(message.content[0]);
+      
+      // Process the content
+      let processedContent = enhancedContent.content;
+      
+      // Remove any Title: prefix from the title
+      let processedTitle = enhancedContent.title
+        .replace(/^(Title:|New Title:)\s*/i, '')
+        .replace(/^#+\s+/, '')
+        .replace(/\*\*/g, '')
+        .replace(/[`_]/g, '')
+        .trim();
+      
+      // Convert markdown to HTML if needed
+      processedContent = convertMarkdownToHtml(processedContent);
+      
+      // Add academic links
+      const academicLinks = await generateAcademicLinks(processedTitle, processedContent);
+      processedContent = addInlineAcademicLinks(processedContent, academicLinks, primaryKeyword);
+      
+      // Generate images if requested
+      let generatedImages: { description: string, url: string }[] = [];
+      if (options.generateImages && this.openai) {
+        generatedImages = await this.generateImagesForContent(processedTitle, processedContent);
       }
       
       return {
-        title: parsedResponse.title || title,
-        content: parsedResponse.content || content
-      }
+        title: processedTitle,
+        content: processedContent,
+        metaDescription: enhancedContent.metaDescription || this.generateMetaDescription(processedTitle, processedContent, primaryKeyword),
+        warnings: enhancedContent.warnings || [],
+        generatedImages
+      };
     } catch (error) {
-      console.error('❌ Claude rewrite failed:', error)
-      return { title, content }
+      console.error('Claude enhancement error:', error);
+      throw new Error('Failed to enhance content with Claude');
     }
   }
+  
+  private async loadArticlePromptGuidelines(): Promise<string> {
+    // In production, you might want to load this from a file
+    // For now, we'll include key sections inline
+    return `
+### Voice and Tone Guidelines
+- Authoritative but approachable
+- Conversational without being casual
+- Encouraging without overselling
+- Honest about challenges
+- Inclusive and respectful
 
-  /**
-   * Improve readability using Claude
-   */
-  private async improveReadabilityWithClaude(content: string, primaryKeyword: string): Promise<string> {
-    const prompt = `Improve the readability of this health and fitness article:
+### Language Rules
+- Active voice preferred
+- Short paragraphs (2-3 sentences)
+- Vary sentence length
+- Avoid jargon without explanation
+- Use "you" to address reader
 
-CONTENT: ${content}
+### Power Words for Headlines
+Finally, Ultimate, Essential, Proven, Expert-Backed, Science-Based, Complete, Revolutionary, Game-Changing, Breakthrough
 
-IMPROVEMENTS NEEDED:
-1. **Sentence Variety**: Mix short and long sentences for better flow
-2. **Paragraph Structure**: Keep paragraphs 3-5 sentences max
-3. **Active Voice**: Use active voice for clarity
-4. **Plain Language**: Replace jargon with simpler terms where appropriate
-5. **Transitions**: Add smooth transitions between sections
-6. **Keyword Integration**: Ensure "${primaryKeyword}" appears naturally 3-5 times
+### Transition Phrases
+"Here's the thing:", "But here's what actually works:", "The truth is:", "What most people don't realize:", "The key difference:"
 
-MAINTAIN:
-- All factual health information
-- Scientific accuracy
-- HTML formatting and structure
-- Professional tone
-
-CRITICAL: Return ONLY the improved content without any meta-commentary or explanations. Do NOT include phrases like "Here is the improved content" or any other commentary. Start directly with the article content:`
-
-    try {
-      const response = await this.claude.messages.create({
-        model: 'claude-3-opus-20240229',
-        max_tokens: 100000,  // Very high limit to avoid truncation
-        temperature: 0.5,
-        messages: [{
-          role: 'user',
-          content: prompt
-        }]
-      })
-
-      return response.content[0].type === 'text' ? response.content[0].text : content
-    } catch (error) {
-      console.error('❌ Claude readability improvement failed:', error)
-      return content
-    }
+### Social Proof Phrases
+"According to research from [University]", "[Expert name], [credentials], explains", "Studies have shown", "In my experience as a [credential]", "Men's Health readers report"`;
   }
+  
+  private buildUserPrompt(title: string, content: string, options: ContentEnhancementOptions): string {
+    let prompt = `Please rewrite the following men's health article to be more engaging and optimized for SEO.
 
-  /**
-   * Add strategic headings using Claude
-   */
-  private async addStrategicHeadings(content: string, primaryKeyword: string): Promise<string> {
-    const prompt = `Add strategic H2 headings to this health and fitness article:
+Original Title: ${title}
 
-CONTENT: ${content}
+Original Content:
+${content}
 
-HEADING REQUIREMENTS:
-1. **H2 Every 200-300 words**: Break up content into digestible sections
-2. **SEO Friendly**: Include "${primaryKeyword}" naturally in 1-2 headings
-3. **Clear & Informative**: Headings should clearly indicate section content
-4. **Question Format**: Use some questions to engage readers
-5. **Benefit-Focused**: Highlight what readers will learn or gain
-
-HEADING EXAMPLES:
-- "What Is ${primaryKeyword} and Why Does It Matter?"
-- "The Health Benefits of [Topic]"
-- "How to Get Started With [Topic]"
-- "Common Mistakes to Avoid"
-- "Tips for Long-Term Success"
-- "Frequently Asked Questions About [Topic]"
-
-Add H2 headings with this HTML format:
-<h2>Heading Text</h2>
-
-CRITICAL: Return ONLY the complete content with headings added. Do NOT include any meta-commentary like "Here is the article with strategic H2 headings added" or any explanations. Start directly with the article content:`
-
-    try {
-      const response = await this.claude.messages.create({
-        model: 'claude-3-opus-20240229',
-        max_tokens: 100000,  // Very high limit to avoid truncation
-        temperature: 0.6,
-        messages: [{
-          role: 'user',
-          content: prompt
-        }]
-      })
-
-      return response.content[0].type === 'text' ? response.content[0].text : content
-    } catch (error) {
-      console.error('❌ Claude heading addition failed:', error)
-      return content
+Requirements:
+`;
+    
+    if (options.rewriteForOriginality) {
+      prompt += `- Rewrite for 100% originality while maintaining factual accuracy\n`;
     }
-  }
-
-  /**
-   * Generate SEO metadata using Claude
-   */
-  private async generateSEOMetadata(
-    title: string,
-    content: string,
-    primaryKeyword: string
-  ): Promise<string> {
-    const prompt = `Create an SEO-optimized meta description for this health and fitness article:
-
-TITLE: ${title}
-PRIMARY KEYWORD: ${primaryKeyword}
-CONTENT PREVIEW: ${content.substring(0, 500)}...
-
-META DESCRIPTION REQUIREMENTS:
-1. **Length**: 150-160 characters maximum
-2. **Keyword**: Include "${primaryKeyword}" naturally
-3. **Value Proposition**: Clearly state what readers will learn
-4. **Call to Action**: Encourage clicks with action words
-5. **Accuracy**: Reflect actual article content
-6. **Unique**: Don't duplicate the title
-
-EXAMPLES:
-- "Learn how ${primaryKeyword} can improve your health. Expert tips, scientific research, and practical advice for real results."
-- "Discover the benefits of ${primaryKeyword} with our comprehensive guide. Evidence-based strategies for better health."
-- "Everything you need to know about ${primaryKeyword}. Get expert insights and actionable tips to improve your wellness."
-
-Return ONLY the meta description text (no quotes or formatting):`
-
-    try {
-      const response = await this.claude.messages.create({
-        model: 'claude-3-opus-20240229',
-        max_tokens: 100000,  // Very high limit to avoid truncation
-        temperature: 0.7,
-        messages: [{
-          role: 'user',
-          content: prompt
-        }]
-      })
-
-      const metaDescription = response.content[0].type === 'text' ? response.content[0].text.trim() : ''
-      
-      // Ensure it's within limits
-      return metaDescription.length <= 160 ? metaDescription : metaDescription.substring(0, 157) + '...'
-    } catch (error) {
-      console.error('❌ Claude SEO metadata generation failed:', error)
-      return `Master ${primaryKeyword} with expert strategies. Science-backed approach for real results.`
+    
+    if (options.improveReadability) {
+      prompt += `- Improve readability with shorter sentences and paragraphs\n`;
     }
-  }
+    
+    if (options.addHeadings) {
+      prompt += `- Add compelling subheadings every 200-300 words\n`;
+    }
+    
+    if (options.optimizeForSEO && options.primaryKeyword) {
+      prompt += `- Optimize for the keyword "${options.primaryKeyword}" (use 3-5 times naturally)\n`;
+    }
+    
+    prompt += `
+Please provide:
+1. An improved, SEO-optimized title (without "Title:" prefix)
+2. The rewritten article content
+3. A 155-character meta description
+4. Any warnings about content that may need fact-checking
 
-  /**
-   * Extract primary keyword from title
-   */
+Format your response as:
+TITLE: [improved title]
+META: [meta description]
+CONTENT: [rewritten article]
+WARNINGS: [any concerns]`;
+    
+    return prompt;
+  }
+  
+  private parseClaudeResponse(content: any): { title: string; content: string; metaDescription?: string; warnings?: string[] } {
+    if (typeof content.text !== 'string') {
+      throw new Error('Invalid Claude response format');
+    }
+    
+    const text = content.text;
+    
+    // Parse the response
+    const titleMatch = text.match(/TITLE:\s*(.+?)(?=\n(?:META:|CONTENT:))/s);
+    const metaMatch = text.match(/META:\s*(.+?)(?=\n(?:CONTENT:|WARNINGS:))/s);
+    const contentMatch = text.match(/CONTENT:\s*(.+?)(?=\nWARNINGS:|$)/s);
+    const warningsMatch = text.match(/WARNINGS:\s*(.+?)$/s);
+    
+    const title = titleMatch ? titleMatch[1].trim() : 'Untitled';
+    const metaDescription = metaMatch ? metaMatch[1].trim() : undefined;
+    const articleContent = contentMatch ? contentMatch[1].trim() : text;
+    const warnings = warningsMatch ? warningsMatch[1].trim().split('\n').filter(w => w.trim()) : undefined;
+    
+    return {
+      title,
+      content: articleContent,
+      metaDescription,
+      warnings
+    };
+  }
+  
   private extractPrimaryKeyword(title: string): string {
-    const cleanTitle = title.toLowerCase()
-      .replace(/[^a-z0-9\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-    
-    const words = cleanTitle.split(' ')
-      .filter(word => word.length > 3)
-      .filter(word => !['with', 'from', 'that', 'this', 'they', 'have', 'will', 'been', 'were', 'your', 'what', 'when', 'where', 'how'].includes(word))
-    
-    return words[0] || 'fitness'
+    const commonWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'up', 'about', 'into', 'through', 'after']);
+    const words = title.toLowerCase().split(/\s+/);
+    const keywords = words.filter(word => !commonWords.has(word) && word.length > 3);
+    return keywords.join(' ');
   }
-
-  /**
-   * Generate excerpt from content
-   */
-  private generateExcerpt(content: string): string {
-    const text = content
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
+  
+  private generateMetaDescription(title: string, content: string, keyword: string): string {
+    const firstParagraph = content.substring(0, 200).replace(/<[^>]*>/g, '');
+    let description = `${title}. ${firstParagraph}`.substring(0, 155);
     
-    const words = text.split(' ').slice(0, 25)
-    return words.join(' ') + (words.length >= 25 ? '...' : '')
+    if (!description.toLowerCase().includes(keyword.toLowerCase())) {
+      description = `${keyword} - ${description}`.substring(0, 155);
+    }
+    
+    return description.trim();
   }
-} 
+  
+  private async generateImagesForContent(title: string, content: string): Promise<{ description: string, url: string }[]> {
+    if (!this.openai) return [];
+    
+    const images: { description: string, url: string }[] = [];
+    
+    // Extract key concepts for image generation
+    const imagePrompts = this.extractImagePrompts(title, content);
+    
+    for (const prompt of imagePrompts.slice(0, 3)) { // Limit to 3 images
+      try {
+        const imageResponse = await this.openai.images.generate({
+          model: "dall-e-3",
+          prompt: `Professional men's health and fitness photo: ${prompt}. High quality, realistic, editorial style.`,
+          n: 1,
+          size: "1024x1024",
+          quality: "standard",
+          style: "natural"
+        });
+        
+        const imageUrl = imageResponse.data?.[0]?.url;
+        if (imageUrl) {
+          images.push({
+            description: prompt,
+            url: imageUrl
+          });
+        }
+      } catch (error) {
+        console.error('Image generation error:', error);
+      }
+    }
+    
+    return images;
+  }
+  
+  private extractImagePrompts(title: string, content: string): string[] {
+    const prompts: string[] = [];
+    
+    // Hero image based on title
+    prompts.push(title);
+    
+    // Extract key concepts from headings
+    const headingMatches = content.match(/<h[2-3][^>]*>([^<]+)<\/h[2-3]>/gi);
+    if (headingMatches) {
+      headingMatches.forEach(match => {
+        const heading = match.replace(/<[^>]+>/g, '').trim();
+        if (heading.length > 10 && heading.length < 100) {
+          prompts.push(heading);
+        }
+      });
+    }
+    
+    return prompts;
+  }
+}
