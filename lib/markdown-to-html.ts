@@ -103,6 +103,28 @@ ${takeaways.map((takeaway: string) => `    <li class="flex items-start"><span cl
 </figure>`;
   });
   
+  // Also handle DALL-E placeholders without parentheses (just ![DALL-E: description])
+  html = html.replace(/!\[DALL-E:\s*([^\]]+)\]/g, (match, description) => {
+    // Use stock images for DALL-E placeholders
+    const stockImages = [
+      'https://images.pexels.com/photos/841130/pexels-photo-841130.jpeg',
+      'https://images.pexels.com/photos/1552249/pexels-photo-1552249.jpeg',
+      'https://images.pexels.com/photos/3837389/pexels-photo-3837389.jpeg',
+      'https://images.pexels.com/photos/1229356/pexels-photo-1229356.jpeg',
+      'https://images.pexels.com/photos/2261477/pexels-photo-2261477.jpeg'
+    ];
+    
+    // Use a different stock image based on the description hash
+    const imageIndex = description.length % stockImages.length;
+    const stockImage = stockImages[imageIndex];
+    
+    return `
+<figure class="my-8">
+  <img src="${stockImage}?auto=compress&cs=tinysrgb&w=1200&h=600&fit=crop" alt="${description.trim()}" class="w-full rounded-lg shadow-lg">
+  <figcaption class="text-center text-gray-600 text-sm mt-3 italic">Professional fitness demonstration</figcaption>
+</figure>`;
+  });
+  
   // Convert paragraphs (lines not already tagged)
   html = html.split('\n\n').map((para: string) => {
     const trimmed = para.trim();
@@ -128,6 +150,9 @@ ${takeaways.map((takeaway: string) => `    <li class="flex items-start"><span cl
   
   // Clean up any empty paragraphs
   html = html.replace(/<p class="mb-6 text-gray-700 leading-relaxed">\s*<\/p>/g, '');
+  
+  // Final cleanup - remove any remaining image placeholders that weren't caught
+  html = html.replace(/!\[(?:AI Generated Image|DALL-E):[^\]]*\]/g, '');
   
   // Add FAQ styling if present
   html = html.replace(

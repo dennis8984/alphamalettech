@@ -244,7 +244,14 @@ Please provide:
   private parseAIResponse(response: string): { title: string, content: string, metaDescription: string } {
     // Extract title (usually the first line or after "Title:")
     const titleMatch = response.match(/(?:Title:|New Title:|^)(.+?)(?:\n|$)/i);
-    const title = titleMatch ? titleMatch[1].trim().replace(/^["']|["']$/g, '') : 'Untitled Article';
+    let title = titleMatch ? titleMatch[1].trim().replace(/^["']|["']$/g, '') : 'Untitled Article';
+    
+    // Clean up title - remove any markdown formatting
+    title = title
+      .replace(/^#+\s+/, '') // Remove leading # symbols
+      .replace(/\*\*/g, '') // Remove bold markdown
+      .replace(/[`_]/g, '') // Remove backticks and underscores
+      .trim();
     
     // Extract meta description
     const metaMatch = response.match(/(?:Meta Description:|Meta:|SEO Description:)(.+?)(?:\n|$)/i);
