@@ -2,16 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 /**
  * Get social media analytics
  */
 export async function GET(request: NextRequest) {
   try {
+    // Initialize Supabase client
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseKey)
+    
     // Check authentication
     const headersList = headers()
     const authorization = headersList.get('authorization')
@@ -70,52 +75,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * Get platform-specific analytics
- */
-async function getPlatformAnalytics(platform: string) {
-  const { data: posts, error } = await supabase
-    .from('social_posts')
-    .select(`
-      *,
-      engagement:social_engagement(*),
-      clicks:social_clicks(count)
-    `)
-    .eq('platform', platform)
-    .eq('status', 'posted')
-    .gte('posted_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days
-
-  if (error) {
-    throw error
-  }
-
-  const totalPosts = posts?.length || 0
-  const totalClicks = posts?.reduce((sum, post) => sum + (post.clicks?.[0]?.count || 0), 0) || 0
-  const totalEngagement = posts?.reduce((sum, post) => {
-    const eng = post.engagement?.[0] || {}
-    return sum + (eng.likes || 0) + (eng.shares || 0) + (eng.comments || 0)
-  }, 0) || 0
-
-  const avgCtr = totalPosts > 0 ? (totalClicks / totalPosts) : 0
-  const avgEngagement = totalPosts > 0 ? (totalEngagement / totalPosts) : 0
-
-  return {
-    platform,
-    totalPosts,
-    totalClicks,
-    totalEngagement,
-    avgCtr,
-    avgEngagement,
-    posts: posts?.map(post => ({
-      id: post.id,
-      posted_at: post.posted_at,
-      clicks: post.clicks?.[0]?.count || 0,
-      likes: post.engagement?.[0]?.likes || 0,
-      shares: post.engagement?.[0]?.shares || 0,
-      comments: post.engagement?.[0]?.comments || 0
-    }))
-  }
-}
 
 /**
  * Calculate analytics from posts data

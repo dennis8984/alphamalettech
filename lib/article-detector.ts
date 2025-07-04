@@ -16,17 +16,27 @@ interface Article {
 }
 
 export class ArticleDetector {
-  private supabase
+  private supabase: any
   private lastCheckTime: Date
   private isRunning: boolean = false
   private checkInterval: NodeJS.Timeout | null = null
 
   constructor() {
-    this.supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
     this.lastCheckTime = new Date()
+  }
+
+  private getSupabase() {
+    if (!this.getSupabase()) {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+      
+      if (!url || !key) {
+        throw new Error('Supabase credentials not configured')
+      }
+      
+      this.supabase = createClient(url, key)
+    }
+    return this.supabase
   }
 
   /**
@@ -70,7 +80,7 @@ export class ArticleDetector {
       console.log('Checking for new articles...')
       
       // Get articles published since last check
-      const { data: newArticles, error } = await this.supabase
+      const { data: newArticles, error } = await this.getSupabase()
         .from('articles')
         .select('*')
         .eq('status', 'published')
@@ -109,12 +119,12 @@ export class ArticleDetector {
       console.log(`Processing new article: ${article.title}`)
 
       // Check if article has already been posted to social media
-      const { data: existingPosts } = await this.supabase
+      const { data: existingPosts } = await this.getSupabase()
         .from('social_posts')
         .select('platform')
         .eq('article_id', article.id)
 
-      const postedPlatforms = existingPosts?.map(p => p.platform) || []
+      const postedPlatforms = existingPosts?.map((p: any) => p.platform) || []
 
       // Get active automation rules
       const rules = await getActiveAutomationRules()
@@ -242,7 +252,7 @@ export class ArticleDetector {
   private async calculateScheduleTime(platform: string): Promise<Date> {
     try {
       // Get next available schedule slot for platform
-      const { data: schedules } = await this.supabase
+      const { data: schedules } = await this.getSupabase()
         .from('social_schedule')
         .select('*')
         .eq('platform', platform)
@@ -269,7 +279,7 @@ export class ArticleDetector {
         )
 
         // Check if this slot is already taken
-        const { data: existingPost } = await this.supabase
+        const { data: existingPost } = await this.getSupabase()
           .from('social_posts')
           .select('id')
           .eq('platform', platform)
@@ -325,12 +335,12 @@ export class ArticleDetector {
    */
   private async getActivePlatforms(): Promise<string[]> {
     try {
-      const { data: platforms } = await this.supabase
+      const { data: platforms } = await this.getSupabase()
         .from('social_platforms')
         .select('platform')
         .eq('is_active', true)
 
-      return platforms?.map(p => p.platform) || []
+      return platforms?.map((p: any) => p.platform) || []
     } catch (error) {
       console.error('Error fetching active platforms:', error)
       return []
@@ -342,7 +352,7 @@ export class ArticleDetector {
    */
   async detectArticle(articleId: string) {
     try {
-      const { data: article, error } = await this.supabase
+      const { data: article, error } = await this.getSupabase()
         .from('articles')
         .select('*')
         .eq('id', articleId)
@@ -385,8 +395,4 @@ export function getArticleDetector(): ArticleDetector {
   return detectorInstance
 }
 
-// Start detector on module load if in production and on server
-if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
-  const detector = getArticleDetector()
-  detector.startMonitoring(5) // Check every 5 minutes
-}
+// Article detector should be started manually when needed

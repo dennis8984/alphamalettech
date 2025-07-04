@@ -19,15 +19,25 @@ interface AutomationRule {
 }
 
 export class SocialAutomationConfig {
-  private supabase
+  private supabase: any
   private rules: AutomationRule[] = []
 
   constructor() {
-    this.supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-    this.loadRules()
+    // Initialize lazily
+  }
+
+  private getSupabase() {
+    if (!this.getSupabase()) {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+      
+      if (!url || !key) {
+        throw new Error('Supabase credentials not configured')
+      }
+      
+      this.supabase = createClient(url, key)
+    }
+    return this.supabase
   }
 
   /**
@@ -35,7 +45,7 @@ export class SocialAutomationConfig {
    */
   private async loadRules() {
     try {
-      const { data: rules } = await this.supabase
+      const { data: rules } = await this.getSupabase()
         .from('social_automation_rules')
         .select('*')
         .eq('is_active', true)
@@ -52,7 +62,9 @@ export class SocialAutomationConfig {
    * Get active automation rules
    */
   async getActiveRules(): Promise<AutomationRule[]> {
-    await this.loadRules() // Refresh rules
+    if (this.rules.length === 0) {
+      await this.loadRules() // Load rules if not loaded
+    }
     return this.rules
   }
 
@@ -61,7 +73,7 @@ export class SocialAutomationConfig {
    */
   async createRule(rule: Omit<AutomationRule, 'id'>): Promise<AutomationRule | null> {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await this.getSupabase()
         .from('social_automation_rules')
         .insert(rule)
         .select()
@@ -82,7 +94,7 @@ export class SocialAutomationConfig {
    */
   async updateRule(id: string, updates: Partial<AutomationRule>): Promise<boolean> {
     try {
-      const { error } = await this.supabase
+      const { error } = await this.getSupabase()
         .from('social_automation_rules')
         .update(updates)
         .eq('id', id)
@@ -102,7 +114,7 @@ export class SocialAutomationConfig {
    */
   async deleteRule(id: string): Promise<boolean> {
     try {
-      const { error } = await this.supabase
+      const { error } = await this.getSupabase()
         .from('social_automation_rules')
         .delete()
         .eq('id', id)
@@ -198,11 +210,11 @@ export class SocialAutomationConfig {
     ]
 
     // Check if rules already exist
-    const { data: existingRules } = await this.supabase
+    const { data: existingRules } = await this.getSupabase()
       .from('social_automation_rules')
       .select('name')
 
-    const existingNames = new Set(existingRules?.map(r => r.name) || [])
+    const existingNames = new Set(existingRules?.map((r: any) => r.name) || [])
 
     // Insert only new rules
     for (const rule of defaultRules) {
@@ -291,7 +303,7 @@ export class SocialAutomationConfig {
   async getRuleStatistics(ruleId: string) {
     try {
       // Get posts triggered by this rule
-      const { data: posts } = await this.supabase
+      const { data: posts } = await this.getSupabase()
         .from('social_posts')
         .select(`
           *,
@@ -304,14 +316,14 @@ export class SocialAutomationConfig {
 
       const stats = {
         total_posts: posts.length,
-        successful_posts: posts.filter(p => p.status === 'posted').length,
-        failed_posts: posts.filter(p => p.status === 'failed').length,
-        total_clicks: posts.reduce((sum, p) => sum + (p.clicks?.[0]?.count || 0), 0),
-        total_engagement: posts.reduce((sum, p) => {
+        successful_posts: posts.filter((p: any) => p.status === 'posted').length,
+        failed_posts: posts.filter((p: any) => p.status === 'failed').length,
+        total_clicks: posts.reduce((sum: number, p: any) => sum + (p.clicks?.[0]?.count || 0), 0),
+        total_engagement: posts.reduce((sum: number, p: any) => {
           const eng = p.engagement?.[0] || {}
           return sum + (eng.likes || 0) + (eng.shares || 0) + (eng.comments || 0)
         }, 0),
-        platforms: [...new Set(posts.map(p => p.platform))]
+        platforms: [...new Set(posts.map((p: any) => p.platform))]
       }
 
       return stats
@@ -338,8 +350,4 @@ export async function getActiveAutomationRules(): Promise<AutomationRule[]> {
   return config.getActiveRules()
 }
 
-// Initialize default rules on first run and on server
-if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
-  const config = getAutomationConfig()
-  config.initializeDefaultRules()
-}
+// Default rules initialization should be done manually when needed

@@ -9,15 +9,26 @@ interface Alert {
 }
 
 export class SocialMonitoring {
-  private supabase
+  private supabase: any
   private alerts: Alert[] = []
   private monitoringInterval: NodeJS.Timeout | null = null
 
   constructor() {
-    this.supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Initialize lazily
+  }
+
+  private getSupabase() {
+    if (!this.getSupabase()) {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+      
+      if (!url || !key) {
+        throw new Error('Supabase credentials not configured')
+      }
+      
+      this.supabase = createClient(url, key)
+    }
+    return this.supabase
   }
 
   /**
@@ -76,7 +87,7 @@ export class SocialMonitoring {
    * Check failure rate for posts
    */
   private async checkFailureRate() {
-    const { data: recentPosts } = await this.supabase
+    const { data: recentPosts } = await this.getSupabase()
       .from('social_posts')
       .select('status, platform')
       .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
@@ -86,7 +97,7 @@ export class SocialMonitoring {
     // Calculate failure rate by platform
     const platformStats: Record<string, { total: number, failed: number }> = {}
     
-    recentPosts.forEach(post => {
+    recentPosts.forEach((post: any) => {
       if (!platformStats[post.platform]) {
         platformStats[post.platform] = { total: 0, failed: 0 }
       }
@@ -124,13 +135,13 @@ export class SocialMonitoring {
    * Check queue backlog
    */
   private async checkQueueBacklog() {
-    const { count: pendingCount } = await this.supabase
+    const { count: pendingCount } = await this.getSupabase()
       .from('social_post_queue')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending')
       .lt('scheduled_for', new Date().toISOString())
 
-    const { count: failedCount } = await this.supabase
+    const { count: failedCount } = await this.getSupabase()
       .from('social_post_queue')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'failed')
@@ -165,7 +176,7 @@ export class SocialMonitoring {
    * Check platform API status
    */
   private async checkPlatformStatus() {
-    const { data: platforms } = await this.supabase
+    const { data: platforms } = await this.getSupabase()
       .from('social_platforms')
       .select('*')
       .eq('is_active', true)
@@ -208,12 +219,12 @@ export class SocialMonitoring {
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
 
-    const { data: thisWeek } = await this.supabase
+    const { data: thisWeek } = await this.getSupabase()
       .from('social_engagement')
       .select('likes, shares, comments')
       .gte('updated_at', oneWeekAgo.toISOString())
 
-    const { data: lastWeek } = await this.supabase
+    const { data: lastWeek } = await this.getSupabase()
       .from('social_engagement')
       .select('likes, shares, comments')
       .gte('updated_at', twoWeeksAgo.toISOString())
@@ -250,7 +261,7 @@ export class SocialMonitoring {
   private async checkRateLimits() {
     // This would check actual API rate limits
     // Placeholder implementation
-    const { data: recentPosts } = await this.supabase
+    const { data: recentPosts } = await this.getSupabase()
       .from('social_posts')
       .select('platform, posted_at')
       .gte('posted_at', new Date(Date.now() - 60 * 60 * 1000).toISOString())
@@ -260,7 +271,7 @@ export class SocialMonitoring {
 
     // Count posts per platform in last hour
     const hourlyCount: Record<string, number> = {}
-    recentPosts.forEach(post => {
+    recentPosts.forEach((post: any) => {
       hourlyCount[post.platform] = (hourlyCount[post.platform] || 0) + 1
     })
 
@@ -297,7 +308,7 @@ export class SocialMonitoring {
     const hour = now.getHours()
 
     // Check if we should have posted in the last hour
-    const { data: schedules } = await this.supabase
+    const { data: schedules } = await this.getSupabase()
       .from('social_schedule')
       .select('*')
       .eq('day_of_week', dayOfWeek)
@@ -308,7 +319,7 @@ export class SocialMonitoring {
 
     // Check if posts were made for each scheduled slot
     for (const schedule of schedules) {
-      const { count } = await this.supabase
+      const { count } = await this.getSupabase()
         .from('social_posts')
         .select('*', { count: 'exact', head: true })
         .eq('platform', schedule.platform)
@@ -368,7 +379,7 @@ export class SocialMonitoring {
    */
   private async logAlert(alert: Alert) {
     try {
-      await this.supabase
+      await this.getSupabase()
         .from('social_monitoring_alerts')
         .insert({
           type: alert.type,
@@ -387,7 +398,7 @@ export class SocialMonitoring {
    * Get recent alerts
    */
   async getRecentAlerts(hours: number = 24) {
-    const { data: alerts } = await this.supabase
+    const { data: alerts } = await this.getSupabase()
       .from('social_monitoring_alerts')
       .select('*')
       .gte('created_at', new Date(Date.now() - hours * 60 * 60 * 1000).toISOString())
@@ -438,8 +449,4 @@ export function getSocialMonitoring(): SocialMonitoring {
   return monitoringInstance
 }
 
-// Start monitoring in production and on server
-if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
-  const monitoring = getSocialMonitoring()
-  monitoring.startMonitoring(10) // Check every 10 minutes
-}
+// Monitoring should be started manually when needed

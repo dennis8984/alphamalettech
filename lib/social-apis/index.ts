@@ -6,14 +6,25 @@ import { RedditAPI } from './reddit'
 import { InstagramAPI } from './instagram'
 
 export class SocialAPIManager {
-  private supabase
+  private supabase: any
   private apis: Map<string, SocialMediaAPI> = new Map()
 
   constructor() {
-    this.supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Initialize lazily
+  }
+
+  private getSupabase() {
+    if (!this.getSupabase()) {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+      
+      if (!url || !key) {
+        throw new Error('Supabase credentials not configured')
+      }
+      
+      this.supabase = createClient(url, key)
+    }
+    return this.supabase
   }
 
   /**
@@ -22,7 +33,7 @@ export class SocialAPIManager {
   async initializePlatform(platform: string): Promise<boolean> {
     try {
       // Get platform credentials from database
-      const { data: platformData, error } = await this.supabase
+      const { data: platformData, error } = await this.getSupabase()
         .from('social_platforms')
         .select('*')
         .eq('platform', platform)
@@ -160,7 +171,7 @@ export class SocialAPIManager {
    */
   private async updateLastPosted(platform: string) {
     try {
-      await this.supabase
+      await this.getSupabase()
         .from('social_platforms')
         .update({ last_posted_at: new Date().toISOString() })
         .eq('platform', platform)
@@ -195,7 +206,7 @@ export class SocialAPIManager {
       const encryptedCredentials = credentials
 
       // Update in database
-      const { error } = await this.supabase
+      const { error } = await this.getSupabase()
         .from('social_platforms')
         .update({ credentials: encryptedCredentials })
         .eq('platform', platform)

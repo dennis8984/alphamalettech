@@ -25,15 +25,26 @@ interface Article {
 }
 
 export class SocialPostQueue {
-  private supabase
+  private supabase: any
   private isProcessing: boolean = false
   private processInterval: NodeJS.Timeout | null = null
 
   constructor() {
-    this.supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Initialize lazily
+  }
+
+  private getSupabase() {
+    if (!this.getSupabase()) {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+      
+      if (!url || !key) {
+        throw new Error('Supabase credentials not configured')
+      }
+      
+      this.supabase = createClient(url, key)
+    }
+    return this.supabase
   }
 
   /**
@@ -77,7 +88,7 @@ export class SocialPostQueue {
       console.log('Processing social media queue...')
 
       // Get pending items that are scheduled for now or past
-      const { data: queueItems, error } = await this.supabase
+      const { data: queueItems, error } = await this.getSupabase()
         .from('social_post_queue')
         .select('*')
         .eq('status', 'pending')
@@ -116,7 +127,7 @@ export class SocialPostQueue {
       })
 
       // Get article details
-      const { data: article, error: articleError } = await this.supabase
+      const { data: article, error: articleError } = await this.getSupabase()
         .from('articles')
         .select('*')
         .eq('id', item.article_id)
@@ -237,7 +248,7 @@ export class SocialPostQueue {
   ): Promise<string> {
     try {
       // Create temporary social post to get ID
-      const { data: tempPost, error } = await this.supabase
+      const { data: tempPost, error } = await this.getSupabase()
         .from('social_posts')
         .insert({
           article_id: articleId,
@@ -287,7 +298,7 @@ export class SocialPostQueue {
    * Update queue item
    */
   private async updateQueueItem(id: string, updates: any) {
-    const { error } = await this.supabase
+    const { error } = await this.getSupabase()
       .from('social_post_queue')
       .update(updates)
       .eq('id', id)
@@ -301,7 +312,7 @@ export class SocialPostQueue {
    * Create social post record
    */
   private async createSocialPost(data: any) {
-    const { error } = await this.supabase
+    const { error } = await this.getSupabase()
       .from('social_posts')
       .upsert(data, {
         onConflict: 'article_id,platform'
@@ -316,7 +327,7 @@ export class SocialPostQueue {
    * Get queue status
    */
   async getQueueStatus() {
-    const { data: stats } = await this.supabase
+    const { data: stats } = await this.getSupabase()
       .from('social_post_queue')
       .select('status')
 
@@ -341,7 +352,7 @@ export class SocialPostQueue {
     const cutoffDate = new Date()
     cutoffDate.setDate(cutoffDate.getDate() - daysOld)
 
-    const { error } = await this.supabase
+    const { error } = await this.getSupabase()
       .from('social_post_queue')
       .delete()
       .eq('status', 'completed')
