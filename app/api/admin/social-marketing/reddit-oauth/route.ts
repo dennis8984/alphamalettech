@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         body: new URLSearchParams({
           grant_type: 'authorization_code',
           code: code!,
-          redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.menshb.com'}/api/admin/social-marketing/reddit-oauth`
+          redirect_uri: 'https://www.menshb.com/api/admin/social-marketing/reddit-oauth'
         })
       })
       
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
     })
     
     // Build Reddit authorization URL
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.menshb.com'}/api/admin/social-marketing/reddit-oauth`
+    const redirectUri = 'https://www.menshb.com/api/admin/social-marketing/reddit-oauth'
     const scopes = ['identity', 'submit', 'read', 'save', 'edit', 'history']
     
     const authUrl = new URL('https://www.reddit.com/api/v1/authorize')
@@ -176,6 +176,9 @@ export async function POST(request: NextRequest) {
     authUrl.searchParams.set('redirect_uri', redirectUri)
     authUrl.searchParams.set('duration', 'permanent')
     authUrl.searchParams.set('scope', scopes.join(' '))
+    
+    console.log('Reddit auth URL:', authUrl.toString())
+    console.log('Redirect URI:', redirectUri)
     
     return NextResponse.json({ authUrl: authUrl.toString() })
     

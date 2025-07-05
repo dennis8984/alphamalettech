@@ -614,6 +614,12 @@ export default function SocialMediaSetupWizard() {
                   <div className="p-4 bg-blue-50 rounded-lg">
                     <h4 className="font-semibold mb-2">Get Refresh Token (Recommended)</h4>
                     <p className="text-sm mb-3">Click the button below to authorize and get your refresh token:</p>
+                    <p className="text-xs text-gray-600 mb-2">
+                      Make sure your Reddit app's redirect URI is set to:
+                      <code className="bg-gray-100 px-1 py-0.5 rounded text-xs break-all">
+                        https://www.menshb.com/api/admin/social-marketing/reddit-oauth
+                      </code>
+                    </p>
                     
                     {formData.client_id && formData.client_secret ? (
                       <button
