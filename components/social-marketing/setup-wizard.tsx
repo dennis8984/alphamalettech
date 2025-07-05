@@ -383,15 +383,22 @@ export default function SocialMediaSetupWizard() {
     setTesting(platform)
     
     try {
-      const response = await fetch('/api/admin/social-marketing/test-credentials', {
+      // Use simplified endpoint for Reddit
+      const endpoint = platform === 'reddit' 
+        ? '/api/public/test-reddit'
+        : '/api/admin/social-marketing/test-credentials'
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ platform })
       })
       
       const result = await response.json()
+      console.log(`Test result for ${platform}:`, result)
       setTestResults(prev => ({ ...prev, [platform]: result }))
     } catch (error) {
+      console.error(`Test error for ${platform}:`, error)
       setTestResults(prev => ({ 
         ...prev, 
         [platform]: { success: false, error: 'Test failed' } 
