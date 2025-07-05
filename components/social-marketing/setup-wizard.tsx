@@ -609,46 +609,222 @@ export default function SocialMediaSetupWizard() {
               </div>
               
               {currentConfig.platform === 'reddit' && (
-                <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
-                  <h4 className="font-semibold mb-2">Reddit OAuth Helper</h4>
-                  <p className="text-sm mb-3">Use this Python script to get your refresh token:</p>
-                  <div className="relative">
-                    <pre className="bg-gray-900 text-gray-100 p-4 rounded overflow-x-auto text-xs">
-{`import requests
-from requests.auth import HTTPBasicAuth
+                <div className="mt-6 space-y-4">
+                  {/* Web-based OAuth flow */}
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <h4 className="font-semibold mb-2">Get Refresh Token (Recommended)</h4>
+                    <p className="text-sm mb-3">Click the button below to authorize and get your refresh token:</p>
+                    
+                    {formData.client_id && formData.client_secret ? (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/admin/social-marketing/reddit-oauth', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                client_id: formData.client_id,
+                                client_secret: formData.client_secret
+                              })
+                            })
+                            
+                            const data = await response.json()
+                            
+                            if (data.authUrl) {
+                              // Open Reddit auth in new window
+                              const authWindow = window.open(data.authUrl, 'reddit-auth', 'width=600,height=700')
+                              
+                              // Listen for token from the popup
+                              const handleMessage = (event: MessageEvent) => {
+                                if (event.data.type === 'reddit-token' && event.data.token) {
+                                  handleInputChange('refresh_token', event.data.token)
+                                  window.removeEventListener('message', handleMessage)
+                                  alert('Refresh token received! Click "Save Credentials" to save it.')
+                                }
+                              }
+                              
+                              window.addEventListener('message', handleMessage)
+                              
+                              // Clean up listener after 10 minutes
+                              setTimeout(() => {
+                                window.removeEventListener('message', handleMessage)
+                              }, 10 * 60 * 1000)
+                            } else {
+                              alert('Error: ' + (data.error || 'Failed to start OAuth flow'))
+                            }
+                          } catch (error) {
+                            alert('Failed to start Reddit authorization')
+                          }
+                        }}
+                        className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
+                      >
+                        🔐 Authorize with Reddit
+                      </button>
+                    ) : (
+                      <p className="text-sm text-gray-600">
+                        ⚠️ Please enter your Client ID and Client Secret first
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Python script fallback */}
+                  <div className="p-4 bg-yellow-50 rounded-lg">
+                    <h4 className="font-semibold mb-2">Alternative: Python Script</h4>
+                    <p className="text-sm mb-3">If the button above doesn't work, use this Python script:</p>
+                    <div className="relative">
+                      <pre className="bg-gray-900 text-gray-100 p-4 rounded overflow-x-auto text-xs">
+{`import random
+import socket
+import sys
+import webbrowser
+import praw
 
-# Your app credentials
-client_id = '${formData.client_id || 'YOUR_CLIENT_ID'}'
-client_secret = '${formData.client_secret || 'YOUR_CLIENT_SECRET'}'
-username = 'YOUR_REDDIT_USERNAME'
-password = 'YOUR_REDDIT_PASSWORD'
+# Fill in your credentials here
+CLIENT_ID = "${formData.client_id || 'your_client_id_here'}"
+CLIENT_SECRET = "${formData.client_secret || 'your_client_secret_here'}"
+USER_AGENT = "${formData.user_agent || 'MensHealthBot/1.0 (by /u/YourUsername)'}"
 
-# Get refresh token
-auth = HTTPBasicAuth(client_id, client_secret)
-data = {
-    'grant_type': 'password',
-    'username': username,
-    'password': password
-}
-headers = {'User-Agent': '${formData.user_agent || 'MensHealthBot/1.0'}'}
+def receive_connection():
+    """Wait for and return a connection from the browser"""
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(('localhost', 8080))
+    server.listen(1)
+    client = server.accept()[0]
+    server.close()
+    return client
 
-response = requests.post(
-    'https://www.reddit.com/api/v1/access_token',
-    auth=auth,
-    data=data,
-    headers=headers
-)
+def send_message(client, message):
+    """Send an HTTP response and close the connection"""
+    client.send(f'HTTP/1.1 200 OK\\r\\n\\r\\n{message}'.encode('utf-8'))
+    client.close()
 
-print(response.json())  # Look for 'refresh_token'`}
-                    </pre>
-                    <button
-                      onClick={() => copyToClipboard(
-                        `import requests\nfrom requests.auth import HTTPBasicAuth\n\n# Your app credentials\nclient_id = '${formData.client_id || 'YOUR_CLIENT_ID'}'\nclient_secret = '${formData.client_secret || 'YOUR_CLIENT_SECRET'}'\nusername = 'YOUR_REDDIT_USERNAME'\npassword = 'YOUR_REDDIT_PASSWORD'\n\n# Get refresh token\nauth = HTTPBasicAuth(client_id, client_secret)\ndata = {\n    'grant_type': 'password',\n    'username': username,\n    'password': password\n}\nheaders = {'User-Agent': '${formData.user_agent || 'MensHealthBot/1.0'}'}\n\nresponse = requests.post(\n    'https://www.reddit.com/api/v1/access_token',\n    auth=auth,\n    data=data,\n    headers=headers\n)\n\nprint(response.json())  # Look for 'refresh_token'`
-                      )}
-                      className="absolute top-2 right-2 text-gray-400 hover:text-gray-200"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
+def get_refresh_token():
+    """Guide the user through the OAuth2 flow to get a refresh token"""
+    reddit = praw.Reddit(
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        redirect_uri='http://localhost:8080',
+        user_agent=USER_AGENT
+    )
+    
+    state = str(random.randint(0, 65000))
+    scopes = ['identity', 'submit', 'read', 'save', 'edit', 'history']
+    auth_url = reddit.auth.url(scopes, state, 'permanent')
+    
+    print(f"Opening browser to: {auth_url}")
+    webbrowser.open(auth_url)
+    
+    client = receive_connection()
+    data = client.recv(1024).decode('utf-8')
+    
+    param_tokens = data.split(' ', 2)[1].split('?', 1)[1].split('&')
+    params = {key: value for (key, value) in [token.split('=') for token in param_tokens]}
+    
+    if state != params['state']:
+        send_message(client, 'State mismatch. Possible CSRF attack.')
+        sys.exit()
+    
+    if 'error' in params:
+        send_message(client, params['error'])
+        sys.exit()
+    
+    refresh_token = reddit.auth.authorize(params['code'])
+    send_message(client, 'Success! Check your console for the refresh token.')
+    
+    return refresh_token
+
+if __name__ == '__main__':
+    token = get_refresh_token()
+    print(f"\\nYour refresh token is:\\n{token}\\n")
+    print("Store this securely - you won't be able to retrieve it again!")`}
+                      </pre>
+                      <button
+                        onClick={() => {
+                          const script = `import random
+import socket
+import sys
+import webbrowser
+import praw
+
+# Fill in your credentials here
+CLIENT_ID = "${formData.client_id || 'your_client_id_here'}"
+CLIENT_SECRET = "${formData.client_secret || 'your_client_secret_here'}"
+USER_AGENT = "${formData.user_agent || 'MensHealthBot/1.0 (by /u/YourUsername)'}"
+
+def receive_connection():
+    """Wait for and return a connection from the browser"""
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(('localhost', 8080))
+    server.listen(1)
+    client = server.accept()[0]
+    server.close()
+    return client
+
+def send_message(client, message):
+    """Send an HTTP response and close the connection"""
+    client.send(f'HTTP/1.1 200 OK\\r\\n\\r\\n{message}'.encode('utf-8'))
+    client.close()
+
+def get_refresh_token():
+    """Guide the user through the OAuth2 flow to get a refresh token"""
+    reddit = praw.Reddit(
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        redirect_uri='http://localhost:8080',
+        user_agent=USER_AGENT
+    )
+    
+    state = str(random.randint(0, 65000))
+    scopes = ['identity', 'submit', 'read', 'save', 'edit', 'history']
+    auth_url = reddit.auth.url(scopes, state, 'permanent')
+    
+    print(f"Opening browser to: {auth_url}")
+    webbrowser.open(auth_url)
+    
+    client = receive_connection()
+    data = client.recv(1024).decode('utf-8')
+    
+    param_tokens = data.split(' ', 2)[1].split('?', 1)[1].split('&')
+    params = {key: value for (key, value) in [token.split('=') for token in param_tokens]}
+    
+    if state != params['state']:
+        send_message(client, 'State mismatch. Possible CSRF attack.')
+        sys.exit()
+    
+    if 'error' in params:
+        send_message(client, params['error'])
+        sys.exit()
+    
+    refresh_token = reddit.auth.authorize(params['code'])
+    send_message(client, 'Success! Check your console for the refresh token.')
+    
+    return refresh_token
+
+if __name__ == '__main__':
+    token = get_refresh_token()
+    print(f"\\nYour refresh token is:\\n{token}\\n")
+    print("Store this securely - you won't be able to retrieve it again!")`
+                          copyToClipboard(script)
+                        }}
+                        className="absolute top-2 right-2 text-gray-400 hover:text-gray-200"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-xs text-gray-600">
+                        Save as `get_reddit_token.py` and run with: `pip install praw && python get_reddit_token.py`
+                      </p>
+                      <a 
+                        href="/scripts/get_reddit_token.py" 
+                        download="get_reddit_token.py"
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        📥 Download Script
+                      </a>
+                    </div>
                   </div>
                 </div>
               )}

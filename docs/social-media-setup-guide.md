@@ -79,35 +79,21 @@ This guide will help you obtain the necessary credentials for each social media 
    - Client Secret is shown as "secret"
 
 3. **Get Refresh Token**:
-   You'll need to run this Python script:
-   ```python
-   import requests
-   from requests.auth import HTTPBasicAuth
    
-   # Your app credentials
-   client_id = 'YOUR_CLIENT_ID'
-   client_secret = 'YOUR_CLIENT_SECRET'
-   username = 'YOUR_REDDIT_USERNAME'
-   password = 'YOUR_REDDIT_PASSWORD'
+   **Option 1: Web-based (Recommended)**
+   - Go to the Reddit setup in the admin dashboard
+   - Enter your Client ID and Client Secret
+   - Click "🔐 Authorize with Reddit"
+   - Approve the permissions in the popup
+   - The refresh token will be automatically filled in
    
-   # Get access token
-   auth = HTTPBasicAuth(client_id, client_secret)
-   data = {
-       'grant_type': 'password',
-       'username': username,
-       'password': password
-   }
-   headers = {'User-Agent': 'MensHealthBot/1.0'}
-   
-   response = requests.post(
-       'https://www.reddit.com/api/v1/access_token',
-       auth=auth,
-       data=data,
-       headers=headers
-   )
-   
-   print(response.json())  # Save the refresh_token
-   ```
+   **Option 2: Python Script**
+   - Download the script from the admin dashboard
+   - Or create `get_reddit_token.py` with the provided code
+   - Update CLIENT_ID and CLIENT_SECRET in the script
+   - Run: `pip install praw && python get_reddit_token.py`
+   - Follow the browser prompts
+   - Copy the refresh token from the terminal
 
 4. **User Agent Format**:
    `AppName/Version by /u/YourUsername`
