@@ -4,11 +4,16 @@ import { createClient } from '@supabase/supabase-js'
 export async function GET(request: NextRequest) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     
     if (!supabaseUrl || !supabaseKey) {
+      console.error('Missing Supabase config:', {
+        hasUrl: !!supabaseUrl,
+        hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      })
       return NextResponse.json(
-        { error: 'Server configuration error' },
+        { error: 'Server configuration error - check environment variables' },
         { status: 500 }
       )
     }

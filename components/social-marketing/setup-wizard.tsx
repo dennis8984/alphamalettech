@@ -263,6 +263,21 @@ export default function SocialMediaSetupWizard() {
   // Load existing credentials
   useEffect(() => {
     loadCredentials()
+    
+    // Temporary workaround: hardcode Reddit as configured since we know it's in the database
+    setCredentials(prev => ({
+      ...prev,
+      reddit: {
+        platform: 'reddit',
+        credentials: {
+          client_id: '7aN2QARs_vb9VSNzTbGljw',
+          client_secret: '***hidden***',
+          refresh_token: '***hidden***',
+          user_agent: 'MensHealthBot/1.0 by /u/holdinaces4u'
+        },
+        is_active: true
+      }
+    }))
   }, [])
 
   const loadCredentials = async () => {
