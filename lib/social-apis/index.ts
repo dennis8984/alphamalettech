@@ -14,7 +14,7 @@ export class SocialAPIManager {
   }
 
   private getSupabase() {
-    if (!this.getSupabase()) {
+    if (!this.supabase) {
       const url = process.env.NEXT_PUBLIC_SUPABASE_URL
       const key = process.env.SUPABASE_SERVICE_ROLE_KEY
       
