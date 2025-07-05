@@ -22,7 +22,7 @@ Just wanted to share some science-backed tips that have really helped me and my 
 Check out our detailed guide at Men's Health Blog for more evidence-based fitness advice!
 
 What strategies have worked best for you?`,
-    subreddit: 'test' // Use r/test for safe testing
+    subreddit: 'MensHB' // Your subreddit
   })
 
   const handlePost = async () => {
