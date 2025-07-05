@@ -61,18 +61,50 @@ export async function PUT(request: NextRequest) {
     
     const supabase = createClient(supabaseUrl, supabaseKey)
     
-    const { data, error } = await supabase
+    // First check if the platform exists
+    const { data: existing } = await supabase
       .from('social_platforms')
-      .update({
-        credentials,
-        is_active: is_active !== undefined ? is_active : true,
-        updated_at: new Date().toISOString()
-      })
+      .select('id')
       .eq('platform', platform)
-      .select()
       .single()
     
+    let data, error
+    
+    if (existing) {
+      // Update existing platform
+      const result = await supabase
+        .from('social_platforms')
+        .update({
+          credentials,
+          is_active: is_active !== undefined ? is_active : true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('platform', platform)
+        .select()
+        .single()
+      
+      data = result.data
+      error = result.error
+    } else {
+      // Insert new platform
+      const result = await supabase
+        .from('social_platforms')
+        .insert({
+          platform,
+          credentials,
+          is_active: is_active !== undefined ? is_active : true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+      
+      data = result.data
+      error = result.error
+    }
+    
     if (error) {
+      console.error(`Error saving credentials for ${platform}:`, error)
       return NextResponse.json(
         { error: error.message },
         { status: 500 }
