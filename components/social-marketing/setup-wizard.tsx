@@ -267,13 +267,17 @@ export default function SocialMediaSetupWizard() {
 
   const loadCredentials = async () => {
     try {
+      console.log('Loading credentials...')
       const response = await fetch('/api/admin/social-marketing/credentials')
       const data = await response.json()
+      
+      console.log('Credentials response:', data)
       
       if (data.platforms) {
         const creds: Record<string, PlatformCredentials> = {}
         data.platforms.forEach((p: any) => {
           creds[p.platform] = p
+          console.log(`Platform ${p.platform}:`, p)
         })
         setCredentials(creds)
         
@@ -284,6 +288,7 @@ export default function SocialMediaSetupWizard() {
       }
     } catch (error) {
       console.error('Error loading credentials:', error)
+      alert('Failed to load credentials. Check console for details.')
     }
   }
 
@@ -840,7 +845,18 @@ if __name__ == '__main__':
           {/* Test Tab */}
           {activeTab === 'test' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Test Credentials</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Test Credentials</h3>
+                <button
+                  onClick={() => {
+                    loadCredentials()
+                    alert('Credentials reloaded. Check console for details.')
+                  }}
+                  className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                >
+                  🔄 Refresh
+                </button>
+              </div>
               
               <div className="space-y-3">
                 {platformConfigs.map(config => {
