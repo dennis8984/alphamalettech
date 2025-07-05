@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import SocialMediaSetupWizard from '@/components/social-marketing/setup-wizard'
 
 interface SocialPost {
   id: string
@@ -312,26 +313,37 @@ export default function SocialMarketingPage() {
             Automated social media posting and engagement tracking
           </p>
         </div>
-        <Button
-          onClick={toggleAutomation}
-          variant={isAutomationEnabled ? "destructive" : "default"}
-        >
-          {isAutomationEnabled ? (
-            <>
-              <Pause className="w-4 h-4 mr-2" />
-              Stop Automation
-            </>
-          ) : (
-            <>
-              <Play className="w-4 h-4 mr-2" />
-              Start Automation
-            </>
-          )}
-        </Button>
       </div>
 
-      {/* Status Cards */}
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 lg:w-[400px] mb-6">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="setup">Setup & Configuration</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="dashboard">
+          {/* Automation Control */}
+          <div className="flex justify-end mb-6">
+            <Button
+              onClick={toggleAutomation}
+              variant={isAutomationEnabled ? "destructive" : "default"}
+            >
+              {isAutomationEnabled ? (
+                <>
+                  <Pause className="w-4 h-4 mr-2" />
+                  Stop Automation
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Start Automation
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Status Cards */}
+          <div className="grid gap-4 md:grid-cols-4 mb-6">
         {/* Automation Status */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -402,10 +414,10 @@ export default function SocialMarketingPage() {
             </p>
           </CardContent>
         </Card>
-      </div>
+          </div>
 
-      {/* Platform Stats */}
-      <Card className="mb-6">
+          {/* Platform Stats */}
+          <Card className="mb-6">
         <CardHeader>
           <CardTitle>Platform Performance</CardTitle>
           <CardDescription>
@@ -444,10 +456,10 @@ export default function SocialMarketingPage() {
             ))}
           </div>
         </CardContent>
-      </Card>
+          </Card>
 
-      {/* Recent Posts */}
-      <Card>
+          {/* Recent Posts */}
+          <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -579,9 +591,15 @@ export default function SocialMarketingPage() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </Table>
+          </CardContent>
+        </Card>
+        </TabsContent>
+        
+        <TabsContent value="setup">
+          <SocialMediaSetupWizard />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
