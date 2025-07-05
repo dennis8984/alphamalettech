@@ -2,18 +2,18 @@
 -- Run this after creating the social marketing schema
 
 -- Insert default platforms if they don't exist
-INSERT INTO social_platforms (platform, is_active, credentials, config)
+INSERT INTO social_platforms (platform, is_active, credentials)
 VALUES 
-  ('facebook', false, '{}', '{"page_size": 100}'),
-  ('twitter', false, '{}', '{"max_chars": 280}'),
-  ('reddit', false, '{}', '{"default_subreddit": "fitness"}'),
-  ('instagram', false, '{}', '{"requires_image": true}')
+  ('facebook', false, '{}'),
+  ('twitter', false, '{}'),
+  ('reddit', false, '{}'),
+  ('instagram', false, '{}')
 ON CONFLICT (platform) DO NOTHING;
 
 -- Show current platforms
 SELECT platform, is_active, 
        CASE 
-         WHEN credentials = '{}' THEN 'Not configured'
+         WHEN credentials = '{}' OR credentials IS NULL THEN 'Not configured'
          ELSE 'Configured'
        END as credential_status,
        created_at

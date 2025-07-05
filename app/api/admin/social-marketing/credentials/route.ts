@@ -40,7 +40,10 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { platform, credentials, is_active } = await request.json()
+    const body = await request.json()
+    console.log('PUT /api/admin/social-marketing/credentials - Request body:', body)
+    
+    const { platform, credentials, is_active } = body
     
     if (!platform) {
       return NextResponse.json(
@@ -62,16 +65,19 @@ export async function PUT(request: NextRequest) {
     const supabase = createClient(supabaseUrl, supabaseKey)
     
     // First check if the platform exists
-    const { data: existing } = await supabase
+    const { data: existing, error: checkError } = await supabase
       .from('social_platforms')
       .select('id')
       .eq('platform', platform)
       .single()
     
+    console.log(`Platform ${platform} exists:`, !!existing, 'Check error:', checkError?.message)
+    
     let data, error
     
-    if (existing) {
+    if (existing && !checkError) {
       // Update existing platform
+      console.log(`Updating existing platform ${platform}`)
       const result = await supabase
         .from('social_platforms')
         .update({
@@ -87,15 +93,19 @@ export async function PUT(request: NextRequest) {
       error = result.error
     } else {
       // Insert new platform
+      console.log(`Inserting new platform ${platform}`)
+      const insertData = {
+        platform,
+        credentials,
+        is_active: is_active !== undefined ? is_active : true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      console.log('Insert data:', insertData)
+      
       const result = await supabase
         .from('social_platforms')
-        .insert({
-          platform,
-          credentials,
-          is_active: is_active !== undefined ? is_active : true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        .insert(insertData)
         .select()
         .single()
       
